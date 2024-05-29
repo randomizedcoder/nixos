@@ -5,6 +5,7 @@
 # sudo nixos-rebuild switch
 # nix-shell -p vimo
 # nmcli device wifi connect MYSSID password PWORD
+# systemctl restart display-manager.service
 
 { config, pkgs, ... }:
 
@@ -24,21 +25,34 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Networking
-  networking.hostName = "t14"; # Define your hostname.
+  networking.hostName = "hp0"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.wireless = {
+    enable = true;  # Enables wireless support via wpa_supplicant.
+    environmentFile = "/home/das/wireless.env";
+    networks."devices".psk = "performance"; 
+    #networks."devices".psk = "@PSK_DEVICES@"; 
+    extraConfig = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=wheel";
+    # output ends up in /run/wpa_supplicant/wpa_supplicant.conf
+  };
+  # https://linux.die.net/man/5/wpa_supplicant.conf
+  # https://nixos.wiki/wiki/Wpa_supplicant
+  # https://nixos.org/manual/nixos/stable/options#opt-networking.wireless.environmentFile
+  # https://blog.stigok.com/2021/05/04/getting-wpa-cli-to-work-in-nixos.html
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   # Enable networking
-  networking.networkmanager.enable = true;
+  networking.networkmanager.enable = false;
+  #networking.networkmanager.enable = true;
 
-  networking.hosts = {
-    "172.16.50.216" = ["hp0"];
-    "172.16.40.35" = ["hp1"];
-    "172.16.40.71" = ["hp2"];
-  };
+  # networking.hosts = {
+  #   "172.16.50.216" = ["hp0"];
+  #   "172.16.40.35" = ["hp1"];
+  #   "172.16.40.71" = ["hp2"];
+  # };
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
@@ -56,39 +70,6 @@
     LC_PAPER = "en_US.UTF-8";
     LC_TELEPHONE = "en_US.UTF-8";
     LC_TIME = "en_US.UTF-8";
-  };
-
-  # Enable the X11 windowing system.
-  services.xserver.enable = true;
-
-  # Enable the GNOME Desktop Environment.
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
-
-  # Configure keymap in X11
-  services.xserver = {
-    layout = "us";
-    xkbVariant = "";
-  };
-
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-
-  # Enable sound with pipewire.
-  sound.enable = true;
-  hardware.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
-    #media-session.enable = true;
   };
 
   # Enable touchpad support (enabled default in most desktopManager).
@@ -111,10 +92,6 @@
   users.users.eve.isNormalUser = true;
   home-manager.users.das = { pkgs, ... }: {
     home.packages = with pkgs; [
-      # terminals
-      gnome.gnome-terminal
-      alacritty
-      #warp-terminal
       #
       tmux
       screen
@@ -128,16 +105,6 @@
       htop
       minicom
       #
-      firefox
-      brave
-      google-chrome
-      slack
-      #
-      meld
-      gedit
-      trunk-io
-      flameshot
-      #
       iproute2
       vlan
       tcpdump
@@ -145,10 +112,9 @@
       flent
       iperf2
       bpftools
-      #
-      gnuradio
-      #
-      vlc
+      iw
+      wirelesstools
+      wpa_supplicant_ro_ssids
       # go
       # https://nixos.wiki/wiki/Go
       # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
@@ -161,75 +127,11 @@
       # https://nixos.wiki/wiki/Rust
       pkgs.cargo
       pkgs.rustc
-      #
-      flutter
-      android-studio
-      android-tools
-      android-udev-rules
-      #
-      libreoffice-qt
-      hunspell
-      hunspellDicts.en_AU
-      #hunspellDicts.en_US
-      gnomeExtensions.system-monitor
     ];
 
-    # vscode
-    # https://nixos.wiki/wiki/Visual_Studio_Code
-    programs.vscode = {
-      enable = true;
-      package = pkgs.vscode;
-      extensions = with pkgs.vscode-extensions; [
-        bbenoist.nix
-        dart-code.dart-code
-        dart-code.flutter
-        golang.go
-        hashicorp.terraform
-        #k6.k6
-        ms-azuretools.vscode-docker
-        ms-vscode-remote.remote-containers
-        ms-vscode-remote.remote-ssh
-        #ms-vscode-remote.remote-ssh-edit
-        ms-vscode.cmake-tools
-        ms-vscode.cpptools
-        #ms-vscode.cpptools-extension-pack
-        #ms-vscode.cpptools-themes
-        ms-vscode.hexeditor
-        ms-vscode.makefile-tools
-        ms-python.python
-        ms-python.vscode-pylance
-        #ms-vscode.remote-explorer
-        #ms-vscode.remote-repositories
-        #ms-vscode.remote-server
-        redhat.vscode-yaml
-        rust-lang.rust-analyzer
-        serayuzgur.crates
-        tamasfe.even-better-toml
-        timonwong.shellcheck
-        #trunk.io
-        zxh404.vscode-proto3
-        yzhang.markdown-all-in-one
-        #platformio.platformio-ide
-        github.copilot
-        # nix
-        #brettm12345.nixfmt.vscode
-        jnoortheen.nix-ide
-        #jeff-hykin.better-nix-syntax
-      ];
-    };
     programs.bash.enable = true;
     home.stateVersion = "23.11";
-    # https://nixos.wiki/wiki/GNOME
-    dconf = {
-      enable = true;
-      settings = {
-        "org/gnome/desktop/interface".color-scheme = "prefer-dark";
-        "org/virt-manager/virt-manager/connections" = {
-           autoconnect = ["qemu:///system"];
-           uris = ["qemu:///system"];
-        };
-      };
-    };
+
     programs.vim = {
       enable = true;
       plugins = with pkgs.vimPlugins; [ vim-airline ];
@@ -267,6 +169,10 @@
     tcpdump
     iproute2
     pciutils
+    usbutils
+    iw
+    wirelesstools
+    wpa_supplicant_ro_ssids
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -302,8 +208,8 @@
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.11"; # Did you read the comment?
 
-  virtualisation.libvirtd.enable = true;
-  programs.virt-manager.enable = true;
+  # virtualisation.libvirtd.enable = true;
+  # programs.virt-manager.enable = true;
   # services.qemuGuest.enable = true;
 
   # https://wiki.nixos.org/wiki/Laptop

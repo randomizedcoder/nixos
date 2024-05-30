@@ -3,7 +3,7 @@
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
 # sudo nixos-rebuild switch
-# nix-shell -p vimo
+# nix-shell -p vim
 # nmcli device wifi connect MYSSID password PWORD
 # systemctl restart display-manager.service
 
@@ -30,8 +30,8 @@
   networking.wireless = {
     enable = true;  # Enables wireless support via wpa_supplicant.
     environmentFile = "/home/das/wireless.env";
-    networks."devices".psk = "performance"; 
-    #networks."devices".psk = "@PSK_DEVICES@"; 
+    networks."devices".psk = "performance";
+    #networks."devices".psk = "@PSK_DEVICES@";
     extraConfig = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=wheel";
     # output ends up in /run/wpa_supplicant/wpa_supplicant.conf
   };
@@ -48,11 +48,12 @@
   networking.networkmanager.enable = false;
   #networking.networkmanager.enable = true;
 
-  # networking.hosts = {
-  #   "172.16.50.216" = ["hp0"];
+  networking.hosts = {
+    "172.16.40.198" = ["hp0"];
   #   "172.16.40.35" = ["hp1"];
   #   "172.16.40.71" = ["hp2"];
-  # };
+    "172.16.40.146" = ["hp3"];
+  };
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";

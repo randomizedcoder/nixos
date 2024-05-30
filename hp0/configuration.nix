@@ -169,6 +169,8 @@
     wget
     tcpdump
     iproute2
+    nftables
+    iptables
     pciutils
     usbutils
     iw
@@ -194,12 +196,28 @@
   # services.openssh.enable = true;
   services.openssh.enable = true;
 
-
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
+
+  # https://nixos.wiki/wiki/Firewall
+  # https://scvalex.net/posts/54/
+  # nft --stateless list table filter
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [
+      22     # ssh
+      5001   # iperf2
+    ];
+  #   allowedTCPPorts = [ 22 5001 ];
+  #   #allowedUDPPortRanges = [
+  #   #  { from = 4000; to = 4007; }
+  #   #  { from = 8000; to = 8010; }
+  #   #];
+  };
+  # networking.firewall.interfaces."eth0".allowedTCPPorts = [ 80 443 ];
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

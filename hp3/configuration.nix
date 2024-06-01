@@ -3,6 +3,7 @@
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
 # sudo nixos-rebuild switch
+# sudo nix-channel --update
 # nix-shell -p vim
 # nmcli device wifi connect MYSSID password PWORD
 # systemctl restart display-manager.service
@@ -10,6 +11,7 @@
 { config, pkgs, ... }:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
+# https://discourse.nixos.org/t/differences-between-nix-channels/13998
 
 {
   imports =
@@ -24,8 +26,46 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # https://nixos.wiki/wiki/Linux_kernel
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #boot.kernelPackages = pkgs.linuxPackages_rpi4
+
+  # https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html
+  boot.kernel.sysctl = {
+    # detect dead connections more quickly
+    "net.ipv4.tcp_keepalive_intvl" = 30;
+    #net.ipv4.tcp_keepalive_intvl = 75
+    "net.ipv4.tcp_keepalive_probes" = 4;
+    #net.ipv4.tcp_keepalive_probes = 9
+    "net.ipv4.tcp_keepalive_time" = 120;
+    #net.ipv4.tcp_keepalive_time = 7200
+    # 30 * 4 = 120 seconds. / 60 = 2 minutes
+    # default: 75 seconds * 9 = 675 seconds. /60 = 11.25 minutes
+    "net.ipv4.tcp_rmem" = "4096	1000000	16000000";
+    "net.ipv4.tcp_wmem" = "4096	1000000	16000000";
+    #net.ipv4.tcp_rmem = 4096       131072  6291456
+    #net.ipv4.tcp_wmem = 4096       16384   4194304
+    # enable Enable reuse of TIME-WAIT sockets globally
+    "net.ipv4.tcp_tw_reuse" = 1;
+    #net.ipv4.tcp_tw_reuse=2
+    "net.ipv4.tcp_timestamps" = 1;
+    "net.ipv4.tcp_ecn" = 1;
+    "net.core.rmem_default" = 26214400;
+    "net.core.rmem_max" = 26214400;
+    "net.core.wmem_default" = 26214400;
+    "net.core.wmem_max" = 26214400;
+    #net.core.optmem_max = 20480
+    #net.core.rmem_default = 212992
+    #net.core.rmem_max = 212992
+    #net.core.wmem_default = 212992
+    #net.core.wmem_max = 212992
+    "net.ipv4.ip_local_port_range" = "1025 65535";
+    #net.ipv4.ip_local_port_range ="32768 60999"
+  };
+
   # https://nixos.wiki/wiki/Networking
-  networking.hostName = "hp3"; # Define your hostname.
+  # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
+  networking.hostName = "hp3";
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
   networking.wireless = {
     enable = true;  # Enables wireless support via wpa_supplicant.
@@ -49,10 +89,10 @@
   #networking.networkmanager.enable = true;
 
   networking.hosts = {
-    "172.16.40.198" = ["hp0"];
-  #   "172.16.40.35" = ["hp1"];
-  #   "172.16.40.71" = ["hp2"];
-    "172.16.40.146" = ["hp3"];
+    "172.16.40.198" = ["hp0eth"];
+    "172.16.40.152" = ["hp0wifi"];
+    "172.16.40.146" = ["hp3eth"];
+    "172.16.40.130" = ["hp3wifi"];
   };
 
   # Set your time zone.
@@ -97,6 +137,14 @@
       tmux
       screen
       #
+      libgcc
+      # https://nixos.wiki/wiki/C
+      # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
+      gcc
+      automake
+      gnumake
+      pkg-config
+      #
       perl
       python3
       #
@@ -106,16 +154,20 @@
       htop
       minicom
       #
+      ethtool
       iproute2
       vlan
       tcpdump
       wireshark
-      flent
       iperf2
+      netperf
+      flent
       bpftools
       iw
       wirelesstools
       wpa_supplicant_ro_ssids
+      #
+      hwloc
       # go
       # https://nixos.wiki/wiki/Go
       # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
@@ -190,10 +242,6 @@
      enableSSHSupport = true;
   };
 
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
   services.openssh.enable = true;
 
   # Open ports in the firewall.
@@ -204,18 +252,24 @@
 
   # https://nixos.wiki/wiki/Firewall
   # https://scvalex.net/posts/54/
-  # nft --stateless list table filter
+  # sudo nft --stateless list table filter
+  # sudo sudo iptables-save
   networking.firewall = {
-    enable = true;
+    enable = false;
     allowedTCPPorts = [
       22     # ssh
       5001   # iperf2
     ];
-  #   allowedTCPPorts = [ 22 5001 ];
-  #   #allowedUDPPortRanges = [
-  #   #  { from = 4000; to = 4007; }
-  #   #  { from = 8000; to = 8010; }
-  #   #];
+    #   allowedTCPPorts = [ 22 5001 ];
+    #   #allowedUDPPortRanges = [
+    #   #  { from = 4000; to = 4007; }
+    #   #  { from = 8000; to = 8010; }
+    #   #];
+    # NixOS automagically creates stateful connection tracking, which we don't want
+    # for performance reasons
+    # extraCommands = ''
+    # iptables --delete nixos-fw -m conntrack --ctstate RELATED,ESTABLISHED -j nixos-fw-accept || true
+    # '';
   };
   # networking.firewall.interfaces."eth0".allowedTCPPorts = [ 80 443 ];
 

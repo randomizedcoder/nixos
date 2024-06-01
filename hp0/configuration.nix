@@ -3,6 +3,7 @@
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
 # sudo nixos-rebuild switch
+# sudo nix-channel --update
 # nix-shell -p vim
 # nmcli device wifi connect MYSSID password PWORD
 # systemctl restart display-manager.service
@@ -10,68 +11,46 @@
 { config, pkgs, ... }:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
+# https://discourse.nixos.org/t/differences-between-nix-channels/13998
 
 {
+  # https://nixos.wiki/wiki/NixOS_modules
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
       # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-23.11.tar.gz home-manager
       # sudo nix-channel --update
       <home-manager/nixos>
+      #
+      ./sysctl.nix
+      ./wireless.nix
+      ./hosts.nix
+      ./firewall.nix
+      ./il8n.nix
+      ./systemPackages.nix
+      ./home-manager.nix
     ];
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # https://nixos.wiki/wiki/Linux_kernel
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #boot.kernelPackages = pkgs.linuxPackages_rpi4
+
   # https://nixos.wiki/wiki/Networking
-  networking.hostName = "hp0"; # Define your hostname.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-  networking.wireless = {
-    enable = true;  # Enables wireless support via wpa_supplicant.
-    environmentFile = "/home/das/wireless.env";
-    networks."devices".psk = "performance";
-    #networks."devices".psk = "@PSK_DEVICES@";
-    extraConfig = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=wheel";
-    # output ends up in /run/wpa_supplicant/wpa_supplicant.conf
-  };
-  # https://linux.die.net/man/5/wpa_supplicant.conf
-  # https://nixos.wiki/wiki/Wpa_supplicant
-  # https://nixos.org/manual/nixos/stable/options#opt-networking.wireless.environmentFile
-  # https://blog.stigok.com/2021/05/04/getting-wpa-cli-to-work-in-nixos.html
+  # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
+  networking.hostName = "hp0";
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
-  # Enable networking
   networking.networkmanager.enable = false;
-  #networking.networkmanager.enable = true;
-
-  networking.hosts = {
-    "172.16.40.198" = ["hp0"];
-  #   "172.16.40.35" = ["hp1"];
-  #   "172.16.40.71" = ["hp2"];
-    "172.16.40.146" = ["hp3"];
-  };
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
-
-  # Select internationalisation properties.
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
-  };
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -89,93 +68,6 @@
     ];
   };
 
-  # https://nix-community.github.io/home-manager/index.xhtml#ch-installation
-  users.users.eve.isNormalUser = true;
-  home-manager.users.das = { pkgs, ... }: {
-    home.packages = with pkgs; [
-      #
-      tmux
-      screen
-      #
-      perl
-      python3
-      #
-      gawk
-      jq
-      git
-      htop
-      minicom
-      #
-      iproute2
-      vlan
-      tcpdump
-      wireshark
-      flent
-      iperf2
-      bpftools
-      iw
-      wirelesstools
-      wpa_supplicant_ro_ssids
-      # go
-      # https://nixos.wiki/wiki/Go
-      # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
-      # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
-      libcap
-      gcc
-      #  thunderbird
-      go
-      # rust
-      # https://nixos.wiki/wiki/Rust
-      pkgs.cargo
-      pkgs.rustc
-    ];
-
-    programs.bash.enable = true;
-    home.stateVersion = "23.11";
-
-    programs.vim = {
-      enable = true;
-      plugins = with pkgs.vimPlugins; [ vim-airline ];
-      settings = { ignorecase = true; };
-      extraConfig = ''
-        set mouse=a
-      '';
-    };
-    #ldflags = [
-    #  "-X main.Version=${version}"
-    #  "-X main.Commit=${version}"
-    #];
-
-    programs.git = {
-      enable = true;
-      userEmail = "dave.seddon.ca@gmail.com";
-      userName = "randomizedcoder ";
-      #signing.key = "GPG-KEY-ID";
-      #signing.signByDefault = true;
-    };
-    nixpkgs.config.allowUnfree = true;
-  };
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
-
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
-  environment.systemPackages = with pkgs; [
-  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-  #  wget
-    vim
-    curl
-    wget
-    tcpdump
-    iproute2
-    pciutils
-    usbutils
-    iw
-    wirelesstools
-    wpa_supplicant_ro_ssids
-  ];
-
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
@@ -188,18 +80,7 @@
      enableSSHSupport = true;
   };
 
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
   services.openssh.enable = true;
-
-
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
@@ -214,5 +95,4 @@
   # services.qemuGuest.enable = true;
 
   # https://wiki.nixos.org/wiki/Laptop
-
 }

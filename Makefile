@@ -6,7 +6,14 @@
 all: hp0 hp3
 
 hp0:
-	scp ./hp0/configuration.nix hp0:
+	scp -C ./hp0/* hp0:
+	scp -C ./modules/* hp0:
+	scp -C ./nix_switch.bash hp0:
 
 hp3:
-	scp ./hp3/configuration.nix hp3:
+	scp -C ./hp3/* hp3:
+	scp -C ./modules/* hp3:
+	scp -C ./nix_switch.bash hp3:
+
+#
+# end

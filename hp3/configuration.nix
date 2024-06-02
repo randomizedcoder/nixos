@@ -27,6 +27,7 @@
       ./hosts.nix
       ./firewall.nix
       ./il8n.nix
+      ./systemdSystem.nix
       ./systemPackages.nix
       ./home-manager.nix
     ];

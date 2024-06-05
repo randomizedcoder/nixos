@@ -3,7 +3,7 @@
 {
   networking.wireless = {
     enable = true;  # Enables wireless support via wpa_supplicant.
-    environmentFile = "/home/das/wireless.env";
+    #environmentFile = "/home/das/wireless.env";
     networks."devices".psk = "performance";
     #networks."devices".psk = "@PSK_DEVICES@";
     extraConfig = "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=wheel";

@@ -20,6 +20,8 @@
 #   95:          0          0          0          0          3          0          0          0  IR-PCI-MSIX-0000:03:00.0    9-edge      iwlwifi:exception
 # grep iwlwifi /proc/interrupts | awk '{ print $1 }' | sed -e 's/://'
 
+CORES="0-3"
+
 echo "starting to pin"
 echo "BEFORE"
 echo "grep iwlwifi /proc/interrupts"
@@ -28,8 +30,8 @@ grep iwlwifi /proc/interrupts
 for i in {86..95}
 do
   echo "Loop:${i}"
-  echo "echo 0-1 > /proc/irq/${i}/smp_affinity_list"
-  echo 0-1 > /proc/irq/"${i}"/smp_affinity_list
+  echo "echo ${CORES} > /proc/irq/${i}/smp_affinity_list"
+  echo "${CORES}" > /proc/irq/"${i}"/smp_affinity_list
   echo "cat /proc/irq/${i}/smp_affinity_list"
   cat /proc/irq/"${i}"/smp_affinity_list
 done
@@ -41,5 +43,5 @@ grep iwlwifi /proc/interrupts
 #[das@hp0:~]$ grep eno /proc/interrupts
 #  83:          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:05:00.0    0-edge      eno1
 
-echo "echo 0-1 > /proc/irq/83/smp_affinity_list"
-echo 0-1 > /proc/irq/83/smp_affinity_list
+echo "echo ${CORES} > /proc/irq/83/smp_affinity_list"
+echo "${CORES}" > /proc/irq/83/smp_affinity_list

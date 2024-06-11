@@ -3,8 +3,7 @@
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
 # sudo nixos-rebuild switch
-# nix-shell -p vimo
-# nmcli device wifi connect MYSSID password PWORD
+# nix-shell -p vim
 
 { config, pkgs, ... }:
 
@@ -14,8 +13,6 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-23.11.tar.gz home-manager
-      # sudo nix-channel --update
       <home-manager/nixos>
     ];
 
@@ -67,8 +64,8 @@
 
   # Configure keymap in X11
   services.xserver = {
-    layout = "us";
-    xkbVariant = "";
+    xkb.layout = "us";
+    xkb.variant = "";
   };
 
   # Enable CUPS to print documents.
@@ -143,7 +140,7 @@
       tcpdump
       wireshark
       flent
-      iperf2
+      #iperf2
       bpftools
       #
       gnuradio

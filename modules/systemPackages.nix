@@ -19,5 +19,8 @@
     iw
     wirelesstools
     wpa_supplicant_ro_ssids
+    lldpd
+    #snmp seems to be needed by lldpd
+    net-snmp
   ];
 }

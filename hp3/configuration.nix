@@ -30,8 +30,9 @@
       #./systemdSystem.nix
       ./systemPackages.nix
       ./home-manager.nix
-      #./prometheus.nix
-      #./grafana.nix
+      ./nodeExporter.nix
+      ./prometheus.nix
+      ./grafana.nix
     ];
 
   # Bootloader.

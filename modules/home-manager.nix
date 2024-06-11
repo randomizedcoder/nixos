@@ -30,10 +30,11 @@
       vlan
       tcpdump
       wireshark
-      iperf2
+      #iperf2
       netperf
       flent
       bpftools
+      fping
       #
       hwloc
       # go
@@ -48,6 +49,8 @@
       # https://nixos.wiki/wiki/Rust
       pkgs.cargo
       pkgs.rustc
+      # debug
+      strace
     ];
 
     programs.bash.enable = true;

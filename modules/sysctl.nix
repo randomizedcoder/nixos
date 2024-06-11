@@ -21,6 +21,9 @@
     #net.ipv4.tcp_tw_reuse=2
     "net.ipv4.tcp_timestamps" = 1;
     "net.ipv4.tcp_ecn" = 1;
+    "net.core.default_qdisc" = "fq_codel";
+    "net.ipv4.tcp_congestion_control" = "cubic";
+    #net.ipv4.tcp_congestion_control=bbr
     "net.core.rmem_default" = 26214400;
     "net.core.rmem_max" = 26214400;
     "net.core.wmem_default" = 26214400;

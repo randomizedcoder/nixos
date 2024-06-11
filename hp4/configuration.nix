@@ -35,6 +35,10 @@
       ./grafana.nix
     ];
 
+  # https://nixos.wiki/wiki/Nix_Cookbook
+  nix.gc.automatic = true;
+  nix.settings.auto-optimise-store = true;
+
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -45,13 +49,22 @@
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
-  networking.hostName = "hp0";
+  networking.hostName = "hp4";
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   networking.networkmanager.enable = false;
+
+  networking.interfaces.enp1s0f0.useDHCP = false;
+  networking.interfaces.enp1s0f1.useDHCP = false;
+  boot.kernel.sysctl."net.ipv6.conf.enp1s0f0.disable_ipv6" = true;
+  boot.kernel.sysctl."net.ipv6.conf.enp1s0f1.disable_ipv6" = true;
+  # networking.interfaces.enp1s0f0.ipv4.addresses = [{
+  #   address = "76.174.138.10";
+  #   prefixLength = 24;
+  # }];
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
@@ -70,6 +83,37 @@
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
     ];
+  };
+
+  # https://mynixos.com/options/users.users.%3Cname%3E
+  users.users._lldpd = {
+    group = "_lldpd";
+    isNormalUser = true; # one of these must be set
+    isSystemUser = false;
+    description = "LLDPd";
+    createHome = false;
+  };
+  users.groups._lldpd = {};
+  services.lldpd.enable = true;
+
+  # # https://github.com/lldpd/lldpd/blob/2151a7d056a626132273aadfb7022547b076d010/README.md?plain=1#L51
+  # systemd.tmpfiles.rules =
+  # [
+  #   "d /usr/local/var/run/lldpd 755 root root"
+  # ];
+
+  systemd.services.snmpd = {
+    enable           = true;
+    wantedBy         = [ "multi-user.target" ];
+    description      = "Net-SNMP daemon";
+    after            = [ "network.target" ];
+    restartIfChanged = true;
+    # serviceConfig = {
+    #   User         = "root";
+    #   Group        = "root";
+    #   Restart      = "always";
+    #   ExecStart    = "${pkgs.net-snmp}/bin/snmpd -Lf /var/log/snmpd.log -f -c /etc/snmp/snmpd.conf";
+    # };
   };
 
   # Some programs need SUID wrappers, can be configured further or are

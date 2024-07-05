@@ -53,6 +53,13 @@
 
   networking.networkmanager.enable = false;
 
+  networking.interfaces.enp1s0f0.useDHCP = false;
+  networking.interfaces.enp1s0f1.useDHCP = false;
+  boot.kernel.sysctl."net.ipv6.conf.enp1s0f0.disable_ipv6" = true;
+  boot.kernel.sysctl."net.ipv6.conf.enp1s0f1.disable_ipv6" = true;
+
+  services.lldpd.enable = true;
+
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 

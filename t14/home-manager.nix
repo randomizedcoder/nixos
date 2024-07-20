@@ -156,14 +156,10 @@
       #
       rofi-wayland
       wofi
-      #
-      #clickhouse
-      #clickhouse-cli
     ];
 
     # vscode
     # https://nixos.wiki/wiki/Visual_Studio_Code
-    # nix run github:nix-community/nix-vscode-extensions# -- --list-extensions
     programs.vscode = {
       enable = true;
       package = pkgs.vscode;

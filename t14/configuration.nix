@@ -27,14 +27,18 @@
       ./locale.nix
       ./hosts.nix
       ./firewall.nix
-      ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
       ./home-manager.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      # clickhouse
+      #./docker-compose.nix
+      ./docker-daemon.nix
     ];
+
+  
 
   # Bootloader.
   boot.loader.systemd-boot = {
@@ -52,11 +56,17 @@
   #boot.kernelParams = [
   # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
 
-  nix.gc = {
-    automatic = true;                  # Enable automatic execution of the task
-    dates = "weekly";                  # Schedule the task to run weekly
-    options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
-    randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
+  nix = {
+    gc = {
+      automatic = true;                  # Enable automatic execution of the task
+      dates = "weekly";                  # Schedule the task to run weekly
+      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
+      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
+    };
+    settings = {
+      auto-optimise-store = true;
+      experimental-features = [ "nix-command" "flakes" ];
+    };
   };
 
   # https://nixos.wiki/wiki/Networking
@@ -80,17 +90,19 @@
     xkb.variant = "";
   };
 
+  systemd.services.modem-manager.enable = false;
+  systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
+
   # Enable touchpad support (enabled default in most desktopManager).
   services.libinput.enable = true;
 
   # Enable CUPS to print documents.
   services.printing.enable = true;
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -113,6 +125,7 @@
     tcpdump
     iproute2
     pciutils
+    virt-manager
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -126,6 +139,8 @@
      enable = true;
      enableSSHSupport = true;
   };
+
+  #programs.hyprland.enable = true;
 
   services.openssh.enable = true;
 
@@ -146,6 +161,26 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.11";
+
+  virtualisation.containers = {
+    ociSeccompBpfHook.enable = true;
+  };
+
+  # # https://nixos.wiki/wiki/Podman
+  # virtualisation.podman = {
+  #   enable = true;
+  #   dockerCompat = true;
+  #   defaultNetwork.settings.dns_enabled = true;
+  #   autoPrune.enable = true;
+  # };
+  # #virtualisation.oci-containers.backend = "podman";
+  # # virtualisation.oci-containers.containers = {
+  # #   container-name = {
+  # #     image = "container-image";
+  # #     autoStart = true;
+  # #     ports = [ "127.0.0.1:1234:1234" ];
+  # #   };
+  # # };
 
   virtualisation.libvirtd.enable = true;
   programs.virt-manager.enable = true;

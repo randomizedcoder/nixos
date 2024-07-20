@@ -1,6 +1,7 @@
 { config, pkgs, ... }:
 
 {
+  # https://nixos.wiki/wiki/PipeWire
   # Enable sound with pipewire.
   sound.enable = true;
   hardware.pulseaudio.enable = false;

@@ -33,6 +33,7 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      ./docker-daemon.nix
     ];
 
   # Bootloader.
@@ -70,7 +71,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" ];
+    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

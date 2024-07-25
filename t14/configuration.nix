@@ -36,9 +36,10 @@
       # clickhouse
       #./docker-compose.nix
       ./docker-daemon.nix
+      #./smokeping.nix
     ];
 
-  
+
 
   # Bootloader.
   boot.loader.systemd-boot = {
@@ -102,7 +103,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

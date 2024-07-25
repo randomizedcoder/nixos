@@ -76,8 +76,15 @@
       inotify-tools
       #
       gnuradio
+      hackrf
+      gqrx
+      cubicsdr
+      #
+      neofetch
       #
       vlc
+      ffmpeg_7-full
+      #ffmpeg-full
       # go
       # https://nixos.wiki/wiki/Go
       # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
@@ -86,6 +93,11 @@
       gcc
       #  thunderbird
       go
+      golangci-lint
+      golangci-lint-langserver
+      trunk-io
+      buf
+      buf-language-server
       # rust
       # https://nixos.wiki/wiki/Rust
       pkgs.cargo
@@ -175,9 +187,11 @@
         hashicorp.terraform
         #k6.k6
         ms-azuretools.vscode-docker
+        # https://github.com/orgs/microsoft/repositories?q=vscode
         ms-vscode-remote.remote-containers
         ms-vscode-remote.remote-ssh
         #ms-vscode-remote.remote-ssh-edit
+        ms-vscode.makefile-tools
         ms-vscode.cmake-tools
         ms-vscode.cpptools
         #ms-vscode.cpptools-extension-pack
@@ -191,7 +205,8 @@
         #ms-vscode.remote-server
         redhat.vscode-yaml
         rust-lang.rust-analyzer
-        serayuzgur.crates
+        #crates is depreciated
+        #serayuzgur.crates
         tamasfe.even-better-toml
         timonwong.shellcheck
         #trunk.io

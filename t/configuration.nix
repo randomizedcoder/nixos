@@ -71,7 +71,7 @@
   };
 
   # https://nixos.wiki/wiki/Networking
-  networking.hostName = "t14";
+  networking.hostName = "t";
 
   services.lldpd.enable = true;
 

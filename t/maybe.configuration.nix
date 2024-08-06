@@ -23,17 +23,17 @@
       <home-manager/nixos>
       #
       ./sysctl.nix
-      ./wireless.nix
+      ./wireless_desktop.nix
       ./hosts.nix
       ./firewall.nix
       ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
+      ./sound.nix
       ./home-manager.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
-      ./docker-daemon.nix
     ];
 
   # Bootloader.
@@ -46,18 +46,13 @@
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
-  networking.hostName = "hp3";
+  networking.hostName = "t";
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   networking.networkmanager.enable = false;
-
-  networking.interfaces.enp1s0f0.useDHCP = false;
-  networking.interfaces.enp1s0f1.useDHCP = false;
-  boot.kernel.sysctl."net.ipv6.conf.enp1s0f0.disable_ipv6" = true;
-  boot.kernel.sysctl."net.ipv6.conf.enp1s0f1.disable_ipv6" = true;
 
   services.lldpd.enable = true;
 
@@ -71,7 +66,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" ];
+    extraGroups = [ "wheel" "networkmanager" "libvirtd" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

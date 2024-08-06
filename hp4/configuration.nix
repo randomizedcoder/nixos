@@ -33,8 +33,11 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
-      ./docker-daemon.nix
     ];
+
+  # https://nixos.wiki/wiki/Nix_Cookbook
+  nix.gc.automatic = true;
+  nix.settings.auto-optimise-store = true;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -46,7 +49,7 @@
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
-  networking.hostName = "hp3";
+  networking.hostName = "hp4";
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
@@ -58,8 +61,10 @@
   networking.interfaces.enp1s0f1.useDHCP = false;
   boot.kernel.sysctl."net.ipv6.conf.enp1s0f0.disable_ipv6" = true;
   boot.kernel.sysctl."net.ipv6.conf.enp1s0f1.disable_ipv6" = true;
-
-  services.lldpd.enable = true;
+  # networking.interfaces.enp1s0f0.ipv4.addresses = [{
+  #   address = "76.174.138.10";
+  #   prefixLength = 24;
+  # }];
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
@@ -71,13 +76,45 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" ];
+    extraGroups = [ "wheel" "networkmanager" "libvirtd" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOP3x3r8OZ5ya1GNLqmKOsKDX7oAR+BG9u4EozXvydtC das@hp0"
     ];
+  };
+
+  # # https://mynixos.com/options/users.users.%3Cname%3E
+  # users.users._lldpd = {
+  #   group = "_lldpd";
+  #   isNormalUser = false; # one of these must be set
+  #   isSystemUser = true;
+  #   description = "LLDPd";
+  #   createHome = false;
+  # };
+  # users.groups._lldpd = {};
+  services.lldpd.enable = true;
+
+  # # https://github.com/lldpd/lldpd/blob/2151a7d056a626132273aadfb7022547b076d010/README.md?plain=1#L51
+  # systemd.tmpfiles.rules =
+  # [
+  #   "d /usr/local/var/run/lldpd 755 root root"
+  # ];
+
+  systemd.services.snmpd = {
+    enable           = true;
+    wantedBy         = [ "multi-user.target" ];
+    description      = "Net-SNMP daemon";
+    after            = [ "network.target" ];
+    restartIfChanged = true;
+    # serviceConfig = {
+    #   User         = "root";
+    #   Group        = "root";
+    #   Restart      = "always";
+    #   ExecStart    = "${pkgs.net-snmp}/bin/snmpd -Lf /var/log/snmpd.log -f -c /etc/snmp/snmpd.conf";
+    # };
   };
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -92,7 +129,13 @@
      enableSSHSupport = true;
   };
 
-  services.openssh.enable = true;
+  # https://nixos.wiki/wiki/SSH
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "yes"; # TODO DISABLE THIS!!!
+    };
+  };
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

@@ -16,10 +16,6 @@
     "net.ipv4.tcp_wmem" = "4096	1000000	16000000";
     #net.ipv4.tcp_rmem = 4096       131072  6291456
     #net.ipv4.tcp_wmem = 4096       16384   4194304
-    # https://github.com/torvalds/linux/blob/master/Documentation/networking/ip-sysctl.rst?plain=1#L1042
-    # https://lwn.net/Articles/560082/
-    "net.ipv4.tcp_notsent_lowat" = "131072";
-    #net.ipv4.tcp_notsent_lowat = 4294967295
     # enable Enable reuse of TIME-WAIT sockets globally
     "net.ipv4.tcp_tw_reuse" = 1;
     #net.ipv4.tcp_tw_reuse=2

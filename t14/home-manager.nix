@@ -98,6 +98,11 @@
       trunk-io
       buf
       buf-language-server
+      #
+      meld
+      #
+      # https://nixos.wiki/wiki/Helix
+      helix
       # rust
       # https://nixos.wiki/wiki/Rust
       pkgs.cargo
@@ -146,12 +151,16 @@
       firefox
       # https://nixos.wiki/wiki/Chromium
       chromium
+      google-chrome
       # https://nixos.wiki/wiki/Slack
       slack
       #
       zoom-us
       #
       flameshot
+      grim # screenshot functionality
+      slurp # screenshot functionality
+      #
       gimp-with-plugins
       #
       simplescreenrecorder

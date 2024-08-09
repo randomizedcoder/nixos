@@ -1,0 +1,23 @@
+https://nix.dev/tutorials/nixos/nixos-configuration-on-vm
+
+nix-shell -I nixpkgs=channel:nixos-24.05 -p "$(cat <<EOF
+  let
+    pkgs = import <nixpkgs> { config = {}; overlays = []; };
+    iso-config = pkgs.path + /nixos/modules/installer/cd-dvd/installation-cd-minimal.nix;
+    nixos = pkgs.nixos iso-config;
+  in nixos.config.system.build.nixos-generate-config
+EOF
+)"
+
+nixos-generate-config --dir ./
+
+nix-build '<nixpkgs/nixos>' -A vm -I nixpkgs=channel:nixos-24.05 -I nixos-config=./configuration.nix
+
+
+
+https://wiki.nixos.org/wiki/Virt-manager
+virsh net-autostart default
+
+https://blog.patapon.info/nixos-local-vm/
+
+https://nixos.mayflower.consulting/blog/2018/09/11/custom-images/

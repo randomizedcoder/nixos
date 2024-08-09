@@ -96,6 +96,10 @@
       golangci-lint
       golangci-lint-langserver
       trunk-io
+      # https://github.com/go-delve/delve
+      delve
+      # https://github.com/aarzilli/gdlv
+      gdlv
       buf
       buf-language-server
       #
@@ -127,6 +131,8 @@
       gnome.gnome-tweaks
       gnome.simple-scan
       gnomeExtensions.appindicator
+      gnomeExtensions.settingscenter
+      gnomeExtensions.system-monitor
       gnomeExtensions.dash-to-dock
       gnomeExtensions.just-perfection
       gnomeExtensions.logo-menu
@@ -146,7 +152,8 @@
       hunspell
       hunspellDicts.en_AU
       #hunspellDicts.en_US
-      gnomeExtensions.system-monitor
+      #
+      evince
       # https://nixos.wiki/wiki/Firefox
       firefox
       # https://nixos.wiki/wiki/Chromium
@@ -280,18 +287,24 @@
         font-antialiasing = "grayscale";
         font-hinting = "slight";
         gtk-theme = "Nordic";
-        toolkit-accessibility = true;
+        # toolkit-accessibility = true;
+        toolkit-accessibility = false;
       };
       "org/gnome/shell" = {
+        disable-user-extensions = false;
         favorite-apps = [
           "firefox.desktop"
+          "google-chrome-stable.desktop"
           "code.desktop"
           "chromium.desktop"
           "alacritty.desktop"
           "kitty.desktop"
           "slack.desktop"
         ];
-        disable-user-extensions = false;
+      enabled-extensions = with pkgs.gnomeExtensions; [
+        blur-my-shell.extensionUuid
+        gsconnect.extensionUuid
+      ];
       };
     };
 

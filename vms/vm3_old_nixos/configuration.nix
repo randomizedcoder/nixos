@@ -80,6 +80,7 @@
     tcpdump
     iproute2
     htop
+    go
   ];
 
   users.users.das = {

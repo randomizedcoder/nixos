@@ -16,9 +16,15 @@
 
     home.packages = with pkgs; [
       #
-      gparted
+      killall
       hw-probe
+      #
+      gparted
+      #
       ncdu
+      #
+      hw-probe
+      lshw
       #
       tmux
       screen
@@ -102,6 +108,8 @@
       gdlv
       buf
       buf-language-server
+      #
+      graphviz
       #
       meld
       #

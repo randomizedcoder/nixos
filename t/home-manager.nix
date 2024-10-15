@@ -16,9 +16,15 @@
 
     home.packages = with pkgs; [
       #
-      gparted
+      killall
       hw-probe
+      #
+      gparted
+      #
       ncdu
+      #
+      hw-probe
+      lshw
       #
       tmux
       screen
@@ -75,6 +81,10 @@
       #
       inotify-tools
       #
+      # HP Printers
+      hplip
+      #hplipWithPlugin
+      #
       gnuradio
       hackrf
       gqrx
@@ -102,6 +112,8 @@
       gdlv
       buf
       buf-language-server
+      #
+      graphviz
       #
       meld
       #
@@ -191,6 +203,7 @@
 
     # vscode
     # https://nixos.wiki/wiki/Visual_Studio_Code
+    # https://github.com/thexyno/nixos-config/blob/main/hm-modules/vscode/default.nix
     # nix run github:nix-community/nix-vscode-extensions# -- --list-extensions
     programs.vscode = {
       enable = true;

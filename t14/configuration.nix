@@ -78,18 +78,32 @@
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 
-  # Enable the X11 windowing system.
-  services.xserver.enable = true;
+  hardware.opengl = {
+    enable = true;
+    driSupport = true;
+  };
 
-  # Enable the GNOME Desktop Environment.
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
-
-  # Configure keymap in X11
   services.xserver = {
+    enable = true;
+
+    # Display Managers are responsible for handling user login
+    displayManager = {
+      gdm.enable = true;
+    };
+    # Enable the GNOME Desktop Environment.
+    desktopManager = {
+      gnome.enable = true;
+      plasma5.enable = false;
+      xterm.enable = false;
+    };
+    # https://discourse.nixos.org/t/help-with-setting-up-a-different-desktop-environment-window-manager/15025/6
+
+    # Configure keymap in X11
     xkb.layout = "us";
     xkb.variant = "";
   };
+
+  services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
@@ -125,8 +139,14 @@
     wget
     tcpdump
     iproute2
+    nftables
+    iptables
+    pciutils
+    usbutils
     pciutils
     virt-manager
+    #cudatoolkit #t14 is not nvidia
+    pkgs.gnomeExtensions.appindicator
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

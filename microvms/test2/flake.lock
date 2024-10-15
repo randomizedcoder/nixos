@@ -1,27 +1,5 @@
 {
   "nodes": {
-    "fenix": {
-      "inputs": {
-        "nixpkgs": [
-          "microvm",
-          "nixpkgs"
-        ],
-        "rust-analyzer-src": "rust-analyzer-src"
-      },
-      "locked": {
-        "lastModified": 1720420198,
-        "narHash": "sha256-OIuDb6pHDyGpo7YMFyuRzMLcHm7mRvlYOz0Ht7ps2sU=",
-        "owner": "nix-community",
-        "repo": "fenix",
-        "rev": "abc0549e3560189462a7d394cc9d50af4608d103",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "fenix",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -42,7 +20,6 @@
     },
     "microvm": {
       "inputs": {
-        "fenix": "fenix",
         "flake-utils": "flake-utils",
         "nixpkgs": [
           "nixpkgs"
@@ -50,11 +27,11 @@
         "spectrum": "spectrum"
       },
       "locked": {
-        "lastModified": 1721849618,
-        "narHash": "sha256-+cKh/zzyzOfOC7GryAVMESpvTckOVJ+cQC01JJi1z8k=",
+        "lastModified": 1728349983,
+        "narHash": "sha256-VRQm46/W29z87IeITfvxIrS6LUEItgDtEDzqVX59q0E=",
         "owner": "astro",
         "repo": "microvm.nix",
-        "rev": "2f56d58cae49d6b66adc42aa3c52051a83f6a176",
+        "rev": "470537e671d743f40812b9c071a4130eabdb3deb",
         "type": "github"
       },
       "original": {
@@ -65,11 +42,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1721821769,
-        "narHash": "sha256-PhmkdTJs2SfqKzSyDB74rDKp1MH4mGk0pG/+WqrnGEw=",
+        "lastModified": 1728627514,
+        "narHash": "sha256-r+SF9AnHrTg+bk6YszoKfV9lgyw+yaFUQe0dOjI0Z2o=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "d0907b75146a0ccc1ec0d6c3db287ec287588ef6",
+        "rev": "c505ebf777526041d792a49d5f6dd4095ea391a7",
         "type": "github"
       },
       "original": {
@@ -82,23 +59,6 @@
       "inputs": {
         "microvm": "microvm",
         "nixpkgs": "nixpkgs"
-      }
-    },
-    "rust-analyzer-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1720344064,
-        "narHash": "sha256-STmaV9Zu74QtkGGrbr9uMhskwagfCjJqOAYapXabiuk=",
-        "owner": "rust-lang",
-        "repo": "rust-analyzer",
-        "rev": "a5b21ea0aa644dffd7cf958b43f11f221d53404e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "rust-lang",
-        "ref": "nightly",
-        "repo": "rust-analyzer",
-        "type": "github"
       }
     },
     "spectrum": {

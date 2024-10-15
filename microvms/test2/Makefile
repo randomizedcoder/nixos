@@ -18,3 +18,6 @@ runVM:
 
 buildd:
 	nix build '.#dockerImage'
+
+updatenix:
+	sudo nix-channel --update

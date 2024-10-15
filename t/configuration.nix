@@ -28,7 +28,7 @@
       ./hosts.nix
       ./firewall.nix
       #./systemdSystem.nix
-      #./systemPackages.nix
+      ./systemPackages.nix
       ./home-manager.nix
       ./nodeExporter.nix
       ./prometheus.nix
@@ -81,26 +81,35 @@
   # this option doesn't exist
   # hardware.graphics.enable = true;
 
-  # Enable OpenGL
-  hardware.opengl = {
-    enable = true;
-  };
-
   # https://nixos.wiki/wiki/Nvidia
+  # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
   hardware.nvidia = {
 
-    # Modesetting is required.
     modesetting.enable = true;
+
+    prime = {
+      # ([[:print:]]+[:@][0-9]{1,3}:[0-9]{1,2}:[0-9])?'
+      # 00:02.0 VGA compatible controller: Intel Corporation CometLake-H GT2 [UHD Graphics] (rev 05)
+      intelBusId = "PCI:0:2:0";
+      # 01:00.0 VGA compatible controller: NVIDIA Corporation TU117GLM [Quadro T2000 Mobile / Max-Q] (rev a1)
+      nvidiaBusId = "PCI:1:0:0";
+      offload = {
+        enable = true;
+        #sync.enable = true;
+        enableOffloadCmd = true;
+      };
+    };
 
     # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
     # Enable this if you have graphical corruption issues or application crashes after waking
     # up from sleep. This fixes it by saving the entire VRAM memory to /tmp/ instead
     # of just the bare essentials.
-    powerManagement.enable = false;
-
-    # Fine-grained power management. Turns off GPU when not in use.
-    # Experimental and only works on modern Nvidia GPUs (Turing or newer).
-    powerManagement.finegrained = false;
+    powerManagement = {
+      enable = true;
+      # Fine-grained power management. Turns off GPU when not in use.
+      # Experimental and only works on modern Nvidia GPUs (Turing or newer).
+      finegrained = true;
+    };
 
     # Use the NVidia open source kernel module (not to be confused with the
     # independent third-party "nouveau" open source driver).
@@ -109,23 +118,30 @@
     # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus
     # Only available from driver 515.43.04+
     # Currently alpha-quality/buggy, so false is currently the recommended setting.
+    # prioritry drivers don't compile on 6.10.3
     open = true;
     #open = false;
 
     # Enable the Nvidia settings menu,
 	  # accessible via `nvidia-settings`.
-    nvidiaSettings = true;
+    #nvidiaSettings = true;
+    nvidiaSettings = false;
 
     # Optionally, you may need to select the appropriate driver version for your specific GPU.
     # package = config.boot.kernelPackages.nvidiaPackages.stable;
-    package = config.boot.kernelPackages.nvidiaPackages.stable;
+    #package = config.boot.kernelPackages.nvidiaPackages.stable;
+    package = config.boot.kernelPackages.nvidiaPackages.latest;
+  };
+
+  hardware.opengl = {
+    enable = true;
+    driSupport = true;
   };
 
   services.xserver = {
-    # Enable the X11 windowing system
     enable = true;
     # Load nvidia driver for Xorg and Wayland
-    videoDrivers = ["nvidia-open"];
+    videoDrivers = [ "nvidia-open" ];
     # Display Managers are responsible for handling user login
     displayManager = {
       gdm.enable = true;
@@ -151,8 +167,13 @@
   # Enable touchpad support (enabled default in most desktopManager).
   services.libinput.enable = true;
 
-  # Enable CUPS to print documents.
+  # https://nixos.wiki/wiki/Printing
   services.printing.enable = true;
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    openFirewall = true;
+  };
 
   users.users.das = {
     isNormalUser = true;

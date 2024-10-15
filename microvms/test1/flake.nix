@@ -21,16 +21,24 @@
           inherit system;
           modules = [
             microvm.nixosModules.microvm
-            {
+
+            ({pkgs, ... }:{
               networking.hostName = "my-microvm";
-              users.users.root.password = "";
+              users.users.root.password = "test";
 
               microvm = {
-                volumes = [ {
-                  mountPoint = "/var";
-                  image = "var.img";
-                  size = 256;
-                } ];
+                volumes = [
+                  {
+                    mountPoint = "/var";
+                    image = "var.img";
+                    size = 256;
+                  }
+                  {
+                    mountPoint = "/nix/var";
+                    image = "nix.var.img";
+                    size = 256;
+                  }
+                ];
 
                 shares = [ {
                   # use "virtiofs" for MicroVMs that are started by systemd
@@ -70,6 +78,8 @@
                 ];
               };
 
+              environment.systemPackages = with pkgs; [ cowsay htop ];
+
               services.openssh = {
                 enable = true;
               };
@@ -77,7 +87,7 @@
 
               system.stateVersion = "24.05";
 
-            }
+            })
           ];
         };
       };

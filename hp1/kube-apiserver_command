@@ -1,0 +1,27 @@
+sudo /nix/store/sr8i1xkhl1v0hxr5n0kd8rbsyp9zwlj5-kubernetes-1.30.1/bin/kube-apiserver \
+    --allow-privileged=false \
+    --authorization-mode=RBAC,Node \
+    --bind-address=0.0.0.0 \
+    --advertise-address=172.16.40.142 \
+    --client-ca-file=/var/lib/kubernetes/secrets/ca.pem \
+    --disable-admission-plugins= \
+    --enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction \
+    --etcd-servers=https://etcd.local:2379 \
+    --etcd-cafile=/var/lib/kubernetes/secrets/ca.pem \
+    --etcd-certfile=/var/lib/kubernetes/secrets/kube-apiserver-etcd-client.pem \
+    --etcd-keyfile=/var/lib/kubernetes/secrets/kube-apiserver-etcd-client-key.pem \
+    --kubelet-certificate-authority=/var/lib/kubernetes/secrets/ca.pem \
+    --kubelet-client-certificate=/var/lib/kubernetes/secrets/kube-apiserver-kubelet-client.pem \
+    --kubelet-client-key=/var/lib/kubernetes/secrets/kube-apiserver-kubelet-client-key.pem \
+    --proxy-client-cert-file=/var/lib/kubernetes/secrets/kube-apiserver-proxy-client.pem \
+    --proxy-client-key-file=/var/lib/kubernetes/secrets/kube-apiserver-proxy-client-key.pem \
+    --runtime-config=authentication.k8s.io/v1beta1=true \
+    --secure-port=6443 \
+    --api-audiences=api,https://kubernetes.default.svc \
+    --service-account-issuer=https://kubernetes.default.svc \
+    --service-account-signing-key-file=/var/lib/kubernetes/secrets/service-account-key.pem \
+    --service-account-key-file=/var/lib/kubernetes/secrets/service-account.pem \
+    --service-cluster-ip-range=10.0.0.0/24 \
+    --storage-backend=etcd3 \
+    --tls-cert-file=/var/lib/kubernetes/secrets/kube-apiserver.pem \
+    --tls-private-key-file=/var/lib/kubernetes/secrets/kube-apiserver-key.pem

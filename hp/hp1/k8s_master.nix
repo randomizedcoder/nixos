@@ -38,10 +38,32 @@ in
     kompose
     kubectl
     kubernetes
+    kubernetes-helm
+    kubernetes-metrics-server
     openssl
     cfssl
     certmgr
     istioctl
+    krew
+    kubevirt
+    #
+    kubeshark
+    kubectl-ktop
+    kubectl-klock
+    kube-capacity
+    kubectl-images
+    kubectl-gadget
+    # this is very old
+    #kubectl-doctor
+    # https://github.com/boz/kail
+    kail
+    ktop
+    # https://github.com/kdash-rs/kdash
+    kdash
+    # # https://github.com/int128/kubelogin
+    # kubelogin-oidc
+    # k9s --kubeconfig=dev-d.kubeconfig
+    k9s
   ];
 
   services.cfssl.enable = true;
@@ -57,6 +79,7 @@ in
     apiserver = {
       securePort = kubeMasterAPIServerPort;
       advertiseAddress = kubeMasterIP;
+      allowPrivileged = true;
     };
 
     addonManager.enable = true;

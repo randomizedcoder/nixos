@@ -161,6 +161,8 @@
 
   services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
+  services.bpftune.enable = true;
+
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
@@ -179,6 +181,7 @@
     isNormalUser = true;
     description = "das";
     extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
+    # users.extraGroups.docker.members = [ "das" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

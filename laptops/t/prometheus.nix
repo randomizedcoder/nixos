@@ -20,6 +20,12 @@
         targets = [ "localhost:9009" ];
       }];
     }
+    {
+      job_name = "xtcp";
+      static_configs = [{
+        targets = [ "172.16.40.179:9105" ];
+      }];
+    }
     ];
   };
 }

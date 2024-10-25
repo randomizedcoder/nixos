@@ -102,7 +102,9 @@
       libcap
       gcc
       #  thunderbird
-      go
+      go_1_23
+      gopls
+      golint
       golangci-lint
       golangci-lint-langserver
       trunk-io
@@ -112,6 +114,8 @@
       gdlv
       buf
       buf-language-server
+      # https://tinygo.org/
+      tinygo
       #
       graphviz
       #
@@ -199,12 +203,31 @@
       #
       #clickhouse
       #clickhouse-cli
+      # https://github.com/int128/kubelogin
+      kubelogin-oidc
+      kubectl
+      kubernetes-helm
+      istioctl
+      krew
+      kubeshark
+      kubectl-ktop
+      kubectl-klock
+      kube-capacity
+      kubectl-images
+      kubectl-gadget
+      kdash
+      # k9s --kubeconfig=dev-d.kubeconfig
+      k9s
+      #
+      # https://github.com/jrincayc/ucblogo-code
+      ucblogo
     ];
 
     # vscode
     # https://nixos.wiki/wiki/Visual_Studio_Code
     # https://github.com/thexyno/nixos-config/blob/main/hm-modules/vscode/default.nix
     # nix run github:nix-community/nix-vscode-extensions# -- --list-extensions
+    # https://mynixos.com/home-manager/options/programs.vscode
     programs.vscode = {
       enable = true;
       package = pkgs.vscode;
@@ -232,6 +255,7 @@
         #ms-vscode.remote-explorer
         #ms-vscode.remote-repositories
         #ms-vscode.remote-server
+        ms-kubernetes-tools.vscode-kubernetes-tools
         redhat.vscode-yaml
         rust-lang.rust-analyzer
         #crates is depreciated

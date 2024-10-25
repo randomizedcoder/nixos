@@ -20,6 +20,8 @@ in
     kubectl
     kubernetes
     istioctl
+    krew
+    kubevirt
   ];
 
   services.kubernetes = let

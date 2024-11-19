@@ -58,9 +58,13 @@
   networking.networkmanager.enable = false;
 
   networking.interfaces.enp1s0f0.useDHCP = false;
+  networking.interfaces.enp1s0f0np0.useDHCP = false;
   networking.interfaces.enp1s0f1.useDHCP = false;
+  networking.interfaces.enp1s0f1np1.useDHCP = false;
   boot.kernel.sysctl."net.ipv6.conf.enp1s0f0.disable_ipv6" = true;
+  boot.kernel.sysctl."net.ipv6.conf.enp1s0f0np0.disable_ipv6" = true;
   boot.kernel.sysctl."net.ipv6.conf.enp1s0f1.disable_ipv6" = true;
+  boot.kernel.sysctl."net.ipv6.conf.enp1s0f1np1.disable_ipv6" = true;
   # networking.interfaces.enp1s0f0.ipv4.addresses = [{
   #   address = "76.174.138.10";
   #   prefixLength = 24;
@@ -71,6 +75,12 @@
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
+
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    #MY_VARIABLE = "my-value";
+    #ANOTHER_VARIABLE = "another-value";
+  };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.das = {

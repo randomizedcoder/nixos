@@ -1,1 +1,1 @@
-../modules/nixos_logo.nix
+../../modules/nixos_logo.nix

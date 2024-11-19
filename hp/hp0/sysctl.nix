@@ -1,1 +1,1 @@
-../modules/sysctl.nix
+../../modules/sysctl.nix

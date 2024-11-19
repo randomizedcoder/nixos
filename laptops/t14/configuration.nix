@@ -103,6 +103,27 @@
     xkb.variant = "";
   };
 
+  #[das@t:~]$ lshw -c video | grep config
+  #WARNING: you should run this program as super-user.
+  #       configuration: depth=32 driver=nouveau latency=0 resolution=3840,2160
+  #       configuration: depth=32 driver=i915 latency=0 resolution=3840,2160
+  #
+  #[das@t:~]$ lspci -nnk | egrep -i --color 'vga|3d|2d' -A3 | grep 'in use'
+  #Kernel driver in use: i915
+  #Kernel driver in use: nouveau
+  #
+  #[das@t:~]$ lspci -nnk | grep -i vga -A2
+  #00:02.0 VGA compatible controller [0300]: Intel Corporation CometLake-H GT2 [UHD Graphics] [8086:9bc4] (rev 05)
+  #Subsystem: Lenovo Device [17aa:22c0]
+  #Kernel driver in use: i915
+  #--
+  #01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU117GLM [Quadro T2000 Mobile / Max-Q] [10de:1fb8] (rev a1)
+  #Subsystem: Lenovo Device [17aa:22c0]
+  #Kernel driver in use: nouveau
+  #
+  # hwinfo --gfxcard
+
+
   services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
   systemd.services.modem-manager.enable = false;
@@ -113,6 +134,12 @@
 
   # Enable CUPS to print documents.
   services.printing.enable = true;
+
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    #MY_VARIABLE = "my-value";
+    #ANOTHER_VARIABLE = "another-value";
+  };
 
   users.users.das = {
     isNormalUser = true;

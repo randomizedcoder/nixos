@@ -1,1 +1,1 @@
-../modules/prometheus.nix
+../../modules/prometheus.nix

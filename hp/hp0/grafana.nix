@@ -1,1 +1,1 @@
-../modules/grafana.nix
+../../modules/grafana.nix

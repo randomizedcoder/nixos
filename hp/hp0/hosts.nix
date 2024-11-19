@@ -1,1 +1,1 @@
-../modules/hosts.nix
+../../modules/hosts.nix

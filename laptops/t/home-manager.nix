@@ -12,6 +12,8 @@
         GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
         # disable wayland
         #NIXOS_OZONE_WL = "1";
+        GOPRIVATE = "gitlab.com/sidenio/*";
+        TERM = "xterm-256color";
     };
 
     home.packages = with pkgs; [
@@ -221,6 +223,10 @@
       #
       # https://github.com/jrincayc/ucblogo-code
       ucblogo
+      # https://github.com/wagoodman/dive
+      dive
+      # https://github.com/sharkdp/hyperfine
+      hyperfine
     ];
 
     # vscode

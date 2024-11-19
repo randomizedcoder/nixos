@@ -1,1 +1,1 @@
-../modules/systemPackages.nix
+../../modules/systemPackages.nix

@@ -21,7 +21,7 @@
       }];
     }
     {
-      job_name = "xtcp";
+      job_name = "chromebox1";
       static_configs = [{
         targets = [ "172.16.40.179:9105" ];
       }];

@@ -34,7 +34,7 @@
       ./prometheus.nix
       ./grafana.nix
       ./docker-daemon.nix
-      ./k8s_node.nix
+      #./k8s_node.nix
     ];
 
   # Bootloader.
@@ -44,6 +44,19 @@
   # https://nixos.wiki/wiki/Linux_kernel
   boot.kernelPackages = pkgs.linuxPackages_latest;
   #boot.kernelPackages = pkgs.linuxPackages_rpi4
+
+  nix = {
+    gc = {
+      automatic = true;                  # Enable automatic execution of the task
+      dates = "weekly";                  # Schedule the task to run weekly
+      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
+      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
+    };
+    settings = {
+      auto-optimise-store = true;
+      experimental-features = [ "nix-command" "flakes" ];
+    };
+  };
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
@@ -60,6 +73,12 @@
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
+
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    #MY_VARIABLE = "my-value";
+    #ANOTHER_VARIABLE = "another-value";
+  };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.das = {

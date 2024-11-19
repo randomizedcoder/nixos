@@ -48,7 +48,7 @@ in
     kubevirt
     #
     kubeshark
-    kubectl-ktop
+    # kubectl-ktop
     kubectl-klock
     kube-capacity
     kubectl-images

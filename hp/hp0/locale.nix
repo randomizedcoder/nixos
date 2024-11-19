@@ -1,1 +1,1 @@
-../modules/locale.nix
+../../modules/locale.nix

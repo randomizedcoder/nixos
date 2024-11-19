@@ -1,1 +1,1 @@
-../modules/wireless.nix
+../../modules/wireless.nix

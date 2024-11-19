@@ -1,0 +1,112 @@
+Original permissions
+
+[das@hp1:~/nixos/hp1]$ ls -la /var/lib/kubernetes/secrets/
+total 132
+drwxr-xr-x 2 root       root       4096 Nov 19 14:01 .
+drwxr-xr-x 9 kubernetes kubernetes 4096 Nov 19 13:31 ..
+lrwxrwxrwx 1 root       root         30 Nov 19 13:30 apitoken.secret -> /var/lib/cfssl/apitoken.secret
+-rw-r--r-- 1 root       root       1257 Nov 19 13:30 ca.pem
+-rw------- 1 root       nogroup    1675 Nov 19 13:30 cluster-admin-key.pem
+-rw-r--r-- 1 root       root       1289 Nov 19 13:30 cluster-admin.pem
+-rw------- 1 etcd       nogroup    1675 Nov 19 13:31 etcd-key.pem
+-rw-r--r-- 1 root       root       1310 Nov 19 13:31 etcd.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 13:31 flannel-client-key.pem
+-rw-r--r-- 1 root       root       1257 Nov 19 13:31 flannel-client.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 14:01 kube-addon-manager-key.pem
+-rw-r--r-- 1 root       root       1237 Nov 19 14:01 kube-addon-manager.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 13:31 kube-apiserver-etcd-client-key.pem
+-rw-r--r-- 1 root       root       1249 Nov 19 13:31 kube-apiserver-etcd-client.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 13:31 kube-apiserver-key.pem
+-rw------- 1 kubernetes nogroup    1679 Nov 19 14:01 kube-apiserver-kubelet-client-key.pem
+-rw-r--r-- 1 root       root       1233 Nov 19 14:01 kube-apiserver-kubelet-client.pem
+-rw-r--r-- 1 root       root       1371 Nov 19 13:31 kube-apiserver.pem
+-rw------- 1 kubernetes nogroup    1679 Nov 19 13:31 kube-apiserver-proxy-client-key.pem
+-rw-r--r-- 1 root       root       1269 Nov 19 13:31 kube-apiserver-proxy-client.pem
+-rw------- 1 kubernetes nogroup    1679 Nov 19 14:01 kube-controller-manager-client-key.pem
+-rw-r--r-- 1 root       root       1245 Nov 19 14:01 kube-controller-manager-client.pem
+-rw------- 1 kubernetes nogroup    1679 Nov 19 13:31 kube-controller-manager-key.pem
+-rw-r--r-- 1 root       root       1285 Nov 19 13:31 kube-controller-manager.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 14:01 kubelet-client-key.pem
+-rw-r--r-- 1 root       root       1253 Nov 19 14:01 kubelet-client.pem
+-rw------- 1 kubernetes nogroup    1679 Nov 19 13:31 kubelet-key.pem
+-rw-r--r-- 1 root       root       1229 Nov 19 13:31 kubelet.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 14:01 kube-proxy-client-key.pem
+-rw-r--r-- 1 root       root       1224 Nov 19 14:01 kube-proxy-client.pem
+-rw------- 1 kubernetes nogroup    1679 Nov 19 14:01 kube-scheduler-client-key.pem
+-rw-r--r-- 1 root       root       1233 Nov 19 14:01 kube-scheduler-client.pem
+-rw------- 1 kubernetes nogroup    1675 Nov 19 14:00 service-account-key.pem
+-rw-r--r-- 1 root       root       1241 Nov 19 14:00 service-account.pem
+
+sudo chown kubernetes:kubernetes /var/lib/kubernetes/secrets/*
+
+lrwxrwxrwx 1 root       root         30 Nov 19 13:30 apitoken.secret -> /var/lib/cfssl/apitoken.secret
+-rw-r--r-- 1 kubernetes kubernetes 1257 Nov 19 13:30 ca.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 13:30 cluster-admin-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1289 Nov 19 13:30 cluster-admin.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 13:31 etcd-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1310 Nov 19 13:31 etcd.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 13:31 flannel-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1257 Nov 19 13:31 flannel-client.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 14:01 kube-addon-manager-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1237 Nov 19 14:01 kube-addon-manager.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 13:31 kube-apiserver-etcd-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1249 Nov 19 13:31 kube-apiserver-etcd-client.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 13:31 kube-apiserver-key.pem
+-rw------- 1 kubernetes kubernetes 1679 Nov 19 14:01 kube-apiserver-kubelet-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1233 Nov 19 14:01 kube-apiserver-kubelet-client.pem
+-rw-r--r-- 1 kubernetes kubernetes 1371 Nov 19 13:31 kube-apiserver.pem
+-rw------- 1 kubernetes kubernetes 1679 Nov 19 13:31 kube-apiserver-proxy-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1269 Nov 19 13:31 kube-apiserver-proxy-client.pem
+-rw------- 1 kubernetes kubernetes 1679 Nov 19 14:31 kube-controller-manager-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1245 Nov 19 14:31 kube-controller-manager-client.pem
+-rw------- 1 kubernetes kubernetes 1679 Nov 19 13:31 kube-controller-manager-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1285 Nov 19 13:31 kube-controller-manager.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 14:01 kubelet-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1253 Nov 19 14:01 kubelet-client.pem
+-rw------- 1 kubernetes kubernetes 1679 Nov 19 13:31 kubelet-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1229 Nov 19 13:31 kubelet.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 14:31 kube-proxy-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1224 Nov 19 14:31 kube-proxy-client.pem
+-rw------- 1 kubernetes kubernetes 1679 Nov 19 14:31 kube-scheduler-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1233 Nov 19 14:31 kube-scheduler-client.pem
+-rw------- 1 kubernetes kubernetes 1675 Nov 19 14:30 service-account-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1241 Nov 19 14:30 service-account.pem
+
+sudo chmod 660 /var/lib/kubernetes/secrets/*-key.pem
+
+[das@hp1:~/nixos/hp1]$ ls -la /var/lib/kubernetes/secrets/
+total 132
+drwxr-xr-x 2 root       root       4096 Nov 19 14:32 .
+drwxr-xr-x 9 kubernetes kubernetes 4096 Nov 19 13:31 ..
+lrwxrwxrwx 1 root       root         30 Nov 19 13:30 apitoken.secret -> /var/lib/cfssl/apitoken.secret
+-rw-r--r-- 1 kubernetes kubernetes 1257 Nov 19 13:30 ca.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 13:30 cluster-admin-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1289 Nov 19 13:30 cluster-admin.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 13:31 etcd-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1310 Nov 19 13:31 etcd.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 13:31 flannel-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1257 Nov 19 13:31 flannel-client.pem
+-rw-rw---- 1 kubernetes nogroup    1675 Nov 19 14:32 kube-addon-manager-key.pem
+-rw-r--r-- 1 root       root       1237 Nov 19 14:32 kube-addon-manager.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 13:31 kube-apiserver-etcd-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1249 Nov 19 13:31 kube-apiserver-etcd-client.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 13:31 kube-apiserver-key.pem
+-rw-rw---- 1 kubernetes nogroup    1679 Nov 19 14:32 kube-apiserver-kubelet-client-key.pem
+-rw-r--r-- 1 root       root       1233 Nov 19 14:32 kube-apiserver-kubelet-client.pem
+-rw-r--r-- 1 kubernetes kubernetes 1371 Nov 19 13:31 kube-apiserver.pem
+-rw-rw---- 1 kubernetes kubernetes 1679 Nov 19 13:31 kube-apiserver-proxy-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1269 Nov 19 13:31 kube-apiserver-proxy-client.pem
+-rw-rw---- 1 kubernetes kubernetes 1679 Nov 19 14:31 kube-controller-manager-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1245 Nov 19 14:31 kube-controller-manager-client.pem
+-rw-rw---- 1 kubernetes kubernetes 1679 Nov 19 13:31 kube-controller-manager-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1285 Nov 19 13:31 kube-controller-manager.pem
+-rw-rw---- 1 kubernetes nogroup    1675 Nov 19 14:32 kubelet-client-key.pem
+-rw-r--r-- 1 root       root       1253 Nov 19 14:32 kubelet-client.pem
+-rw-rw---- 1 kubernetes kubernetes 1679 Nov 19 13:31 kubelet-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1229 Nov 19 13:31 kubelet.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 14:31 kube-proxy-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1224 Nov 19 14:31 kube-proxy-client.pem
+-rw-rw---- 1 kubernetes kubernetes 1679 Nov 19 14:31 kube-scheduler-client-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1233 Nov 19 14:31 kube-scheduler-client.pem
+-rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 14:30 service-account-key.pem
+-rw-r--r-- 1 kubernetes kubernetes 1241 Nov 19 14:30 service-account.pem

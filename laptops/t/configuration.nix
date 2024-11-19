@@ -177,6 +177,12 @@
     openFirewall = true;
   };
 
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    #MY_VARIABLE = "my-value";
+    #ANOTHER_VARIABLE = "another-value";
+  };
+
   users.users.das = {
     isNormalUser = true;
     description = "das";

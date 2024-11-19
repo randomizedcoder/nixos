@@ -1,1 +1,1 @@
-../modules/firewall.nix
+../../modules/firewall.nix

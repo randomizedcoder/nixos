@@ -81,6 +81,7 @@
       # debug
       strace
       #
+      dive
     ];
 
     programs.bash.enable = true;

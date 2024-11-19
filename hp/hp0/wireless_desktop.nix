@@ -1,1 +1,1 @@
-../modules/wireless_desktop.nix
+../../modules/wireless_desktop.nix

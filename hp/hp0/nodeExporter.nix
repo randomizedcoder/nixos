@@ -1,1 +1,1 @@
-../modules/nodeExporter.nix
+../../modules/nodeExporter.nix

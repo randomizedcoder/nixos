@@ -1,1 +1,1 @@
-../modules/sound.nix
+../../modules/sound.nix

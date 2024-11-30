@@ -35,6 +35,8 @@
       ./grafana.nix
       # ./docker-daemon.nix
       ./k8s_master.nix
+      ./systemd.services.ethtool-enp3s0f0.nix
+      ./systemd.services.ethtool-enp3s0f1.nix
     ];
 
 # https://nixos.wiki/wiki/Kubernetes#reset_to_a_clean_state

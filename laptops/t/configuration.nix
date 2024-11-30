@@ -81,6 +81,7 @@
   # this option doesn't exist
   # hardware.graphics.enable = true;
 
+  # https://wiki.nixos.org/w/index.php?title=NVIDIA
   # https://nixos.wiki/wiki/Nvidia
   # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
   hardware.nvidia = {
@@ -124,15 +125,19 @@
 
     # Enable the Nvidia settings menu,
 	  # accessible via `nvidia-settings`.
-    #nvidiaSettings = true;
+    # nvidiaSettings = true;
     nvidiaSettings = false;
 
     # Optionally, you may need to select the appropriate driver version for your specific GPU.
     # package = config.boot.kernelPackages.nvidiaPackages.stable;
     #package = config.boot.kernelPackages.nvidiaPackages.stable;
-    package = config.boot.kernelPackages.nvidiaPackages.latest;
+    package = config.boot.kernelPackages.nvidiaPackages.beta;
+    #package = config.boot.kernelPackages.nvidiaPackages.production;
+    # https://nixos.wiki/wiki/Nvidia#Determining_the_Correct_Driver_Version
   };
 
+  # Nouveau is enabled by default whenever graphics are enabled
+  # This name will change to hardware.opengl.enable, with 24.11
   hardware.opengl = {
     enable = true;
     driSupport = true;
@@ -142,6 +147,7 @@
     enable = true;
     # Load nvidia driver for Xorg and Wayland
     videoDrivers = [ "nvidia-open" ];
+    #videoDrivers = [ "nvidia" ];
     # Display Managers are responsible for handling user login
     displayManager = {
       gdm.enable = true;
@@ -158,6 +164,27 @@
     xkb.layout = "us";
     xkb.variant = "";
   };
+
+  # https://theo.is-a.dev/blog/post/hyprland-adventure/
+  #[das@t:~]$ lshw -c video | grep config
+  #WARNING: you should run this program as super-user.
+  #       configuration: depth=32 driver=nouveau latency=0 resolution=3840,2160
+  #       configuration: depth=32 driver=i915 latency=0 resolution=3840,2160
+  #
+  #[das@t:~]$ lspci -nnk | egrep -i --color 'vga|3d|2d' -A3 | grep 'in use'
+  #Kernel driver in use: i915
+  #Kernel driver in use: nouveau
+  #
+  #[das@t:~]$ lspci -nnk | grep -i vga -A2
+  #00:02.0 VGA compatible controller [0300]: Intel Corporation CometLake-H GT2 [UHD Graphics] [8086:9bc4] (rev 05)
+  #Subsystem: Lenovo Device [17aa:22c0]
+  #Kernel driver in use: i915
+  #--
+  #01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU117GLM [Quadro T2000 Mobile / Max-Q] [10de:1fb8] (rev a1)
+  #Subsystem: Lenovo Device [17aa:22c0]
+  #Kernel driver in use: nouveau
+  #
+  # hwinfo --gfxcard
 
   services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 

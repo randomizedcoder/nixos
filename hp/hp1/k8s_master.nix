@@ -64,6 +64,11 @@ in
     # kubelogin-oidc
     # k9s --kubeconfig=dev-d.kubeconfig
     k9s
+    #
+    helm
+    #
+    fluxcd
+    fluxctl
   ];
 
   services.cfssl.enable = true;

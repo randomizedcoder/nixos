@@ -64,6 +64,10 @@
       fping
       inetutils
       #
+      netcat-gnu
+      # for telnet
+      inetutils
+      #
       hwloc
       bpftools
       #
@@ -82,6 +86,8 @@
       strace
       #
       dive
+      # for pprof
+      graphviz
     ];
 
     programs.bash.enable = true;

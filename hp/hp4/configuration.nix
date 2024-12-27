@@ -33,6 +33,7 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      #./trafficserver.nix
     ];
 
   # https://nixos.wiki/wiki/Nix_Cookbook

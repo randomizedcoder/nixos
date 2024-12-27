@@ -23,7 +23,7 @@
       <home-manager/nixos>
       #
       ./sysctl.nix
-      ./wireless.nix
+      # ./wireless.nix
       ./hosts.nix
       ./firewall.nix
       ./il8n.nix
@@ -35,6 +35,9 @@
       ./grafana.nix
       ./docker-daemon.nix
       #./k8s_node.nix
+      ./k3s_node.nix
+      ./systemd.services.ethtool-enp3s0f0.nix
+      ./systemd.services.ethtool-enp3s0f1.nix
     ];
 
   # Bootloader.

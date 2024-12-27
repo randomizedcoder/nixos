@@ -20,12 +20,18 @@
         targets = [ "localhost:9009" ];
       }];
     }
-    {
-      job_name = "chromebox1";
+        {
+      job_name = "hp5xtcp";
       static_configs = [{
-        targets = [ "172.16.40.179:9105" ];
+        targets = [ "hp5:9009" ];
       }];
     }
+    #{
+    #  job_name = "chromebox1";
+    #  static_configs = [{
+    #    targets = [ "172.16.40.179:9105" ];
+    #  }];
+    #}
     ];
   };
 }

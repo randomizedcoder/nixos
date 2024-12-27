@@ -97,7 +97,8 @@
       golangci-lint-langserver
       trunk-io
       buf
-      buf-language-server
+      # gone in 24.11
+      #buf-language-server
       # rust
       # https://nixos.wiki/wiki/Rust
       pkgs.cargo

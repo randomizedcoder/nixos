@@ -83,6 +83,8 @@
       #
       #
       dive
+      # for pprof
+      graphviz
     ];
 
     programs.bash.enable = true;

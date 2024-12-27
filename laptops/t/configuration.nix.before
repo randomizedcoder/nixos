@@ -17,7 +17,7 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.11.tar.gz home-manager
+      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.05.tar.gz home-manager
       # sudo nix-channel --update
       <home-manager/nixos>
       #
@@ -95,12 +95,11 @@
       intelBusId = "PCI:0:2:0";
       # 01:00.0 VGA compatible controller: NVIDIA Corporation TU117GLM [Quadro T2000 Mobile / Max-Q] (rev a1)
       nvidiaBusId = "PCI:1:0:0";
-      sync.enable = true;
-      #offload = {
-      #  enable = true;
-      #  #sync.enable = true;
-      #  enableOffloadCmd = true;
-      #};
+      offload = {
+        enable = true;
+        #sync.enable = true;
+        enableOffloadCmd = true;
+      };
     };
 
     # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
@@ -108,12 +107,10 @@
     # up from sleep. This fixes it by saving the entire VRAM memory to /tmp/ instead
     # of just the bare essentials.
     powerManagement = {
-      #enable = true;
-      enable = false;
+      enable = true;
       # Fine-grained power management. Turns off GPU when not in use.
       # Experimental and only works on modern Nvidia GPUs (Turing or newer).
-      #finegrained = true;
-      finegrained = false;
+      finegrained = true;
     };
 
     # Use the NVidia open source kernel module (not to be confused with the
@@ -124,16 +121,16 @@
     # Only available from driver 515.43.04+
     # Currently alpha-quality/buggy, so false is currently the recommended setting.
     # prioritry drivers don't compile on 6.10.3
-    #open = true;
-    open = false;
+    open = true;
+    #open = false;
 
     # Enable the Nvidia settings menu,
 	  # accessible via `nvidia-settings`.
-    #nvidiaSettings = false;
-    nvidiaSettings = true;
+    # nvidiaSettings = true;
+    nvidiaSettings = false;
 
     # Optionally, you may need to select the appropriate driver version for your specific GPU.
-    #package = config.boot.kernelPackages.nvidiaPackages.stable;
+    # package = config.boot.kernelPackages.nvidiaPackages.stable;
     #package = config.boot.kernelPackages.nvidiaPackages.stable;
     package = config.boot.kernelPackages.nvidiaPackages.beta;
     #package = config.boot.kernelPackages.nvidiaPackages.production;
@@ -142,7 +139,7 @@
 
   # Nouveau is enabled by default whenever graphics are enabled
   # This name will change to hardware.opengl.enable, with 24.11
-  hardware.graphics = {
+  hardware.opengl = {
     enable = true;
     # removed in 24.11
     #driSupport = true;
@@ -151,8 +148,8 @@
   services.xserver = {
     enable = true;
     # Load nvidia driver for Xorg and Wayland
-    #videoDrivers = [ "nvidia-open" ];
-    videoDrivers = [ "nvidia" ];
+    videoDrivers = [ "nvidia-open" ];
+    #videoDrivers = [ "nvidia" ];
     # Display Managers are responsible for handling user login
     displayManager = {
       gdm.enable = true;

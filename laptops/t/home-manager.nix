@@ -115,7 +115,9 @@
       # https://github.com/aarzilli/gdlv
       gdlv
       buf
-      buf-language-server
+      protobuf_27
+      # removed 24.11
+      #buf-language-server
       # https://tinygo.org/
       tinygo
       #
@@ -127,8 +129,13 @@
       helix
       # rust
       # https://nixos.wiki/wiki/Rust
-      pkgs.cargo
-      pkgs.rustc
+      #pkgs.cargo
+      #pkgs.rustc
+      cargo
+      rustc
+      rustfmt
+      rust-analyzer
+      clippy
       #
       flutter
       android-studio
@@ -142,12 +149,12 @@
       # unstable.gnomeExtensions.workspace-switcher-manager
       gnome-extension-manager
       gnome-usage
-      gnome.dconf-editor
-      gnome.gnome-settings-daemon
-      gnome.gnome-disk-utility
-      gnome.gnome-software
-      gnome.gnome-tweaks
-      gnome.simple-scan
+      dconf-editor
+      gnome-settings-daemon
+      gnome-disk-utility
+      gnome-software
+      gnome-tweaks
+      simple-scan
       gnomeExtensions.appindicator
       gnomeExtensions.settingscenter
       gnomeExtensions.system-monitor
@@ -277,6 +284,7 @@
         #brettm12345.nixfmt.vscode
         jnoortheen.nix-ide
         #jeff-hykin.better-nix-syntax
+        rust-lang.rust-analyzer
       ];
     };
 

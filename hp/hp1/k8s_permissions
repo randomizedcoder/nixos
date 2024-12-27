@@ -110,3 +110,10 @@ lrwxrwxrwx 1 root       root         30 Nov 19 13:30 apitoken.secret -> /var/lib
 -rw-r--r-- 1 kubernetes kubernetes 1233 Nov 19 14:31 kube-scheduler-client.pem
 -rw-rw---- 1 kubernetes kubernetes 1675 Nov 19 14:30 service-account-key.pem
 -rw-r--r-- 1 kubernetes kubernetes 1241 Nov 19 14:30 service-account.pem
+
+
+
+
+
+sudo chown kubernetes:kubernetes /var/lib/kubernetes/secrets/*
+sudo chmod 660 /var/lib/kubernetes/secrets/*

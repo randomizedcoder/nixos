@@ -25,4 +25,14 @@ sync:
 	rsync -av /home/das/nixos/hp/hp5/ hp5:/home/das/nixos/hp5/
 	rsync -av /home/das/nixos/modules/ hp5:/home/das/nixos/modules/
 
+nuke_k3s: check_hostname delete_k3s
+
+delete k3s:
+	sudo rm -rf /var/lib/rancher/k3s/ /etc/rancher/k3s
+	k3s-killall.shs
+
+systemd:
+	sudo systemctl daemon-reload
+	sudo systemctl stop k3s.service
+
 # end

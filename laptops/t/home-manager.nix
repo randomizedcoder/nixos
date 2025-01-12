@@ -103,6 +103,8 @@
       # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
       libcap
       gcc
+      #gcc_multi
+      #glibc_multi
       #  thunderbird
       go_1_23
       gopls
@@ -116,6 +118,7 @@
       gdlv
       buf
       protobuf_27
+      grpcurl
       # removed 24.11
       #buf-language-server
       # https://tinygo.org/
@@ -136,6 +139,7 @@
       rustfmt
       rust-analyzer
       clippy
+      #clang_multi
       #
       flutter
       android-studio
@@ -206,6 +210,7 @@
       skopeo
       podman-tui
       podman-compose
+      docker-buildx
       #
       rofi-wayland
       wofi

@@ -32,6 +32,12 @@ delete_k8s:
 	sudo rm -rf /var/lib/kubernetes/ /var/lib/etcd/ /var/lib/cfssl/ /var/lib/kubelet/
 	sudo rm -rf /etc/kube-flannel/ /etc/kubernetes/
 
+nuke_k3s: check_hostname delete_k3s
+
+delete k3s:
+	sudo rm -rf /var/lib/rancher/k3s/ /etc/rancher/k3s
+	k3s-killall.sh
+
 create_cert:
 # Generate private key
 	openssl genrsa -out /var/lib/kubernetes/secrets/cluster-admin.pem 4096

@@ -12,6 +12,7 @@
         #GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
         # disable wayland
         #NIXOS_OZONE_WL = "1";
+        KUBECONFIG = "/home/das/k3s.yaml";
     };
 
     home.packages = with pkgs; [

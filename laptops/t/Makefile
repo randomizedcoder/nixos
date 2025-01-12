@@ -20,6 +20,7 @@ rebuild:
 	sudo cp ./configuration.nix /etc/nixos/
 	sudo cp ./home-manager.nix /etc/nixos/
 	sudo cp ./prometheus.nix /etc/nixos/
+	sudo nix-channel --update
 	sudo nixos-rebuild switch
 
 update:

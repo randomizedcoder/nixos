@@ -21,9 +21,9 @@
       }];
     }
         {
-      job_name = "hp5xtcp";
+      job_name = "hp1xtcp";
       static_configs = [{
-        targets = [ "hp5:9009" ];
+        targets = [ "hp1:9009" ];
       }];
     }
     #{

@@ -35,7 +35,7 @@
       ./grafana.nix
       # ./docker-daemon.nix
       #./k8s_master.nix
-      ./k3s_master.nix
+      #./k3s_master.nix
       ./systemd.services.ethtool-enp3s0f0.nix
       ./systemd.services.ethtool-enp3s0f1.nix
     ];

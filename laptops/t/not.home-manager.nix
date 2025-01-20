@@ -11,7 +11,7 @@
     home.sessionVariables = {
         GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
         # disable wayland
-        #NIXOS_OZONE_WL = "1";
+        NIXOS_OZONE_WL = "1";
         GOPRIVATE = "gitlab.com/sidenio/*";
         TERM = "xterm-256color";
     };
@@ -360,6 +360,7 @@
           "code.desktop"
           "chromium.desktop"
           "alacritty.desktop"
+          "ghostty.desktop"
           "kitty.desktop"
           "slack.desktop"
         ];
@@ -373,6 +374,22 @@
     # disable wayland
     # # https://nixos.wiki/wiki/Hyprland
     # # https://josiahalenbrown.substack.com/p/installing-nixos-with-hyprland
+
+    programs.hyprland = {
+      enable = true;
+      xwayland.hidpi = true;
+      xwayland.enable = true;
+    };
+
+    services.dbus.enable = true;
+    xdg.portal = {
+      enable = true;
+      wlr.enable = true;
+      extraPortals = [
+        pkgs.xdg-desktop-portal-gtk
+      ];
+    };
+
     # #programs.hyprland.enable = true;
     # wayland.windowManager.hyprland = {
     #   # Whether to enable Hyprland wayland compositor

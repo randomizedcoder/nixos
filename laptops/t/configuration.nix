@@ -8,7 +8,7 @@
 # nmcli device wifi connect MYSSID password PWORD
 # systemctl restart display-manager.service
 
-{ config, pkgs, ... }:
+{ inputs, config, pkgs, ... }:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
 # https://discourse.nixos.org/t/differences-between-nix-channels/13998
@@ -194,7 +194,8 @@
   #
   # hwinfo --gfxcard
 
-  services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
+  services.udev.packages = [ pkgs.gnome-settings-daemon ];
+  # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
   services.bpftune.enable = true;
 
@@ -261,12 +262,20 @@
   #   enable = true;
   #   enableSSHSupport = true;
   # };
+
   programs.gnupg.agent = {
      enable = true;
      enableSSHSupport = true;
   };
 
-  #programs.hyprland.enable = true;
+  # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
+  programs.hyprland = {
+    enable = true;
+    # set the flake package
+    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    # make sure to also set the portal package, so that they are in sync
+    portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+  };
 
   services.openssh.enable = true;
 

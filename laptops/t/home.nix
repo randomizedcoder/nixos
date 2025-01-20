@@ -14,7 +14,7 @@
   home.sessionVariables = {
       GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
       # disable wayland
-      #NIXOS_OZONE_WL = "1";
+      NIXOS_OZONE_WL = "1";
       GOPRIVATE = "gitlab.com/sidenio/*";
       TERM = "xterm-256color";
   };
@@ -248,6 +248,9 @@
     dive
     # https://github.com/sharkdp/hyperfine
     hyperfine
+    # app launchers
+    rofi-wayland
+    wofi
   ];
 
   # vscode
@@ -301,6 +304,11 @@
       rust-lang.rust-analyzer
     ];
   };
+
+  #fonts.fonts = with pkgs; [
+  #  nerdfonts
+  #  meslo-lgs-nf
+  #];
 
   programs.bash = {
     enable = true;
@@ -391,6 +399,9 @@
   #   # Whether to enable XWayland
   #   xwayland.enable = true;
 
+  # https://wiki.hyprland.org/Nix/Hyprland-on-Home-Manager/
+  wayland.windowManager.hyprland.enable = true; # enable Hyprland
+
   #   # Optional
   #   # Whether to enable hyprland-session.target on hyprland startup
   #   systemd.enable = true;
@@ -451,5 +462,4 @@
   nixpkgs.config.allowUnfree = true;
 
   home.stateVersion = "23.11";
-  };
 }

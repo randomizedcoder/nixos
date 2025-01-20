@@ -133,7 +133,8 @@
       gnome-extension-manager
       gnome-usage
       gnome.dconf-editor
-      gnome.gnome-settings-daemon
+      #gnome.gnome-settings-daemon
+      gnome-settings-daemon
       gnome.gnome-disk-utility
       gnome.gnome-software
       gnome.gnome-tweaks

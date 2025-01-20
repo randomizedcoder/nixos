@@ -11,6 +11,7 @@
 { config, pkgs, ... }:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
+# https://discourse.nixos.org/t/differences-between-nix-channels/13998
 
 {
   # https://nixos.wiki/wiki/NixOS_modules
@@ -19,7 +20,9 @@
       ./hardware-configuration.nix
       # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.11.tar.gz home-manager
       # sudo nix-channel --update
-      <home-manager/nixos>
+      # tutorial
+      # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
+      #<home-manager/nixos>
       #
       ./sysctl.nix
       ./wireless_desktop.nix
@@ -30,7 +33,7 @@
       ./firewall.nix
       #./systemdSystem.nix
       ./systemPackages.nix
-      ./home-manager.nix
+      #./home-manager.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix

@@ -18,7 +18,7 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-23.11.tar.gz home-manager
+      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.11.tar.gz home-manager
       # sudo nix-channel --update
       # tutorial
       # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
@@ -48,7 +48,12 @@
 # rm -rf /var/lib/kubernetes/ /var/lib/etcd/ /var/lib/cfssl/ /var/lib/kubelet/ /etc/kube-flannel/ /etc/kubernetes/
 
   # Bootloader.
-  boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot = {
+    enable = true;
+    #consoleMode = "max"; # Sets the console mode to the highest resolution supported by the firmware.
+    memtest86.enable = true;
+  };
+
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
@@ -71,6 +76,8 @@
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "hp1";
+
+  services.lldpd.enable = true;
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
@@ -116,6 +123,10 @@
   };
 
   services.openssh.enable = true;
+
+  services.timesyncd.enable = true;
+
+  services.fstrim.enable = true;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

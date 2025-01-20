@@ -16,12 +16,18 @@ else
 endif
 
 rebuild:
+	sudo cp ./flake.nix /etc/nixos/
+	sudo cp ./flake.lock /etc/nixos/
 	sudo cp ../../modules/* /etc/nixos/
 	sudo cp ./configuration.nix /etc/nixos/
-	sudo cp ./home-manager.nix /etc/nixos/
+	#sudo cp ./home-manager.nix /etc/nixos/
+	sudo cp ./home.nix /etc/nixos/
 	sudo cp ./prometheus.nix /etc/nixos/
-	sudo nix-channel --update
-	sudo nixos-rebuild switch
+	# sudo nix-channel --update
+	# sudo nixos-rebuild switch
+	sudo nix flake update;
+	sudo nix-channel --update;
+	sudo nixos-rebuild switch --flake .
 
 update:
 	sudo nix-channel --update

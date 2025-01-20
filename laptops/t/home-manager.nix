@@ -50,6 +50,7 @@
       jq
       git
       htop
+      btop
       minicom
       #
       bzip2
@@ -65,6 +66,8 @@
       #
       alacritty
       kitty
+      #https://ghostty.org/
+      ghostty
       #
       ethtool
       iproute2
@@ -119,6 +122,9 @@
       buf
       protobuf_27
       grpcurl
+      # https://github.com/go-gorm/gen
+      # https://github.com/infobloxopen/protoc-gen-gorm/blob/main/example/postgres_arrays/buf.gen.yaml
+      gorm-gentool
       # removed 24.11
       #buf-language-server
       # https://tinygo.org/
@@ -350,7 +356,7 @@
         disable-user-extensions = false;
         favorite-apps = [
           "firefox.desktop"
-          "google-chrome-stable.desktop"
+          "google-chrome.desktop"
           "code.desktop"
           "chromium.desktop"
           "alacritty.desktop"

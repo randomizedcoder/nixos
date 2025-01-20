@@ -16,10 +16,13 @@ else
 endif
 
 rebuild:
-	sudo cp /home/das/nixos/modules/* /etc/nixos/
-	sudo cp ./*.nix /etc/nixos/
-	sudo nix-channel --update
-	sudo nixos-rebuild switch
+	#sudo cp /home/das/nixos/modules/* /etc/nixos/
+	#sudo cp ./*.nix /etc/nixos/
+	#sudo nix-channel --update
+	#sudo nixos-rebuild switch
+	sudo nix flake update;
+	sudo nix-channel --update;
+	sudo nixos-rebuild switch --flake .
 
 sync:
 	rsync -av /home/das/nixos/hp/hp1/ hp1:/home/das/nixos/hp1/

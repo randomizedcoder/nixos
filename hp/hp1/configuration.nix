@@ -20,7 +20,9 @@
       ./hardware-configuration.nix
       # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-23.11.tar.gz home-manager
       # sudo nix-channel --update
-      <home-manager/nixos>
+      # tutorial
+      # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
+      #<home-manager/nixos>
       #
       ./sysctl.nix
       # ./wireless.nix
@@ -29,13 +31,13 @@
       ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
-      ./home-manager.nix
+      #./home.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
-      # ./docker-daemon.nix
+      ./docker-daemon.nix
       #./k8s_master.nix
-      #./k3s_master.nix
+      ./k3s_master.nix
       ./systemd.services.ethtool-enp3s0f0.nix
       ./systemd.services.ethtool-enp3s0f1.nix
     ];

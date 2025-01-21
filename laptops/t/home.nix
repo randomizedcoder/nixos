@@ -251,6 +251,9 @@
     # app launchers
     rofi-wayland
     wofi
+    #
+    # raspberry pi
+    rpi-imager
   ];
 
   # vscode

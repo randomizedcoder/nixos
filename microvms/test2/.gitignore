@@ -1,3 +1,5 @@
 var.img
 *.img
 nix.var.img
+result
+./result

@@ -3,7 +3,29 @@
 #
 .PHONY: all
 
-all: hp0 hp1 hp2 hp3 hp4 hp5
+all: hosts
+
+hosts:
+# [das@t:~/nixos]$ find ./ -name 'hosts.nix'
+# ./hp/hp1/hosts.nix
+# ./hp/hp0/hosts.nix
+# ./hp/hp2/hosts.nix
+# ./hp/hp5/hosts.nix
+# ./modules/hosts.nix
+# ./laptops/t/hosts.nix
+	cp ./modules/hosts.nix ./hp/hp0/hosts.nix
+	cp ./modules/hosts.nix ./hp/hp1/hosts.nix
+	cp ./modules/hosts.nix ./hp/hp2/hosts.nix
+	cp ./modules/hosts.nix ./hp/hp3/hosts.nix
+	cp ./modules/hosts.nix ./hp/hp4/hosts.nix
+	cp ./modules/hosts.nix ./hp/hp5/hosts.nix
+
+	cp ./modules/hosts.nix ./laptops/t/hosts.nix
+	cp ./modules/hosts.nix ./laptops/t14/hosts.nix
+
+	cp ./modules/hosts.nix ./arm/pi5-1-os/hosts.nix
+
+#all: hp0 hp1 hp2 hp3 hp4 hp5
 
 hp0:
 	scp -C ./modules/* hp0:

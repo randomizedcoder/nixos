@@ -53,10 +53,12 @@
         type = "lvm_vg";
         lvs = {
           swap = {
-            type ="swap";
             size = "32G";
-            discardPolicy = "both";
-            resumeDevice = true; # resume from hiberation from this device
+            content = {
+              type ="swap";
+              #discardPolicy = "both";
+              resumeDevice = true; # resume from hiberation from this device
+            }
           };
           atsCache = {
             size = "100G";

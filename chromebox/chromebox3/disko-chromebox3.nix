@@ -18,7 +18,8 @@
     disk = {
       one = {
         type = "disk";
-        device = "/dev/sda";
+        device = "/dev/vdb"; # --vm-test
+        #device = "/dev/sda"; # real
         content = {
           type = "gpt";
           partitions = {

@@ -29,4 +29,5 @@ rebuild:
 vmtest:
 	sudo nix flake update;
 	sudo nix flake lock;
+#nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --vm-test --generate-hardware-config nixos-generate-config ./hardware-configuration.nix
 	nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --vm-test

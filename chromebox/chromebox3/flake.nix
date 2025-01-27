@@ -38,7 +38,7 @@
       #inherit system;
       modules = [
         disko.nixosModules.disko
-        ./hardware-configuration.nix
+        #./hardware-configuration.nix
         ./configuration.nix
         home-manager.nixosModules.home-manager
         {

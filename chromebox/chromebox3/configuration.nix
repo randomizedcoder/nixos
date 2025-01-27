@@ -21,6 +21,7 @@
       ./sysctl.nix
       ./il8n.nix
       ./systemPackages.nix
+      ./hosts.nix
       ./nodeExporter.nix
       ./docker-daemon.nix
       #./k8s_master.nix

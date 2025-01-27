@@ -24,6 +24,13 @@ rebuild:
 	sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 
+try:
+	#nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@chromebox3
+	nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@chromebox3
+
+gen_hardware:
+	nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --generate-hardware-config nixos-generate-config ./hardware-configuration.nix
+
 # minutes 10:58
 # https://www.youtube.com/watch?v=U_UwzMhixr8
 vmtest:

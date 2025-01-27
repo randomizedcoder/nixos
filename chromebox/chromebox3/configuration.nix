@@ -35,7 +35,7 @@
     efiInstallAsRemovable = true;
   };
 
-  boot.loader.efi.canTouchEfiVariables = true;
+  #boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
   boot.kernelPackages = pkgs.linuxPackages;

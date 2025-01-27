@@ -58,7 +58,7 @@
               type ="swap";
               #discardPolicy = "both";
               resumeDevice = true; # resume from hiberation from this device
-            }
+            };
           };
           atsCache = {
             size = "100G";

@@ -18,8 +18,8 @@
     disk = {
       one = {
         type = "disk";
-        device = "/dev/vdb"; # --vm-test
-        #device = "/dev/sda"; # real
+        #device = "/dev/vdb"; # --vm-test
+        device = "/dev/sda"; # real
         content = {
           type = "gpt";
           partitions = {
@@ -54,8 +54,8 @@
         type = "lvm_vg";
         lvs = {
           swap = {
-            size = "10%"; # --vm-test
-            #size = "32G";
+            #size = "10%"; # --vm-test
+            size = "32G";
             content = {
               type ="swap";
               #discardPolicy = "both";
@@ -63,12 +63,12 @@
             };
           };
           atsCache = {
-            size = "10%"; # --vm-test
-            #size = "100G";
+            #size = "10%"; # --vm-test
+            size = "100G";
           };
           sftp = {
-            size = "10%"; # --vm-test
-            #size = "20G";
+            #size = "10%"; # --vm-test
+            size = "20G";
             content = {
               type = "filesystem";
               format = "xfs";
@@ -77,7 +77,7 @@
             };
           };
           root = {
-            size = "100%";
+            size = "90%";
             content = {
               type = "filesystem";
               format = "xfs"; # <---------- xfs!

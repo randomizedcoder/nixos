@@ -71,7 +71,7 @@
             };
           };
           root = {
-            end = "100%";
+            size = "100%";
             content = {
               type = "filesystem";
               format = "xfs"; # <---------- xfs!

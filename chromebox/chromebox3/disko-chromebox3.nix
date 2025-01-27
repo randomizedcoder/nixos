@@ -54,7 +54,8 @@
         type = "lvm_vg";
         lvs = {
           swap = {
-            size = "32G";
+            size = "10%"; # --vm-test
+            #size = "32G";
             content = {
               type ="swap";
               #discardPolicy = "both";
@@ -62,10 +63,12 @@
             };
           };
           atsCache = {
-            size = "100G";
+            size = "10%"; # --vm-test
+            #size = "100G";
           };
           sftp = {
-            size = "20G";
+            size = "10%"; # --vm-test
+            #size = "20G";
             content = {
               type = "filesystem";
               format = "xfs";

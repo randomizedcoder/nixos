@@ -83,6 +83,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
+    password = "admin123";
     extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
     packages = with pkgs; [
     ];

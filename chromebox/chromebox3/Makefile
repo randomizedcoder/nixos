@@ -25,8 +25,8 @@ rebuild:
 	sudo nixos-rebuild switch --flake .
 
 try:
-	#nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@chromebox3
-	nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@chromebox3
+	nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@172.16.40.63
+#nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@chromebox3
 
 gen_hardware:
 	nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --generate-hardware-config nixos-generate-config ./hardware-configuration.nix

@@ -33,7 +33,8 @@
       ./firewall.nix
       #./systemdSystem.nix
       ./systemPackages.nix
-      #./home-manager.nix
+      # home manager is imported in the flake
+      #./home.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix

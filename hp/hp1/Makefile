@@ -1,5 +1,5 @@
 #
-# nixos/hp1/Makefile
+# nixos/hp/hp1/Makefile
 #
 EXPECTED_HOSTNAME := hp1
 
@@ -25,8 +25,8 @@ rebuild:
 	sudo nixos-rebuild switch --flake .
 
 sync:
-	rsync -av /home/das/nixos/hp/hp1/ hp1:/home/das/nixos/hp1/
-	rsync -av /home/das/nixos/modules/ hp1:/home/das/nixos/modules/
+	rsync -av /home/das/nixos/hp/hp1/ hp1:/home/das/nixos/hp/hp1/
+	#rsync -av /home/das/nixos/modules/ hp1:/home/das/nixos/modules/
 
 # https://nixos.wiki/wiki/Kubernetes#reset_to_a_clean_state
 nuke_k8s: check_hostname delete_k8s

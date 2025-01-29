@@ -1,13 +1,3 @@
-# Edit this configuration file to define what should be installed on
-# your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
-
-# sudo nixos-rebuild switch
-# sudo nix-channel --update
-# nix-shell -p vim
-# nmcli device wifi connect MYSSID password PWORD
-# systemctl restart display-manager.service
-
 { config, pkgs, ... }:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
@@ -31,12 +21,14 @@
       ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
+      # home manager is imported by the flake
       #./home.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
       ./docker-daemon.nix
       #./k8s_master.nix
+      #./k8s_node.nix
       ./k3s_master.nix
       #./k3s_node.nix
       ./systemd.services.ethtool-enp3s0f0.nix
@@ -71,6 +63,7 @@
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
+      download-buffer-size = "100000000";
     };
   };
 
@@ -102,7 +95,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" "kubernetes" ];
+    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -135,7 +128,7 @@
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "24.05"; # Did you read the comment?
+  system.stateVersion = "24.11"; # Did you read the comment?
 
   # virtualisation.libvirtd.enable = true;
   # programs.virt-manager.enable = true;

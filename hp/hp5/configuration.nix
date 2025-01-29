@@ -18,9 +18,11 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-23.11.tar.gz home-manager
+      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.11.tar.gz home-manager
       # sudo nix-channel --update
-      <home-manager/nixos>
+      # tutorial
+      # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
+      #<home-manager/nixos>
       #
       ./sysctl.nix
       # ./wireless.nix
@@ -29,19 +31,27 @@
       ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
-      ./home-manager.nix
+      # home manager is imported by the flake
+      #./home.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
       ./docker-daemon.nix
+      #./k8s_master.nix
       #./k8s_node.nix
+      #./k3s_master.nix
       ./k3s_node.nix
       ./systemd.services.ethtool-enp3s0f0.nix
       ./systemd.services.ethtool-enp3s0f1.nix
     ];
 
   # Bootloader.
-  boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot = {
+    enable = true;
+    #consoleMode = "max"; # Sets the console mode to the highest resolution supported by the firmware.
+    memtest86.enable = true;
+  };
+
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
@@ -58,12 +68,15 @@
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
+      download-buffer-size = "100000000";
     };
   };
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "hp5";
+
+  services.lldpd.enable = true;
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
@@ -87,7 +100,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" "kubernetes" ];
+    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -110,13 +123,17 @@
 
   services.openssh.enable = true;
 
+  services.timesyncd.enable = true;
+
+  services.fstrim.enable = true;
+
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
   # on your system were taken. It‘s perfectly fine and recommended to leave
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "24.05"; # Did you read the comment?
+  system.stateVersion = "24.11"; # Did you read the comment?
 
   # virtualisation.libvirtd.enable = true;
   # programs.virt-manager.enable = true;

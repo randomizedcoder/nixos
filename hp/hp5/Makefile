@@ -1,5 +1,5 @@
 #
-# nixos/hp5/Makefile
+# nixos/hp/hp5/Makefile
 #
 EXPECTED_HOSTNAME := hp5
 
@@ -16,14 +16,17 @@ else
 endif
 
 rebuild:
-	sudo cp /home/das/nixos/modules/* /etc/nixos/
-	sudo cp ./*.nix /etc/nixos/
-	sudo nix-channel --update
-	sudo nixos-rebuild switch
+	#sudo cp /home/das/nixos/modules/* /etc/nixos/
+	#sudo cp ./*.nix /etc/nixos/
+	#sudo nix-channel --update
+	#sudo nixos-rebuild switch
+	sudo nix flake update;
+	sudo nix-channel --update;
+	sudo nixos-rebuild switch --flake .
 
 sync:
-	rsync -av /home/das/nixos/hp/hp5/ hp5:/home/das/nixos/hp5/
-	rsync -av /home/das/nixos/modules/ hp5:/home/das/nixos/modules/
+	rsync -av /home/das/nixos/hp/hp5/ hp5:/home/das/nixos/hp/hp5/
+	#rsync -av /home/das/nixos/modules/ hp5:/home/das/nixos/modules/
 
 nuke_k3s: check_hostname delete_k3s
 

@@ -352,16 +352,16 @@
     virt-manager
     cudatoolkit
     pkgs.gnomeExtensions.appindicator
-    #nvidia
-    vdpauinfo             # sudo vainfo
-    libva-utils           # sudo vainfo
-    # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
-    nvidia-vaapi-driver
-	  libvdpau
-  	libvdpau-va-gl
- 	  vdpauinfo
-	  libva
-    libva-utils
+    # #nvidia
+    # vdpauinfo             # sudo vainfo
+    # libva-utils           # sudo vainfo
+    # # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
+    # nvidia-vaapi-driver
+	  # libvdpau
+  	# libvdpau-va-gl
+ 	  # vdpauinfo
+	  # libva
+    # libva-utils
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

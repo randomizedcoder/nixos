@@ -1,5 +1,5 @@
 #
-# nixos/t/Makefile
+# nixos/laptops/t/Makefile
 #
 EXPECTED_HOSTNAME := t
 
@@ -16,6 +16,10 @@ else
 endif
 
 rebuild:
+	sudo nix flake update;
+	sudo nixos-rebuild switch --flake .
+
+rebuild_old:
 	# sudo cp ./flake.nix /etc/nixos/
 	# sudo cp ./flake.lock /etc/nixos/
 	# sudo cp ../../modules/* /etc/nixos/
@@ -26,9 +30,9 @@ rebuild:
 	# sudo cp ./*.nix /etc/nixos/
 	# sudo nix-channel --update
 	# sudo nixos-rebuild switch
-	sudo cp ./* /etc/nixos/
+	#sudo cp ./* /etc/nixos/
 	sudo nix flake update;
-	sudo nix-channel --update;
+	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 
 update:

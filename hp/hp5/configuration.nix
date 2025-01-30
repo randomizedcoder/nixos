@@ -55,8 +55,20 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-  #boot.kernelPackages = pkgs.linuxPackages_rpi4
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages;
+  #boot.kernelPackages = pkgs.linuxPackages_4_19; # 4.19.319
+  #boot.kernelPackages = pkgs.linuxPackages_5_4; # 5.4.281
+  #boot.kernelPackages = pkgs.linuxPackages_5_15; # 5.15.164
+  #boot.kernelPackages = pkgs.linuxPackages_6_1; # 6.1.103
+  #boot.kernelPackages = pkgs.linuxPackages_6_8; # 6.8
+  #boot.kernelPackages = pkgs.linuxPackages_6_10; # 6.10
+
+  boot.blacklistedKernelModules = [ "nouveau" ];
+
+  boot.extraModulePackages = with config.boot.kernelPackages; [
+    nvidia_x11
+  ];
 
   nix = {
     gc = {
@@ -76,16 +88,48 @@
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "hp5";
 
-  services.lldpd.enable = true;
-
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   networking.networkmanager.enable = false;
 
-  # Set your time zone.
   time.timeZone = "America/Los_Angeles";
+
+
+  # hardware.opengl.enable = true;
+  # was renamed to:
+  hardware.graphics = {
+    enable = true;
+    # P620
+    # Linux x64 (AMD64/EM64T) Display Driver 535.146.02 | Linux 64-bit
+    # https://www.nvidia.com/en-us/drivers/details/216820/
+    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/os-specific/linux/nvidia-x11/default.nix
+    # version = "535.154.05";
+    # package = config.boot.kernelPackages.nvidiaPackages.dc_535;
+    # version = "535.216.01";
+    #package = config.boot.kernelPackages.nvidiaPackages.legacy_535;
+    extraPackages = with pkgs; [
+      vdpauinfo             # sudo vainfo
+      libva-utils           # sudo vainfo
+      # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
+      nvidia-vaapi-driver
+      vaapiVdpau
+    ];
+  };
+
+  # https://wiki.nixos.org/w/index.php?title=NVIDIA
+  # https://nixos.wiki/wiki/Nvidia
+  # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
+  # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/hardware/video/nvidia.nix
+  hardware.nvidia = {
+    # https://github.com/NixOS/nixpkgs/pull/326369 hits stable
+    modesetting.enable = true;
+    powerManagement = {
+      enable = true;
+    };
+    nvidiaSettings = true;
+  };
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -123,9 +167,20 @@
 
   services.openssh.enable = true;
 
+
+  services.lldpd.enable = true;
+
   services.timesyncd.enable = true;
 
   services.fstrim.enable = true;
+
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    ipv4 = true;
+    ipv6 = true;
+    openFirewall = true;
+  };
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

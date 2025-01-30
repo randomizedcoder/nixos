@@ -44,6 +44,8 @@
     #cmake
     pkg-config
     #
+
+    #
     # alsa-lib
     # alsa-lib-with-plugins
     #
@@ -133,7 +135,7 @@
     # removed 24.11
     #buf-language-server
     # https://tinygo.org/
-    tinygo
+    #tinygo
     #
     graphviz
     #
@@ -211,6 +213,9 @@
     gimp-with-plugins
     #
     simplescreenrecorder
+    # https://wiki.nixos.org/wiki/Gpu-screen-recorder
+    gpu-screen-recorder # CLI
+    gpu-screen-recorder-gtk # GUI
     #
     gedit
     #
@@ -382,8 +387,9 @@
         "code.desktop"
         "chromium.desktop"
         "alacritty.desktop"
-        "kitty.desktop"
+        #"kitty.desktop"
         "slack.desktop"
+        "ghostty.desktop"
       ];
     enabled-extensions = with pkgs.gnomeExtensions; [
       blur-my-shell.extensionUuid
@@ -476,5 +482,6 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  home.stateVersion = "23.11";
+  #home.stateVersion = "23.11";
+  home.stateVersion = "24.11";
 }

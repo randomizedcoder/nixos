@@ -21,7 +21,7 @@ rebuild:
 	#sudo nix-channel --update
 	#sudo nixos-rebuild switch
 	sudo nix flake update;
-	sudo nix-channel --update;
+	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 
 sync:

@@ -24,6 +24,7 @@ hosts:
 	cp ./modules/hosts.nix ./laptops/t14/hosts.nix
 
 	cp ./modules/hosts.nix ./arm/pi5-1-os/hosts.nix
+	cp ./modules/hosts.nix ./chromebox/chromebox3/hosts.nix
 
 #all: hp0 hp1 hp2 hp3 hp4 hp5
 

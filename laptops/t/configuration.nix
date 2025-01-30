@@ -8,7 +8,13 @@
 # nmcli device wifi connect MYSSID password PWORD
 # systemctl restart display-manager.service
 
-{ inputs, config, pkgs, ... }:
+{
+  inputs,
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
 # https://discourse.nixos.org/t/differences-between-nix-channels/13998
@@ -33,7 +39,8 @@
       ./firewall.nix
       #./systemdSystem.nix
       ./systemPackages.nix
-      #./home-manager.nix
+      # home manager is imported in the flake
+      #./home.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
@@ -44,28 +51,62 @@
     ];
 
   # Bootloader.
-  boot.loader.systemd-boot = {
-    enable = true;
-    consoleMode = "max"; # Sets the console mode to the highest resolution supported by the firmware.
-    memtest86.enable = true;
+  boot = {
+
+    loader.systemd-boot = {
+      enable = true;
+      consoleMode = "max"; # Sets the console mode to the highest resolution supported by the firmware.
+      memtest86.enable = true;
+    };
+
+    loader.efi.canTouchEfiVariables = true;
+
+    # https://nixos.wiki/wiki/Linux_kernel
+    kernelPackages = pkgs.linuxPackages;
+    #boot.kernelPackages = pkgs.linuxPackages_latest;
+    #boot.kernelPackages = pkgs.linuxPackages_rpi4
+
+    #boot.kernelParams
+    # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
+    kernelParams = [
+      "nvidia-drm.modeset=1"
+      "nvidia-drm.fbdev=1"
+    ];
+
+    # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
+    # https://nixos.org/manual/nixos/stable/options#opt-boot.binfmt.emulatedSystems
+    binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
+
+    extraModulePackages = with config.boot.kernelPackages; [
+      v4l2loopback
+      nvidia_x11
+    ];
+
+    # https://nixos.wiki/wiki/Libvirt#Nested_virtualization
+    #extraModprobeConfig = "options kvm_intel nested=1";
+    # https://gist.github.com/chrisheib/162c8cad466638f568f0fb7e5a6f4f6b#file-config_working-nix-L19
+    extraModprobeConfig =
+      "options nvidia "
+      + lib.concatStringsSep " " [
+      # nvidia assume that by default your CPU does not support PAT,
+      # but this is effectively never the case in 2023
+      "NVreg_UsePageAttributeTable=1"
+      # This is sometimes needed for ddc/ci support, see
+      # https://www.ddcutil.com/nvidia/
+      #
+      # Current monitor does not support it, but this is useful for
+      # the future
+      "NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100"
+      "options kvm_intel nested=1"
+      # # https://nixos.wiki/wiki/OBS_Studio
+      ''
+        options v4l2loopback devices=1 video_nr=1 card_label="OBS Cam" exclusive_caps=1
+      ''
+      ];
   };
 
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  # https://nixos.wiki/wiki/Linux_kernel
-  boot.kernelPackages = pkgs.linuxPackages;
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
-  #boot.kernelPackages = pkgs.linuxPackages_rpi4
-
-  # https://nixos.wiki/wiki/Libvirt#Nested_virtualization
-  boot.extraModprobeConfig = "options kvm_intel nested=1";
-
-  #boot.kernelParams
-  # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
-
-  # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
-  # https://nixos.org/manual/nixos/stable/options#opt-boot.binfmt.emulatedSystems
-  boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
+  # For OBS
+  security.polkit.enable = true;
 
   nix = {
     gc = {
@@ -84,22 +125,36 @@
   # https://nixos.wiki/wiki/Networking
   networking.hostName = "t";
 
-  services.lldpd.enable = true;
-
-  # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 
-  # this option doesn't exist
-  # hardware.graphics.enable = true;
+  # Nouveau is enabled by default whenever graphics are enabled
+  # This name will change to hardware.opengl.enable, with 24.11
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [
+      vdpauinfo             # sudo vainfo
+      libva-utils           # sudo vainfo
+      # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
+      nvidia-vaapi-driver
+      vaapiVdpau
+    ];
+  };
+
+  # TODO try displaylink
+  # https://nixos.wiki/wiki/Displaylink
+  # nix-prefetch-url --name displaylink-600.zip https://www.synaptics.com/sites/default/files/exe_files/2024-05/DisplayLink%20USB%20Graphics%20Software%20for%20Ubuntu6.0-EXE.zip
+  #services.xserver.videoDrivers = [ "displaylink" "modesetting" ];
 
   # https://wiki.nixos.org/w/index.php?title=NVIDIA
   # https://nixos.wiki/wiki/Nvidia
   # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
+  # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/hardware/video/nvidia.nix
   hardware.nvidia = {
 
     # This will no longer be necessary when
     # https://github.com/NixOS/nixpkgs/pull/326369 hits stable
-    modesetting.enable = true;
+    #modesetting.enable = true;
+    modesetting.enable = lib.mkDefault true;
 
     # prime = {
     #   # ([[:print:]]+[:@][0-9]{1,3}:[0-9]{1,2}:[0-9])?'
@@ -136,8 +191,8 @@
     # Only available from driver 515.43.04+
     # Currently alpha-quality/buggy, so false is currently the recommended setting.
     # prioritry drivers don't compile on 6.10.3
+    # Set to false for proprietary drivers -> https://download.nvidia.com/XFree86/Linux-x86_64/565.77/README/kernel_open.html
     open = true;
-    #open = false;
 
     # Enable the Nvidia settings menu,
 	  # accessible via `nvidia-settings`.
@@ -152,23 +207,16 @@
     # https://nixos.wiki/wiki/Nvidia#Determining_the_Correct_Driver_Version
   };
 
-  # Nouveau is enabled by default whenever graphics are enabled
-  # This name will change to hardware.opengl.enable, with 24.11
-  hardware.graphics = {
-    enable = true;
-    # removed in 24.11
-    #driSupport = true;
-  };
-
   services.xserver = {
     enable = true;
-    # Load nvidia driver for Xorg and Wayland
-    videoDrivers = [ "nvidia-open" ];
-    #videoDrivers = [ "nvidia" ];
+
+    videoDrivers = [ "nvidia" ];
+
     # Display Managers are responsible for handling user login
     displayManager = {
       gdm.enable = true;
     };
+
     # Enable the GNOME Desktop Environment.
     desktopManager = {
       gnome.enable = true;
@@ -180,6 +228,20 @@
     # Configure keymap in X11
     xkb.layout = "us";
     xkb.variant = "";
+  };
+
+  # https://nixos.wiki/wiki/NixOS_Wiki:Audio
+  hardware.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
+
+  security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
+
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+    pulse.enable = true;
+    # Uncomment the following line if you want to use JACK applications
+    # jack.enable = true;
   };
 
   # https://theo.is-a.dev/blog/post/hyprland-adventure/
@@ -203,6 +265,22 @@
   #
   # hwinfo --gfxcard
 
+  services.lldpd.enable = true;
+
+  services.openssh.enable = true;
+
+  services.timesyncd.enable = true;
+
+  services.fstrim.enable = true;
+
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    ipv4 = true;
+    ipv6 = true;
+    openFirewall = true;
+  };
+
   services.udev.packages = [ pkgs.gnome-settings-daemon ];
   # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
@@ -217,12 +295,21 @@
   # https://nixos.wiki/wiki/Printing
   services.printing.enable = true;
 
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
-    ipv4 = true;
-    ipv6 = true;
-    openFirewall = true;
+
+  # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/12?u=randomizedcoder
+  # https://gist.github.com/chrisheib/162c8cad466638f568f0fb7e5a6f4f6b#file-config-nix-L193
+  environment.variables = {
+    MOZ_DISABLE_RDD_SANDBOX = "1";
+    LIBVA_DRIVER_NAME = "nvidia";
+    GBM_BACKEND = "nvidia-drm";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+    NVD_BACKEND = "direct";
+    EGL_PLATFORM = "wayland";
+    WLR_NO_HARDWARE_CURSORS = "1";
+
+    #MOZ_ENABLE_WAYLAND = "1";
+    #XDG_SESSION_TYPE = "wayland";
+    NIXOS_OZONE_WL = "1";
   };
 
   environment.sessionVariables = {
@@ -265,6 +352,16 @@
     virt-manager
     cudatoolkit
     pkgs.gnomeExtensions.appindicator
+    #nvidia
+    vdpauinfo             # sudo vainfo
+    libva-utils           # sudo vainfo
+    # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
+    nvidia-vaapi-driver
+	  libvdpau
+  	libvdpau-va-gl
+ 	  vdpauinfo
+	  libva
+    libva-utils
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -289,11 +386,22 @@
     portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
   };
 
-  services.openssh.enable = true;
+  programs.chromium.enable = true;
+  # programs.chromium.package = pkgs.google-chrome;
+  # https://nixos.wiki/wiki/Chromium#Enabling_native_Wayland_support
+  nixpkgs.config.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
+  #programs.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
 
-  services.timesyncd.enable = true;
-
-  services.fstrim.enable = true;
+#dD
+  # programs.firefox.enable = true;
+  # # # https://github.com/TLATER/dotfiles/blob/master/nixos-modules/nvidia/default.nix
+  # programs.firefox.preferences = {
+  #   "media.ffmpeg.vaapi.enabled" = true;
+  #   "media.rdd-ffmpeg.enabled" = true;
+  #   "media.av1.enabled" = true; # Won't work on the 2060
+  #   "gfx.x11-egl.force-enabled" = true;
+  #   "widget.dmabuf.force-enabled" = true;
+  # };
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

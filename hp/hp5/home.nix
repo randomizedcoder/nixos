@@ -99,8 +99,8 @@
     # for pprof
     graphviz
     #
-    #ffmpeg
-    ffmpeg-full
+    ffmpeg
+    #ffmpeg-full
   ];
 
   programs.bash = {

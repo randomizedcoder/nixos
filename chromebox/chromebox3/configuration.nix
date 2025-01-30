@@ -16,77 +16,50 @@
 {
   # https://nixos.wiki/wiki/NixOS_modules
   imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-      # sudo nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.11.tar.gz home-manager
-      # sudo nix-channel --update
-      # tutorial
-      # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
-      #<home-manager/nixos>
-      #
+    [
+      ./disko-chromebox3.nix
       ./sysctl.nix
-      # ./wireless.nix
-      ./hosts.nix
-      ./firewall.nix
       ./il8n.nix
-      #./systemdSystem.nix
       ./systemPackages.nix
-      # home manager is imported by the flake
-      #./home.nix
+      ./hosts.nix
       ./nodeExporter.nix
-      ./prometheus.nix
-      ./grafana.nix
       ./docker-daemon.nix
       #./k8s_master.nix
-      #./k8s_node.nix
-      #./k3s_master.nix
-      ./k3s_node.nix
-      ./systemd.services.ethtool-enp3s0f0.nix
-      ./systemd.services.ethtool-enp3s0f1.nix
+      ./k3s_master.nix
+      #./k3s_node.nix
     ];
 
-  # Bootloader.
-  boot.loader.systemd-boot = {
-    enable = true;
-    #consoleMode = "max"; # Sets the console mode to the highest resolution supported by the firmware.
-    memtest86.enable = true;
+  boot.loader.grub = {
+    # no need to set devices, disko will add all devices that have a EF02 partition to the list already
+    # devices = [ ];
+    efiSupport = true;
+    efiInstallAsRemovable = true;
   };
 
-  boot.loader.efi.canTouchEfiVariables = true;
+  #boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelPackages = pkgs.linuxPackages;
-  #boot.kernelPackages = pkgs.linuxPackages_4_19; # 4.19.319
-  #boot.kernelPackages = pkgs.linuxPackages_5_4; # 5.4.281
-  #boot.kernelPackages = pkgs.linuxPackages_5_15; # 5.15.164
-  #boot.kernelPackages = pkgs.linuxPackages_6_1; # 6.1.103
-  #boot.kernelPackages = pkgs.linuxPackages_6_8; # 6.8
-  #boot.kernelPackages = pkgs.linuxPackages_6_10; # 6.10
-
-  boot.blacklistedKernelModules = [ "nouveau" ];
-
-  boot.extraModulePackages = with config.boot.kernelPackages; [
-    nvidia_x11
-  ];
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
 
   nix = {
     gc = {
-      automatic = true;                  # Enable automatic execution of the task
-      dates = "weekly";                  # Schedule the task to run weekly
+      automatic = true;                     # Enable automatic execution of the task
+      dates = "weekly";                     # Schedule the task to run weekly
       options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
-      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
+      randomizedDelaySec = "14m";           # Introduce a randomized delay of up to 14 minutes before executing the task
     };
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
-      download-buffer-size = "100000000";
     };
   };
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
-  networking.hostName = "hp5";
+  networking.hostName = "chromebox3";
+
+  services.lldpd.enable = true;
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
@@ -94,42 +67,8 @@
 
   networking.networkmanager.enable = false;
 
+  # Set your time zone.
   time.timeZone = "America/Los_Angeles";
-
-
-  # hardware.opengl.enable = true;
-  # was renamed to:
-  hardware.graphics = {
-    enable = true;
-    # P620
-    # Linux x64 (AMD64/EM64T) Display Driver 535.146.02 | Linux 64-bit
-    # https://www.nvidia.com/en-us/drivers/details/216820/
-    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/os-specific/linux/nvidia-x11/default.nix
-    # version = "535.154.05";
-    # package = config.boot.kernelPackages.nvidiaPackages.dc_535;
-    # version = "535.216.01";
-    #package = config.boot.kernelPackages.nvidiaPackages.legacy_535;
-    extraPackages = with pkgs; [
-      vdpauinfo             # sudo vainfo
-      libva-utils           # sudo vainfo
-      # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
-      nvidia-vaapi-driver
-      vaapiVdpau
-    ];
-  };
-
-  # https://wiki.nixos.org/w/index.php?title=NVIDIA
-  # https://nixos.wiki/wiki/Nvidia
-  # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
-  # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/hardware/video/nvidia.nix
-  hardware.nvidia = {
-    # https://github.com/NixOS/nixpkgs/pull/326369 hits stable
-    modesetting.enable = true;
-    powerManagement = {
-      enable = true;
-    };
-    nvidiaSettings = true;
-  };
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
@@ -144,6 +83,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
+    password = "admin123";
     extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
     packages = with pkgs; [
     ];
@@ -167,20 +107,9 @@
 
   services.openssh.enable = true;
 
-
-  services.lldpd.enable = true;
-
   services.timesyncd.enable = true;
 
   services.fstrim.enable = true;
-
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
-    ipv4 = true;
-    ipv6 = true;
-    openFirewall = true;
-  };
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

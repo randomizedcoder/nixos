@@ -1,1 +1,0 @@
-../modules/prometheus.nix

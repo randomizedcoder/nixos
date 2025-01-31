@@ -137,6 +137,11 @@
       # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
       nvidia-vaapi-driver
       vaapiVdpau
+      libvdpau
+      libvdpau-va-gl
+      vdpauinfo
+      libva
+      libva-utils
     ];
   };
 
@@ -305,10 +310,11 @@
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
     NVD_BACKEND = "direct";
     EGL_PLATFORM = "wayland";
+    # prevents cursor disappear when using Nvidia drivers
     WLR_NO_HARDWARE_CURSORS = "1";
 
-    #MOZ_ENABLE_WAYLAND = "1";
-    #XDG_SESSION_TYPE = "wayland";
+    MOZ_ENABLE_WAYLAND = "1";
+    XDG_SESSION_TYPE = "wayland";
     NIXOS_OZONE_WL = "1";
   };
 
@@ -377,20 +383,20 @@
      enableSSHSupport = true;
   };
 
-  # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
-  programs.hyprland = {
-    enable = true;
-    # set the flake package
-    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
-    # make sure to also set the portal package, so that they are in sync
-    portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
-  };
+  # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
+  # programs.hyprland = {
+  #   enable = true;
+  #   # set the flake package
+  #   package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+  #   # make sure to also set the portal package, so that they are in sync
+  #   portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+  # };
 
-  programs.chromium.enable = true;
-  # programs.chromium.package = pkgs.google-chrome;
-  # https://nixos.wiki/wiki/Chromium#Enabling_native_Wayland_support
-  nixpkgs.config.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
-  #programs.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
+  # programs.chromium.enable = true;
+  # # programs.chromium.package = pkgs.google-chrome;
+  # # https://nixos.wiki/wiki/Chromium#Enabling_native_Wayland_support
+  # nixpkgs.config.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
+  # #programs.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
 
 #dD
   # programs.firefox.enable = true;

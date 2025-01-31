@@ -16,8 +16,10 @@ else
 endif
 
 rebuild:
-	sudo nix flake update;
 	sudo nixos-rebuild switch --flake .
+
+update:
+	sudo nix flake update;
 
 rebuild_old:
 	# sudo cp ./flake.nix /etc/nixos/
@@ -35,7 +37,7 @@ rebuild_old:
 	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 
-update:
+update_oldm.:
 	sudo nix-channel --update
 	sudo nixos-rebuild switch
 	#nix-shell -p vim

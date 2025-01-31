@@ -1,12 +1,25 @@
-{ config, pkgs, ... }:
+{
+  hyprland,
+  config,
+  pkgs,
+  ...
+}:
+#{ config, pkgs, ... }:
 #{ config, inputs, pkgs, ... }:
 
 # sudo cp ./nixos/modules/* /etc/nixos/
 # sudo nixos-rebuild switch
 
 {
-  home.username = "das";
-  home.homeDirectory = "/home/das";
+  imports = [
+    hyprland.homeManagerModules.default
+    # other imports to go here
+  ];
+
+  home = {
+    username = "das";
+    homeDirectory = "/home/das";
+  };
 
   # https://nix-community.github.io/home-manager/index.xhtml#ch-installation
   #home-manager.users.das = { pkgs, ... }: {
@@ -81,7 +94,7 @@
     vlan
     tcpdump
     wireshark
-    #iperf2
+    unstable.iperf2
     netperf
     flent
     bpftools
@@ -200,7 +213,14 @@
     firefox
     # https://nixos.wiki/wiki/Chromium
     chromium
-    google-chrome
+    #google-chrome
+    # https://discourse.nixos.org/t/google-chrome-not-working-after-recent-nixos-rebuild/43746
+    (google-chrome.override {
+      commandLineArgs = [
+        "--enable-features=UseOzonePlatform"
+        "--ozone-platform=wayland"
+      ];
+    })
     # https://nixos.wiki/wiki/Slack
     slack
     #
@@ -360,6 +380,9 @@
     ];
   };
 
+  # another example with dark colors:
+  # https://github.com/HeinzDev/Hyprland-dotfiles/blob/main/home/home.nix#L70
+  #
   # https://heywoodlh.io/nixos-gnome-settings-and-keyboard-shortcuts
   dconf.settings = {
     "org/gnome/desktop/wm/preferences" = {

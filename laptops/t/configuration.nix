@@ -69,8 +69,15 @@
     #boot.kernelParams
     # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
     kernelParams = [
-      "nvidia-drm.modeset=1"
-      "nvidia-drm.fbdev=1"
+      #"nvidia-drm.modeset=1"
+      #"nvidia-drm.fbdev=1"
+      # https://www.reddit.com/r/NixOS/comments/u5l3ya/cant_start_x_in_nixos/?rdt=56160
+      "nomodeset"
+    ];
+
+    blacklistedKernelModules = [
+      "nouveau"
+      "i915"
     ];
 
     # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
@@ -79,24 +86,25 @@
 
     extraModulePackages = with config.boot.kernelPackages; [
       v4l2loopback
-      nvidia_x11
+      #nvidia_x11
     ];
 
     # https://nixos.wiki/wiki/Libvirt#Nested_virtualization
     #extraModprobeConfig = "options kvm_intel nested=1";
     # https://gist.github.com/chrisheib/162c8cad466638f568f0fb7e5a6f4f6b#file-config_working-nix-L19
     extraModprobeConfig =
-      "options nvidia "
+      #"options nvidia "
+      ""
       + lib.concatStringsSep " " [
       # nvidia assume that by default your CPU does not support PAT,
       # but this is effectively never the case in 2023
-      "NVreg_UsePageAttributeTable=1"
+      #"NVreg_UsePageAttributeTable=1"
       # This is sometimes needed for ddc/ci support, see
       # https://www.ddcutil.com/nvidia/
       #
       # Current monitor does not support it, but this is useful for
       # the future
-      "NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100"
+      #"NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100"
       "options kvm_intel nested=1"
       # # https://nixos.wiki/wiki/OBS_Studio
       ''
@@ -132,8 +140,6 @@
   hardware.graphics = {
     enable = true;
     extraPackages = with pkgs; [
-      vdpauinfo             # sudo vainfo
-      libva-utils           # sudo vainfo
       # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
       nvidia-vaapi-driver
       vaapiVdpau
@@ -142,6 +148,8 @@
       vdpauinfo
       libva
       libva-utils
+      # https://wiki.nixos.org/wiki/Intel_Graphics
+      #vpl-gpu-rt
     ];
   };
 
@@ -368,6 +376,8 @@
  	  # vdpauinfo
 	  # libva
     # libva-utils
+    vdpauinfo             # sudo vainfo
+    libva-utils           # sudo vainfo
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

@@ -17,6 +17,10 @@
     iptables
     pciutils
     usbutils
+    pciutils
+    virt-manager
+    cudatoolkit
+    pkgs.gnomeExtensions.appindicator
     iw
     wirelesstools
     wpa_supplicant
@@ -37,5 +41,19 @@
     wayland-utils
     wl-clipboard
     wlroots
+
+    #
+    #nvidia
+    vdpauinfo             # sudo vainfo
+    libva-utils           # sudo vainfo
+    # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
+    #
+    ffmpeg-full
+    #
+    # https://nixos.wiki/wiki/CUDA
+    cudatoolkit
+    linuxPackages.nvidia_x11
+    libGLU
+    libGL
   ];
 }

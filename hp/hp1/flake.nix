@@ -1,8 +1,10 @@
 {
   description = "HP1 Flake";
 
+  # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
       url = "github:nix-community/home-manager/release-24.11";

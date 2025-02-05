@@ -25,5 +25,8 @@
     #snmp seems to be needed by lldpd
     net-snmp
     neofetch
+    #
+    ffmpeg-full
+    radeontop  # GPU monitoring tool
   ];
 }

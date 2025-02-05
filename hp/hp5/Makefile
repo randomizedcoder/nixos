@@ -20,9 +20,19 @@ rebuild:
 	#sudo cp ./*.nix /etc/nixos/
 	#sudo nix-channel --update
 	#sudo nixos-rebuild switch
-	sudo nix flake update;
 	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
+	sudo systemctl daemon-reexec
+	sudo systemctl restart create-stream-sdp.service
+	sudo systemctl restart create-stream-m3u8.service
+	sudo systemctl restart ffmpeg-hls
+
+
+rebuild_trace:
+	sudo nixos-rebuild switch --show-trace --flake .
+
+update:
+	sudo nix flake update;
 
 sync:
 	rsync -av /home/das/nixos/hp/hp5/ hp5:/home/das/nixos/hp/hp5/

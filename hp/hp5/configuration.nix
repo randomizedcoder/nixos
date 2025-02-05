@@ -43,6 +43,9 @@
       ./k3s_node.nix
       ./systemd.services.ethtool-enp3s0f0.nix
       ./systemd.services.ethtool-enp3s0f1.nix
+      #./hls_tmpfs.nix
+      ./nginx.nix
+      ./ffmpeg-hls-service.nix
     ];
 
   # Bootloader.
@@ -123,14 +126,17 @@
   # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
   # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/hardware/video/nvidia.nix
   hardware.nvidia = {
+    open = false;
     # https://github.com/NixOS/nixpkgs/pull/326369 hits stable
     modesetting.enable = true;
     powerManagement = {
       enable = true;
     };
     nvidiaSettings = true;
+    package = pkgs.linuxPackages.nvidia_x11;
   };
 
+  services.xserver.videoDrivers = [ "nvidia" ];
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
@@ -138,13 +144,19 @@
     TERM = "xterm-256color";
     #MY_VARIABLE = "my-value";
     #ANOTHER_VARIABLE = "another-value";
+    #CUDA_PATH = "${pkgs.cudatoolkit}";
+    CUDA_PATH = "${pkgs.linuxPackages.nvidia_x11}/lib";
+    # export LD_LIBRARY_PATH=${pkgs.linuxPackages.nvidia_x11}/lib
+    EXTRA_LDFLAGS = "-L/lib -L${pkgs.linuxPackages.nvidia_x11}/lib";
+    EXTRA_CCFLAGS = "-I/usr/include";
+    LD_LIBRARY_PATH = "$\{LD_LIBRARY_PATH\}:/run/opengl-driver/lib:${pkgs.linuxPackages.nvidia_x11}/lib";
   };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
+    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" "video" "nginx" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

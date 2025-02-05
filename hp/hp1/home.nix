@@ -7,6 +7,10 @@
   home.username = "das";
   home.homeDirectory = "/home/das";
 
+  imports = [
+    ./ffmpeg_systemd_service.nix
+  ];
+
   # https://nix-community.github.io/home-manager/index.xhtml#ch-installation
   #home-manager.users.das = { pkgs, ... }: {
 
@@ -100,7 +104,7 @@
     graphviz
     #
     #ffmpeg
-    ffmpeg-full
+    #ffmpeg-full
   ];
 
   programs.bash = {
@@ -134,7 +138,7 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  home.stateVersion = "24.05";
   programs.home-manager.enable = true;
+  home.stateVersion = "24.11";
   #};
 }

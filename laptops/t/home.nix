@@ -14,6 +14,7 @@
   imports = [
     hyprland.homeManagerModules.default
     # other imports to go here
+    ./nodeExporter.nix
   ];
 
   home = {
@@ -118,7 +119,8 @@
     neofetch
     #
     vlc
-    ffmpeg_7-full
+    # ffmpeg moved to system package
+    #ffmpeg_7-full
     #ffmpeg-full
     # go
     # https://nixos.wiki/wiki/Go
@@ -129,7 +131,8 @@
     #gcc_multi
     #glibc_multi
     #  thunderbird
-    go_1_23
+    #go_1_23
+    unstable.go
     gopls
     golint
     golangci-lint

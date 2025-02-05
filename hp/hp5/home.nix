@@ -99,7 +99,7 @@
     # for pprof
     graphviz
     #
-    ffmpeg
+    #ffmpeg
     #ffmpeg-full
   ];
 

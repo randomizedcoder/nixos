@@ -67,6 +67,16 @@
     };
   };
 
+  # find /run/opengl-driver -name "libamfrt64.so.1"
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [
+      amdvlk  # AMD Vulkan driver, includes AMF runtime
+      #rocm-opencl-runtime  # Optional: ROCm OpenCL support
+      #rocm-smi  # AMD System Management Interface (for monitoring GPU)
+    ];
+  };
+
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "hp1";
@@ -95,7 +105,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
+    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" "video" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -121,6 +131,9 @@
   services.timesyncd.enable = true;
 
   services.fstrim.enable = true;
+
+  # AMD GPU power management
+  #services.udev.packages = with pkgs; [ rocm-smi ];
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

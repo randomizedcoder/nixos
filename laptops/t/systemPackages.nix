@@ -1,8 +1,11 @@
-{ config, pkgs, ... }:
-
 {
-  # Allow unfree packages
+  config,
+  pkgs,
+  ...
+}:
+{
   nixpkgs.config.allowUnfree = true;
+
   # $ nix search wget
   environment.systemPackages = with pkgs; [
   #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
@@ -29,6 +32,9 @@
     #snmp seems to be needed by lldpd
     net-snmp
     neofetch
+
+    # https://wiki.nixos.org/wiki/Flameshot
+    (flameshot.override { enableWlrSupport = true; })
 
     # hyprland
     hyprland

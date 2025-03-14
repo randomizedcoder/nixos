@@ -22,7 +22,6 @@
 {
   # https://nixos.wiki/wiki/NixOS_modules
   # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
-  #<home-manager/nixos>
   imports =
     [
       ./hardware-configuration.nix
@@ -87,7 +86,7 @@
     # https://gist.github.com/chrisheib/162c8cad466638f568f0fb7e5a6f4f6b#file-config_working-nix-L19
     extraModprobeConfig =
       "options nvidia "
-      ""
+      #""
       + lib.concatStringsSep " " [
       # nvidia assume that by default your CPU does not support PAT,
       # but this is effectively never the case in 2023
@@ -164,8 +163,19 @@
   # https://nixos.wiki/wiki/Printing
   services.printing.enable = true;
 
+  # https://wiki.nixos.org/wiki/Flameshot
+  # services.flameshot = {
+  #   enable = true;
+  #   settings.General = {
+  #     showStartupLaunchMessage = false;
+  #     saveLastRegion = true;
+  #   };
+  # };
+
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
+
+  services.clickhouse.enable = true;
 
   # environment.variables defined in hardware-graphics.nix
   environment.sessionVariables = {
@@ -178,7 +188,6 @@
     isNormalUser = true;
     description = "das";
     extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
-    # users.extraGroups.docker.members = [ "das" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -187,10 +196,8 @@
     ];
   };
 
-
   # package moved to systemPackages.nix
   # environment.systemPackages = with pkgs; [
-
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.

@@ -17,13 +17,27 @@
     {
       job_name = "xtcp";
       static_configs = [{
-        targets = [ "localhost:9009" ];
+        targets = [ "localhost:9088" ];
       }];
     }
-        {
-      job_name = "hp1xtcp";
+    {
+      job_name = "hp1_xtcp";
       static_configs = [{
-        targets = [ "hp1:9009" ];
+        targets = [ "hp1:9088" ];
+      }];
+    }
+    {
+      job_name = "clickhouse";
+      static_configs = [{
+        #targets = [ "localhost:9363" ];
+        targets = [ "localhost:19363" ];
+      }];
+    }
+    {
+      job_name = "hp1_clickhouse";
+      static_configs = [{
+        #targets = [ "localhost:9363" ];
+        targets = [ "hp1:19363" ];
       }];
     }
     #{

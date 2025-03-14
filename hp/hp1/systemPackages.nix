@@ -1,5 +1,8 @@
-{ config, pkgs, ... }:
-
+{
+  config,
+  pkgs,
+  ...
+}:
 {
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
@@ -28,5 +31,7 @@
     #
     ffmpeg-full
     radeontop  # GPU monitoring tool
+    # https://nixos.wiki/wiki/AMD_GPU#OpenCL
+    clinfo
   ];
 }

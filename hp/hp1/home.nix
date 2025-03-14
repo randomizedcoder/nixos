@@ -7,9 +7,9 @@
   home.username = "das";
   home.homeDirectory = "/home/das";
 
-  imports = [
-    ./ffmpeg_systemd_service.nix
-  ];
+  # imports = [
+  #   #./ffmpeg_systemd_service.nix
+  # ];
 
   # https://nix-community.github.io/home-manager/index.xhtml#ch-installation
   #home-manager.users.das = { pkgs, ... }: {

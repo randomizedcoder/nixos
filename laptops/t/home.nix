@@ -14,7 +14,6 @@
   imports = [
     hyprland.homeManagerModules.default
     # other imports to go here
-    ./nodeExporter.nix
   ];
 
   home = {
@@ -64,7 +63,8 @@
     # alsa-lib-with-plugins
     #
     perl
-    python3
+    #3.12.8 on 12th of Feb 2025
+    python3Full
     #
     gawk
     jq
@@ -387,9 +387,12 @@
   # https://github.com/HeinzDev/Hyprland-dotfiles/blob/main/home/home.nix#L70
   #
   # https://heywoodlh.io/nixos-gnome-settings-and-keyboard-shortcuts
+  # https://rycee.gitlab.io/home-manager/options.xhtml#opt-dconf.settings
   dconf.settings = {
     "org/gnome/desktop/wm/preferences" = {
-        button-layout = "close,minimize,maximize:appmenu";
+      #button-layout = "close,minimize,maximize,above:appmenu";
+      button-layout = ":minimize,maximize,above,close";
+      num-workspaces = 2;
     };
     # "org/gnome/desktop/interface" = {
     #   color-scheme = "prefer-dark";
@@ -455,14 +458,6 @@
   # };
   # # home.file.".config/hypr/hyprland.conf".text = ''
   # # '';
-
-  services.flameshot = {
-    enable = true;
-    settings.General = {
-      showStartupLaunchMessage = false;
-      saveLastRegion = true;
-    };
-  };
 
   home.file."containers.conf" = {
     target = ".config/containers/containers.conf";

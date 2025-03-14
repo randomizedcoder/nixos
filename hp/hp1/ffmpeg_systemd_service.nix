@@ -54,7 +54,6 @@
 # ffmpeg -f lavfi -i "sine=frequency=1000:duration=10" -c:a aac -b:a 128k /home/das/test_audio.aac
 let
   ffmpegCmd =
-
   ''
     ${pkgs.ffmpeg-full}/bin/ffmpeg -f lavfi -re -i testsrc2=rate=30:size=1920x1080 \
       -f lavfi -i "sine=frequency=1000" \
@@ -64,7 +63,7 @@ let
       -bsf:v h264_mp4toannexb \
       -c:a aac -b:a 128k -ac 2 \
       -max_delay 500000 -bufsize 2000000 -fflags +genpts \
-      -f rtp_mpegts "rtp://239.0.0.1:6000?pkt_size=1326&ttl=4&localaddr=172.16.40.142"
+      -f rtp_mpegts "rtp://239.0.0.2:6000?pkt_size=1326&ttl=4&localaddr=172.16.40.142"
   '';
   # Ensures SPS/PPS is sent in every keyframe (prevents decoder from losing parameter sets).
   # Forces constant frame rate (force-cfr=1), improving stream stability.
@@ -124,25 +123,32 @@ let
   # '';
 in
 {
-  systemd.user.services.ffmpeg-stream = {
+  # sudo systemctl status ffmpeg-stream.service
+  # sudo journalctl -u ffmpeg-stream.service
+  # cat /etc/systemd/system/ffmpeg-stream.service
+  systemd.services.ffmpeg-stream = {
 
-    Unit = {
-      description = "FFmpeg Multicast Service";
-    };
+    description = "FFmpeg Multicast Service";
+    after = [ "network.target" ];
 
-    Service = {
+    serviceConfig = {
       ExecStart = "${ffmpegCmd}";
       Restart = "always";
-      RestartSec = 2;
+      RestartSec = 10;
       StandardOutput = "journal";
       StandardError = "journal";
+
+      # https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Scheduling
+      Nice = "-20";
+      #CPUSchedulingPriority = "99";
 
       ### 🔐 Security Hardening Options ###
       NoNewPrivileges = true;             # Prevents privilege escalation
       PrivateTmp = true;                  # Isolates service temporary files
-      ProtectSystem = "strict";           # Restricts access to system files
-      ProtectHome = "read-only";          # Readonly access to home directory
-      #ProtectHome = "yes";               # Blocks access to home directory
+      ProtectSystem = "full";           # Restricts access to system files
+      #ProtectSystem = "strict";           # Restricts access to system files
+      #ProtectHome = "read-only";          # Readonly access to home directory
+      ProtectHome = "yes";               # Blocks access to home directory
       ProtectKernelModules = true;        # Blocks module loading
       ProtectKernelLogs = true;           # Prevents access to kernel logs
       ProtectControlGroups = true;        # Restricts cgroup modifications
@@ -151,14 +157,16 @@ in
       RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ]; # Restricts network access
       SystemCallFilter = [ "~@mount" "~@privileged" "~@resources" ]; # Blocks dangerous system calls
       LockPersonality = true;             # Prevents personality changes (defense against exploits)
-      ReadOnlyPaths = "/etc /usr /home/das/test_audio/";        # Makes important paths read-only
+      ReadOnlyPaths = "/usr";        # Makes important paths read-only
+      #ReadOnlyPaths = "/etc /usr /home/das/test_audio/";        # Makes important paths read-only
       #wReadWritePaths = "/var/www/html";   # Only allow writing in this directory
       ProtectClock = true;                # Blocks modification of system clock
     };
 
-    Install = {
-      after = [ "network.target" ];
-      WantedBy = [ "default.target" ];
-    };
+  # # systemctl list-units --type target
+  #   Install = {
+  #     after = [ "network.target" ];
+  #     #WantedBy = [ "default.target" ];
+  #   };
   };
 }

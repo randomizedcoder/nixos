@@ -68,35 +68,72 @@ let
   #   a=rtpmap:33 MP2T/90000
   # '';
 
+  # https://developer.nvidia.com/blog/nvidia-ffmpeg-transcoding-guide/#processing_filters
   ffmpegCmd = ''
     ${pkgs.ffmpeg-full}/bin/ffmpeg \
-      -hwaccel cuda -hwaccel_output_format cuda \
+      -vsync 0 \
+      -hwaccel cuda \
+      -hwaccel_output_format cuda \
       -protocol_whitelist "file,udp,rtp" \
       -analyzeduration 200000000 \
       -probesize 150M \
       -fflags +genpts -max_delay 5000000 \
       -f mpegts \
       -i /hls/stream.sdp \
-      -filter_complex "[0:v]hwupload_cuda,split=3[v10_in][v5_in][v1_in]; \
-                        [v10_in]scale_cuda=w=1920:h=1080,hwdownload,format=yuv420p[v10_scaled]; \
-                        [v5_in]scale_cuda=w=1280:h=720,hwdownload,format=yuv420p[v5_scaled]; \
-                        [v1_in]scale_cuda=w=640:h=360,hwdownload,format=yuv420p[v1_scaled]" \
-      -map "[v10_scaled]" -map 0:a:0 -c:v h264_nvenc -pix_fmt nv12 -b:v 10M -bufsize 20M -preset p5 -g 50 -keyint_min 50 -c:a aac -b:a 128k -ac 2 \
-      -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
-      -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
-      -strftime 1 -hls_segment_filename "/hls/hls_10Mbps/stream-%Y%m%d%H%M%S.ts" \
-      "/hls/hls_10Mbps/stream_10.m3u8" \
-      -map "[v5_scaled]" -map 0:a:0 -c:v h264_nvenc -pix_fmt nv12 -b:v 5M -bufsize 10M -preset p5 -g 50 -keyint_min 50 -c:a aac -b:a 128k -ac 2 \
-      -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
-      -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
-      -strftime 1 -hls_segment_filename "/hls/hls_5Mbps/stream-%Y%m%d%H%M%S.ts" \
-      "/hls/hls_5Mbps/stream_5.m3u8" \
-      -map "[v1_scaled]" -map 0:a:0 -c:v h264_nvenc -pix_fmt nv12 -b:v 1M -bufsize 2M -preset p5 -g 50 -keyint_min 50 -c:a aac -b:a 128k -ac 2 \
-      -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
-      -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
-      -strftime 1 -hls_segment_filename "/hls/hls_1Mbps/stream-%Y%m%d%H%M%S.ts" \
-      "/hls/hls_1Mbps/stream_1.m3u8"
+      -filter_complex "[0:v]split=2[v2][v3]; \
+                      [v2]scale_npp=1280:720:interp_algo=super[vout2]; \
+                      [v3]scale_npp=640:360:interp_algo=super[vout3]" \
+      -map 0:v -c:v hevc_nvenc -b:v 10M -preset p1 -tune hq -rc cbr -maxrate 10M -bufsize 20M -g 50 -pix_fmt yuv420p \
+          -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
+          -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
+          -strftime 1 -hls_segment_filename "/hls/hls_10Mbps/stream-%Y%m%d%H%M%S.ts" \
+          "/hls/hls_10Mbps/stream_10.m3u8" \
+      -map "[vout2]" -c:v hevc_nvenc -b:v 5M  -preset p1 -tune hq -rc cbr -maxrate 5M -bufsize 10M -g 50 -pix_fmt yuv420p \
+          -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
+          -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
+          -strftime 1 -hls_segment_filename "/hls/hls_5Mbps/stream-%Y%m%d%H%M%S.ts" \
+          "/hls/hls_5Mbps/stream_5.m3u8" \
+      -map "[vout3]" -c:v hevc_nvenc -b:v 1M  -preset p1 -tune hq -rc cbr -maxrate 1M -bufsize 2M -g 50 -pix_fmt yuv420p \
+          -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
+          -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
+          -strftime 1 -hls_segment_filename "/hls/hls_1Mbps/stream-%Y%m%d%H%M%S.ts" \
+          "/hls/hls_1Mbps/stream_1.m3u8" \
+      -map a:0 -c:a aac -b:a 128k -ac 2 -f hls -hls_time 4 -hls_list_size 20 \
+          -hls_segment_filename "/hls/audio/stream-%Y%m%d%H%M%S.ts" "/hls/audio/stream_audio.m3u8" \
+      -master_pl_name "/hls/master.m3u8"
   '';
+
+  # ffmpegCmd = ''
+  #   ${pkgs.ffmpeg-full}/bin/ffmpeg \
+  #     -vsync 0 \
+  #     -hwaccel cuda -hwaccel_output_format cuda \
+  #     -protocol_whitelist "file,udp,rtp" \
+  #     -analyzeduration 200000000 \
+  #     -probesize 150M \
+  #     -fflags +genpts -max_delay 5000000 \
+  #     -f mpegts \
+  #     -i /hls/stream.sdp \
+  #     -filter_complex "[0:v]hwupload_cuda,split=3[v10_in][v5_in][v1_in]; \
+  #                       [v10_in]scale_cuda=w=1920:h=1080,hwdownload,format=yuv420p[v10_scaled]; \
+  #                       [v5_in]scale_cuda=w=1280:h=720,hwdownload,format=yuv420p[v5_scaled]; \
+  #                       [v1_in]scale_cuda=w=640:h=360,hwdownload,format=yuv420p[v1_scaled]" \
+  #     -map "[v10_scaled]" -map 0:a:0 -c:v h264_nvenc -pix_fmt nv12 -b:v 10M -bufsize 20M -preset p5 -g 50 -keyint_min 50 -c:a aac -b:a 128k -ac 2 \
+  #     -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
+  #     -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
+  #     -strftime 1 -hls_segment_filename "/hls/hls_10Mbps/stream-%Y%m%d%H%M%S.ts" \
+  #     "/hls/hls_10Mbps/stream_10.m3u8" \
+  #     -map "[v5_scaled]" -map 0:a:0 -c:v h264_nvenc -pix_fmt nv12 -b:v 5M -bufsize 10M -preset p5 -g 50 -keyint_min 50 -c:a aac -b:a 128k -ac 2 \
+  #     -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
+  #     -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
+  #     -strftime 1 -hls_segment_filename "/hls/hls_5Mbps/stream-%Y%m%d%H%M%S.ts" \
+  #     "/hls/hls_5Mbps/stream_5.m3u8" \
+  #     -map "[v1_scaled]" -map 0:a:0 -c:v h264_nvenc -pix_fmt nv12 -b:v 1M -bufsize 2M -preset p5 -g 50 -keyint_min 50 -c:a aac -b:a 128k -ac 2 \
+  #     -f hls -hls_time 4 -hls_list_size 20 -hls_delete_threshold 2 \
+  #     -hls_flags delete_segments+independent_segments+temp_file+discont_start+omit_endlist \
+  #     -strftime 1 -hls_segment_filename "/hls/hls_1Mbps/stream-%Y%m%d%H%M%S.ts" \
+  #     "/hls/hls_1Mbps/stream_1.m3u8 \
+  #     -master_pl_name /hls/master.m3u8"
+  # '';
       # -i "rtp://239.0.0.1:6000" \
       # -i /hls/stream.sdp \
       # -filter_complex "[0:v]split=3[v10][v5][v1]; \
@@ -120,11 +157,13 @@ in
     }
   ];
 
+  # https://www.freedesktop.org/software/systemd/man/latest/tmpfiles.d.html
   systemd.tmpfiles.rules = [
+    #Type Path        Mode User Group Age Argument…
     "d /hls 0770 nginx nginx -"
-    "d /hls/hls_10Mbps 0770 nginx nginx -"
-    "d /hls/hls_5Mbps 0770 nginx nginx -"
-    "d /hls/hls_1Mbps 0770 nginx nginx -"
+    "d /hls/hls_10Mbps 0770 nginx nginx 5m"
+    "d /hls/hls_5Mbps 0770 nginx nginx 5m"
+    "d /hls/hls_1Mbps 0770 nginx nginx 5m"
   ];
 
   # sudo systemctl restart create-stream-sdp.service
@@ -177,6 +216,13 @@ in
       StandardOutput = "journal";
       StandardError = "journal";
       LimitNOFILE = 1048576;
+
+      # https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Scheduling
+      Nice = "-20";
+      #CPUSchedulingPriority = "99";
+      # https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/assembly_configuring-cpu-affinity-and-numa-policies-using-systemd_managing-monitoring-and-updating-the-kernel#assembly_configuring-cpu-affinity-and-numa-policies-using-systemd_managing-monitoring-and-updating-the-kernel
+      #CPUAffinity=
+      #NUMAMask=
 
       Environment = [
         "CUDA_PATH=${pkgs.linuxPackages.nvidia_x11}/lib"

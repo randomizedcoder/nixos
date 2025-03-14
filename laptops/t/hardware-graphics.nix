@@ -3,6 +3,7 @@
 #
 { config,
   pkgs,
+  lib,
   ...
 }:
 {
@@ -89,7 +90,9 @@
   services.xserver = {
     enable = true;
 
-    videoDrivers = [ "nvidia" "intel" ];
+    videoDrivers = [ "nvidia" "modesetting" ]; # modesetting ~= intel
+    # intel does NOT exist
+    # videoDrivers = [ "nvidia" "intel" ];
     # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/hardware/video/displaylink.nix
     #videoDrivers = [ "nvidia" "displaylink" ];
 
@@ -132,6 +135,9 @@
     EXTRA_LDFLAGS = "-L/lib -L${pkgs.linuxPackages.nvidia_x11}/lib";
     EXTRA_CCFLAGS = "-I/usr/include";
     LD_LIBRARY_PATH = "$\{LD_LIBRARY_PATH\}:/run/opengl-driver/lib:${pkgs.linuxPackages.nvidia_x11}/lib";
+
+    # flameshot
+    QT_QPA_PLATFORM = "wayland";
   };
 }
 

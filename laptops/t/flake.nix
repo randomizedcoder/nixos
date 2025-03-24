@@ -4,10 +4,10 @@
   # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    #nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     # https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
     # nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/8f146535307f0168d758fe6fee6f52663cb11695";#iperf2_2.2.1
-    nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/c9580e24eb621d72eda63355d7c8dbfb1654d333";
+    # nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/c9580e24eb621d72eda63355d7c8dbfb1654d333";
     # https://github.com/NixOS/nix/issues/12022
     #nix flake lock --override-input nixpkgs /home/eelco/Dev/nixpkgs
     #nix flake lock --override-input nixpkgs "/home/das/Downloads/nixpkgs

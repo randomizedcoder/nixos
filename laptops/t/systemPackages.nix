@@ -22,7 +22,6 @@
     usbutils
     pciutils
     virt-manager
-    cudatoolkit
     pkgs.gnomeExtensions.appindicator
     iw
     wirelesstools
@@ -31,13 +30,13 @@
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp
-    neofetch
+    unstable.neofetch
 
     # https://wiki.nixos.org/wiki/Flameshot
     (flameshot.override { enableWlrSupport = true; })
 
     # hyprland
-    hyprland
+    unstable.hyprland
     swww # for wallpapers
     xdg-desktop-portal-gtk
     xdg-desktop-portal-hyprland
@@ -50,16 +49,16 @@
 
     #
     #nvidia
-    vdpauinfo             # sudo vainfo
-    libva-utils           # sudo vainfo
+    unstable.vdpauinfo             # sudo vainfo
+    unstable.libva-utils           # sudo vainfo
     # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
     #
-    ffmpeg-full
+    unstable.ffmpeg-full
     #
     # https://nixos.wiki/wiki/CUDA
-    cudatoolkit
-    linuxPackages.nvidia_x11
-    libGLU
-    libGL
+    unstable.cudatoolkit
+    unstable.linuxPackages.nvidia_x11
+    unstable.libGLU
+    unstable.libGL
   ];
 }

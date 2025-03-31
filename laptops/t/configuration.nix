@@ -55,7 +55,8 @@
     loader.efi.canTouchEfiVariables = true;
 
     # https://nixos.wiki/wiki/Linux_kernel
-    kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
+    #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
+    kernelPackages = pkgs.unstable.linuxPackages;
     #boot.kernelPackages = pkgs.linuxPackages_latest;
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
@@ -175,7 +176,7 @@
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
-  services.clickhouse.enable = true;
+  services.clickhouse.enable = false;
 
   # environment.variables defined in hardware-graphics.nix
   environment.sessionVariables = {
@@ -209,6 +210,12 @@
   };
 
   # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
+  programs.hyprland = {
+    enable = true;
+    # Nvidia patches are no longer needed
+    #nvidiaPatches = true;
+    xwayland.enable = true;
+  };
   # programs.hyprland = {
   #   enable = true;
   #   # set the flake package
@@ -277,6 +284,8 @@
   # guest
   # services.qemuGuest.enable = true;
   # services.spice-vdagentd.enable = true;
+
+  nixpkgs.config.allowUnfree = true;
 
   # https://wiki.nixos.org/wiki/Laptop
 }

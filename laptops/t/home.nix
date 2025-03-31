@@ -133,16 +133,17 @@
     #  thunderbird
     #go_1_23
     unstable.go
-    gopls
-    golint
+    unstable.gopls
+    unstable.golint
     golangci-lint
-    golangci-lint-langserver
-    trunk-io
+    unstable.golangci-lint-langserver
+    # trunk is unfree, and i can't work out how to enable unfree
+    #trunk-io
     # https://github.com/go-delve/delve
-    delve
+    unstable.delve
     # https://github.com/aarzilli/gdlv
     gdlv
-    buf
+    unstable.buf
     protobuf_27
     grpcurl
     # https://github.com/go-gorm/gen

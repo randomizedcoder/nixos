@@ -18,6 +18,9 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
+impure:
+	sudo nixos-rebuild switch --impure --flake .
+
 rebuild_trace:
 	sudo nixos-rebuild switch --show-trace --flake .
 

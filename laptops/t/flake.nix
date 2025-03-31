@@ -39,8 +39,14 @@
         config = { allowUnfree = true; };
       };
       # https://nixos.wiki/wiki/Flakes#Importing_packages_from_multiple_channels
+      # overlay-unstable = final: prev: {
+      #   unstable = nixpkgs-unstable.legacyPackages.${prev.system};
+      # };
       overlay-unstable = final: prev: {
-        unstable = nixpkgs-unstable.legacyPackages.${prev.system};
+        unstable = import nixpkgs-unstable {
+          inherit system;
+          config = { allowUnfree = true; };
+        };
       };
       lib = nixpkgs.lib;
     in {

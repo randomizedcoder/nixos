@@ -63,7 +63,9 @@
     #package = config.boot.kernelPackages.nvidiaPackages.beta; # <---------- was using this
     #package = config.boot.kernelPackages.nvidiaPackages.production;
     # https://nixos.wiki/wiki/Nvidia#Determining_the_Correct_Driver_Version
-    package = pkgs.linuxPackages.nvidia_x11;
+    # https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/nv/nvidia-modprobe/package.nix
+    #package = pkgs.linuxPackages.nvidia_x11;
+    package = pkgs.unstable.linuxPackages.nvidia_x11;
   };
 
   # https://theo.is-a.dev/blog/post/hyprland-adventure/
@@ -155,3 +157,7 @@
     #   #  enableOffloadCmd = true;
     #   #};
     # };
+
+# [LOG] GPU information:
+# 00:02.0 VGA compatible controller [0300]: Intel Corporation CometLake-H GT2 [UHD Graphics] [8086:9bc4] (rev 05) (prog-if 00 [VGA controller])
+# 01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU117GLM [Quadro T2000 Mobile / Max-Q] [10de:1fb8] (rev a1) (prog-if 00 [VGA controller])

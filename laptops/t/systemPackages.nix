@@ -33,7 +33,7 @@
     unstable.neofetch
 
     # https://wiki.nixos.org/wiki/Flameshot
-    (flameshot.override { enableWlrSupport = true; })
+    #(flameshot.override { enableWlrSupport = true; })
 
     # hyprland
     unstable.hyprland

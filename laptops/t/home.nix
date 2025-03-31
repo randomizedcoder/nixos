@@ -26,6 +26,7 @@
 
   # https://nix-community.github.io/home-manager/options.xhtml#opt-home.sessionVariables
   home.sessionVariables = {
+      QT_QPA_PLATFORM = "wayland";
       GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
       # disable wayland
       NIXOS_OZONE_WL = "1";
@@ -230,7 +231,8 @@
     #
     zoom-us
     #
-    flameshot
+    # https://wiki.nixos.org/wiki/Flameshot
+    (flameshot.override { enableWlrSupport = true; })
     grim # screenshot functionality
     slurp # screenshot functionality
     #
@@ -499,6 +501,20 @@
                       }
               }
       }
+    '';
+  };
+  home.file.".config/ghostty/ghostty.toml" = {
+    target = ".config/ghostty/ghostty.toml";
+    text = ''
+      [window]
+      # Whether to show the scrollback sidebar.
+      sidebar = true
+
+      # The width of the scrollback sidebar.
+      sidebar_width = 10
+
+      # Whether to show the scrollback sidebar on the left or right.
+      sidebar_position = "right"
     '';
   };
 

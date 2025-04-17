@@ -51,7 +51,7 @@
       lib = nixpkgs.lib;
     in {
     nixosConfigurations = {
-      t = lib.nixosSystem rec {
+      t14 = lib.nixosSystem rec {
         #system ="x86_64-linux";
         inherit system;
         specialArgs = { inherit hyprland; };

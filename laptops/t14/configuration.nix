@@ -42,6 +42,7 @@
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
+      ./x.nix
     ];
 
   boot = {
@@ -56,8 +57,8 @@
 
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
-    kernelPackages = pkgs.unstable.linuxPackages;
-    #boot.kernelPackages = pkgs.linuxPackages_latest;
+    #kernelPackages = pkgs.unstable.linuxPackages;
+    kernelPackages = pkgs.linuxPackages_latest;
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
     # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
@@ -177,6 +178,11 @@
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
   services.clickhouse.enable = false;
+  # https://nixos.wiki/wiki/PostgreSQL
+  services.postgresql.enable = true;
+  # https://nixos.wiki/wiki/Mysql
+  services.mysql.package = pkgs.mariadb;
+  services.mysql.enable = true;
 
   # environment.variables defined in hardware-graphics.nix
   environment.sessionVariables = {

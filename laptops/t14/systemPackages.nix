@@ -47,18 +47,18 @@
     wl-clipboard
     wlroots
 
-    #
-    #nvidia
-    unstable.vdpauinfo             # sudo vainfo
-    unstable.libva-utils           # sudo vainfo
-    # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
-    #
-    unstable.ffmpeg-full
-    #
-    # https://nixos.wiki/wiki/CUDA
-    unstable.cudatoolkit
-    unstable.linuxPackages.nvidia_x11
-    unstable.libGLU
-    unstable.libGL
+    # #
+    # #nvidia
+    # unstable.vdpauinfo             # sudo vainfo
+    # unstable.libva-utils           # sudo vainfo
+    # # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
+    # #
+    # unstable.ffmpeg-full
+    # #
+    # # https://nixos.wiki/wiki/CUDA
+    # unstable.cudatoolkit
+    # unstable.linuxPackages.nvidia_x11
+    # unstable.libGLU
+    # unstable.libGL
   ];
 }

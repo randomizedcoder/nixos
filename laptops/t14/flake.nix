@@ -1,5 +1,5 @@
 {
-  description = "t Flake";
+  description = "t14 Flake";
 
   # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
@@ -51,7 +51,7 @@
       lib = nixpkgs.lib;
     in {
     nixosConfigurations = {
-      t = lib.nixosSystem rec {
+      t14 = lib.nixosSystem rec {
         #system ="x86_64-linux";
         inherit system;
         specialArgs = { inherit hyprland; };

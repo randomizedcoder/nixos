@@ -195,6 +195,9 @@
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
+  # https://discourse.nixos.org/t/unable-to-fix-too-many-open-files-error/27094/6
+  systemd.extraConfig = "DefaultLimitNOFILE=2048"; # defaults to 1024 if unset
+
   # Enable touchpad support (enabled default in most desktopManager).
   services.libinput.enable = true;
 

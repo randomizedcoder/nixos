@@ -33,6 +33,13 @@
     vdpauinfo             # sudo vainfo
     libva-utils           # sudo vainfo
     # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
-    nvidia-vaapi-driver
+    #
+    ffmpeg-full
+    #
+    # https://nixos.wiki/wiki/CUDA
+    cudatoolkit
+    linuxPackages.nvidia_x11
+    libGLU
+    libGL
   ];
 }

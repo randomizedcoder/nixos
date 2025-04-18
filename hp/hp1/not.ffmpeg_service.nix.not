@@ -1,0 +1,31 @@
+{
+  config,
+  pkgs,
+  ...
+}:
+{
+  systemd.user.services.onedrive-UMFC = {
+    Unit = {
+      Description = "start ffmpeg";
+    };
+    Service = {
+      ProtectSystem = "full";
+      ProtectHostname = true;
+      ProtectKernelTunables = true;
+      ProtectControlGroups = true;
+      RestrictRealtime = true;
+      Group = "users";
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 15";
+      ExecStart= "${pkgs.ffmpeg}/bin/onedrive --monitor --confdir=/home/kazimierzkrauze/.config/onedrive/onedrive-UMFC";
+      Restart = "on-failure";
+      RestartSec = 3;
+      # Do not restart the service if a --resync is required which is done via a 126 exit code
+      RestartPreventExitStatus = 126;
+      # Time to wait for the service to stop gracefully before forcefully terminating it
+      TimeoutStopSec = 90;
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
+};

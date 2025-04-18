@@ -1,5 +1,8 @@
-{ config, pkgs, ... }:
-
+{
+  config,
+  pkgs,
+  ...
+}:
 {
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
@@ -25,5 +28,10 @@
     #snmp seems to be needed by lldpd
     net-snmp
     neofetch
+    #
+    ffmpeg-full
+    radeontop  # GPU monitoring tool
+    # https://nixos.wiki/wiki/AMD_GPU#OpenCL
+    clinfo
   ];
 }

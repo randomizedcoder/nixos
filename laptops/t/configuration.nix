@@ -42,6 +42,7 @@
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
+      ./distributed-builds.nix
     ];
 
   boot = {

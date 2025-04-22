@@ -1,6 +1,9 @@
 #
 # nixos/laptops/t/hardware-graphics.nix
 #
+
+# example: https://github.com/colemickens/nixcfg/blob/1915d408ea28a5b7279f94df7a982dbf2cf692ef/mixins/gfx-nvidia.nix
+
 { config,
   pkgs,
   lib,

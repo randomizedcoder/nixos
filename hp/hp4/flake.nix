@@ -1,9 +1,10 @@
 {
-  description = "HP1 Flake";
+  description = "HP4 Flake";
 
   # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
 
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
@@ -16,29 +17,31 @@
     };
   };
 
-  nixConfig = {
-    extra-substituters = [
-      "http://hp4:5000"
-    ];
-    extra-trusted-public-keys = [
-      "hp4:YkYI70Fsy07fHWdh++V82b5Lgz03J9oE3KcIiFaJg8w="
-    ];
-  };
-
-  outputs = inputs@{ nixpkgs, home-manager, ... }:
+  outputs = inputs@{ nixpkgs, nixpkgs-unstable, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
         config = { allowUnfree = true; };
       };
+      # https://nixos.wiki/wiki/Flakes#Importing_packages_from_multiple_channels
+      # overlay-unstable = final: prev: {
+      #   unstable = nixpkgs-unstable.legacyPackages.${prev.system};
+      # };
+      overlay-unstable = final: prev: {
+        unstable = import nixpkgs-unstable {
+          inherit system;
+          config = { allowUnfree = true; };
+        };
+      };
       lib = nixpkgs.lib;
     in {
     nixosConfigurations = {
-      hp1 = lib.nixosSystem {
+      hp4 = lib.nixosSystem {
         #system ="x86_64-linux";
         inherit system;
         modules = [
+          ({ config, pkgs, ... }: { nixpkgs.overlays = [ overlay-unstable ]; })
           ./configuration.nix
           home-manager.nixosModules.home-manager
           {

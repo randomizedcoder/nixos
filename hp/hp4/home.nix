@@ -136,57 +136,6 @@
     #signing.signByDefault = true;
   };
 
-  # https://github.com/nix-community/home-manager/blob/master/modules/programs/ssh.nix
-  # https://mynixos.com/home-manager/options/programs.ssh
-  # programs.ssh = {
-  #   enable = true;
-  #   #   controlPath = "~/.ssh/control/master-%r@%h:%p";
-  #   #   controlPersist = "10m";
-  #   #   compression = true;
-  #   #   serverAliveInterval = 5;
-  #   extraConfig = ''
-  #     Host hp4
-  #       User remotebuild
-  #       IdentityFile ~/.ssh/remotebuild
-  #     Host *
-  #       User das
-  #       KeepAlive yes
-  #       ServerAliveInterval 10
-  #       Protocol 2
-  #       #UseRoaming no
-  #       ForwardAgent yes
-  #       KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
-  #       Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
-  #       # temp hmac-md5
-  #       #MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-md5
-  #       MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256
-  #       ControlMaster auto
-  #       ControlPath ~/.ssh/master-%r@%h:%p
-  #       ControlPersist 10m
-  #       Compression yes
-  #       Connecttimeout 10
-  #       HashKnownHosts no
-  #   '';
-
-    # matchBlocks = {
-    #   "hp4" = {
-    #     #hostname = "localhost";
-    #     #port = 2222;
-    #     #identityFile = remotebuild;
-    #   };
-    #   "*" = {
-    #     # everything sucks about SSH_AUTH_SOCK, so let's just control
-    #     # it and what it points to directly
-    #     User = "das";
-    #     KeepAlive = "yes";
-    #     ServerAliveInterval = 10;
-    #     Protocol = 2;
-    #   };
-    # };
-  #};
-  #aws ssh example
-  #https://discourse.nixos.org/t/is-there-a-nix-way-to-configure-ssh-server-connections/28033/7?u=randomizedcoder
-
   nixpkgs.config.allowUnfree = true;
 
   programs.home-manager.enable = true;

@@ -166,6 +166,9 @@
     # https://github.com/bazel-contrib/bazel-gazelle/tags
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/ba/bazel-gazelle/package.nix#L26
     unstable.bazel-gazelle
+    unstable.bazel-buildtools
+    unstable.bazelisk
+    # https://github.com/buchgr/bazel-remote - maybe something to look at?
 
     # Debugging/Profiling
     graphviz # for pprof
@@ -357,6 +360,8 @@
       jnoortheen.nix-ide
       #jeff-hykin.better-nix-syntax
       rust-lang.rust-analyzer
+      #bazel
+      bazelbuild.vscode-bazel
     ];
   };
 

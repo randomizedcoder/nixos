@@ -169,6 +169,7 @@
     unstable.bazel-buildtools
     unstable.bazelisk
     # https://github.com/buchgr/bazel-remote - maybe something to look at?
+    # https://github.com/buildfarm/buildfarm?tab=readme-ov-file#helm-chart
 
     # Debugging/Profiling
     graphviz # for pprof

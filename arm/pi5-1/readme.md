@@ -78,3 +78,12 @@ lrwxrwxrwx 1 das users         99 Jan 21 08:55 result -> /nix/store/z5bdj3iczgzm
 ```
 
 
+
+
+https://discourse.nixos.org/t/cross-compiling-building-a-flake-for-raspberry-pi-taking-too-long/51951/2
+
+
+https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation
+
+
+https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation#cross-compilation

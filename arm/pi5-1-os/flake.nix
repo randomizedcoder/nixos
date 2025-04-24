@@ -33,12 +33,12 @@
         # https://www.raspberrypi.com/documentation/computers/linux_kernel.html#native-build-configuration
         raspberry-pi-nix.board = "bcm2712";
         networking = {
-          hostName = "pi5-1";
+          hostName = "pi5-1-os";
         };
       };
     in {
     nixosConfigurations = {
-      pi5-1 = lib.nixosSystem {
+      pi5-1-os = lib.nixosSystem {
         #system ="x86_64-linux";
         inherit system;
         modules = [

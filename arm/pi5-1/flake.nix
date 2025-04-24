@@ -1,8 +1,19 @@
+#
+# arm/pi5-1/flake.nix
+#
+# This is based on
+# https://github.com/NixOS/nixpkgs/issues/260754#issuecomment-2501839916
+#
+# My own success comment
+# https://github.com/NixOS/nixpkgs/issues/260754#issuecomment-2614122573
+#
+# https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation#cross-compilation
+#
 {
   description = "Base system for raspberry pi 5";
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
-    # nixpkgs.url = "nixpkgs/nixos-24.11";
+    # nixpkgs.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "nixpkgs/nixos-24.11";
     # nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixos-generators = {
       url = "github:nix-community/nixos-generators";

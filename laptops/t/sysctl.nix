@@ -2,6 +2,7 @@
 
 {
   # https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html
+  # https://www.l4sgear.com/
   boot.kernel.sysctl = {
     # detect dead connections more quickly
     "net.ipv4.tcp_keepalive_intvl" = 30;
@@ -39,5 +40,16 @@
     #net.core.wmem_max = 212992
     "net.ipv4.ip_local_port_range" = "1025 65535";
     #net.ipv4.ip_local_port_range ="32768 60999"
+    #
+    #net.ipv4.inet_peer_maxttl = 600
+    #net.ipv4.inet_peer_minttl = 120
+    #net.ipv4.ip_default_ttl = 64
+    # we DO want to save the slow start in the route cache
+    "net.ipv4.tcp_no_ssthresh_metrics_save" = 0;
+    #net.ipv4.tcp_no_ssthresh_metrics_save = 1
+    "net.ipv4.tcp_reflect_tos" = 1;
+    #net.ipv4.tcp_reflect_tos = 0
+    "net.ipv4.tcp_rto_min_us" = 50000; #50ms
+    #net.ipv4.tcp_rto_min_us = 200000 #200ms
   };
 }

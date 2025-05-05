@@ -33,9 +33,9 @@
       GOPRIVATE = "gitlab.com/sidenio/*";
       TERM = "xterm-256color";
 
-      HTTP_PROXY = "http://hp4.home:3128";
-      HTTPS_PROXY = "http://hp4.home:3128"; # Use http:// for the proxy address itself
-      NO_PROXY = "localhost,127.0.0.1,::1,172.16.0.0/16"; # Adjust CIDR if needed
+      #HTTP_PROXY = "http://hp4.home:3128";
+      #HTTPS_PROXY = "http://hp4.home:3128";
+      #NO_PROXY = "localhost,127.0.0.1,::1,172.16.0.0/16";
       # You can also use ALL_PROXY or FTP_PROXY if needed
       # ALL_PROXY = "http://hp4:3128";
   };
@@ -159,17 +159,18 @@
     # https://tinygo.org/
     #tinygo
 
-    # https://github.com/bazelbuild/bazel/tags
-    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/tools/build-managers/bazel/bazel_7/default.nix#L524
-    unstable.bazel_7
+    # removing bazel and moving to the "nix develop" shell
+    # # https://github.com/bazelbuild/bazel/tags
+    # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/tools/build-managers/bazel/bazel_7/default.nix#L524
+    # unstable.bazel_7
 
-    # https://github.com/bazel-contrib/bazel-gazelle/tags
-    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/ba/bazel-gazelle/package.nix#L26
-    unstable.bazel-gazelle
-    unstable.bazel-buildtools
-    unstable.bazelisk
-    # https://github.com/buchgr/bazel-remote - maybe something to look at?
-    # https://github.com/buildfarm/buildfarm?tab=readme-ov-file#helm-chart
+    # # https://github.com/bazel-contrib/bazel-gazelle/tags
+    # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/ba/bazel-gazelle/package.nix#L26
+    # unstable.bazel-gazelle
+    # unstable.bazel-buildtools
+    # unstable.bazelisk
+    # # https://github.com/buchgr/bazel-remote - maybe something to look at?
+    # # https://github.com/buildfarm/buildfarm?tab=readme-ov-file#helm-chart
 
     # Debugging/Profiling
     graphviz # for pprof

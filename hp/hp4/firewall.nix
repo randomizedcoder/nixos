@@ -12,7 +12,7 @@
   # sudo nft --stateless list table filter
   # sudo sudo iptables-save
   networking.firewall = {
-    enable = true;
+    enable = false;
     allowedTCPPorts = [
       #22     # ssh
       3000   # grafana

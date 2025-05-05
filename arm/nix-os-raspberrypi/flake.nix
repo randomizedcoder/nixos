@@ -38,7 +38,7 @@
             , nixos-raspberrypi, disko
             , nixos-anywhere, ... }@inputs: let
     allSystems = nixpkgs.lib.systems.flakeExposed;
-    forSystems = systems: f: nixpkgs.lib.genAttrs systems (system: f system);       
+    forSystems = systems: f: nixpkgs.lib.genAttrs systems (system: f system);
   in {
 
     devShells = forSystems allSystems (system: let
@@ -123,14 +123,14 @@
         ];
 
 
-        users.users.nixos.openssh.authorizedKeys.keys = [
-          # YOUR SSH PUB KEY HERE #
+        # users.users.nixos.openssh.authorizedKeys.keys = [
+        #   # YOUR SSH PUB KEY HERE #
 
-        ];
-        users.users.root.openssh.authorizedKeys.keys = [
-          # YOUR SSH PUB KEY HERE #
-          
-        ];
+        # ];
+        # users.users.root.openssh.authorizedKeys.keys = [
+        #   # YOUR SSH PUB KEY HERE #
+
+        # ];
 
 
         system.nixos.tags = let
@@ -248,7 +248,7 @@
 
             nixpkgs.overlays = lib.mkAfter [
               (self: super: {
-                # This is used in (modulesPath + "/hardware/all-firmware.nix") when at least 
+                # This is used in (modulesPath + "/hardware/all-firmware.nix") when at least
                 # enableRedistributableFirmware is enabled
                 # I know no easier way to override this package
                 inherit (kernelBundle) raspberrypiWirelessFirmware;

@@ -4,7 +4,8 @@
   ...
 }:
 {
-  nixpkgs.config.allowUnfree = true;
+  # set at flake.nix level
+  #nixpkgs.config.allowUnfree = true;
 
   # $ nix search wget
   environment.systemPackages = with pkgs; [

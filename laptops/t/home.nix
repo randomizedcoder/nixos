@@ -2,6 +2,7 @@
   hyprland,
   config,
   pkgs,
+  overlay-unstable,
   ...
 }:
 #{ config, pkgs, ... }:
@@ -26,18 +27,20 @@
 
   # https://nix-community.github.io/home-manager/options.xhtml#opt-home.sessionVariables
   home.sessionVariables = {
-      QT_QPA_PLATFORM = "wayland";
-      GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
-      # disable wayland
-      NIXOS_OZONE_WL = "1";
-      GOPRIVATE = "gitlab.com/sidenio/*";
-      TERM = "xterm-256color";
+    NIXPKGS_ALLOW_UNFREE = "1";
 
-      #HTTP_PROXY = "http://hp4.home:3128";
-      #HTTPS_PROXY = "http://hp4.home:3128";
-      #NO_PROXY = "localhost,127.0.0.1,::1,172.16.0.0/16";
-      # You can also use ALL_PROXY or FTP_PROXY if needed
-      # ALL_PROXY = "http://hp4:3128";
+    QT_QPA_PLATFORM = "wayland";
+    GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
+    # disable wayland
+    NIXOS_OZONE_WL = "1";
+    GOPRIVATE = "gitlab.com/sidenio/*";
+    TERM = "xterm-256color";
+
+    #HTTP_PROXY = "http://hp4.home:3128";
+    #HTTPS_PROXY = "http://hp4.home:3128";
+    #NO_PROXY = "localhost,127.0.0.1,::1,172.16.0.0/16";
+    # You can also use ALL_PROXY or FTP_PROXY if needed
+    # ALL_PROXY = "http://hp4:3128";
   };
 
   home.packages = with pkgs; [
@@ -164,6 +167,8 @@
     # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/tools/build-managers/bazel/bazel_7/default.nix#L524
     # unstable.bazel_7
 
+    unstable.code-cursor
+
     # # https://github.com/bazel-contrib/bazel-gazelle/tags
     # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/ba/bazel-gazelle/package.nix#L26
     # unstable.bazel-gazelle
@@ -249,8 +254,8 @@
 
     # Communication
     # https://nixos.wiki/wiki/Slack
-    slack
-    zoom-us
+    unstable.slack
+    unstable.zoom-us
 
     # Screenshots/Screen Recording
     # https://wiki.nixos.org/wiki/Flameshot
@@ -320,9 +325,11 @@
   # https://mynixos.com/home-manager/options/programs.vscode
   programs.vscode = {
     enable = true;
-    package = pkgs.vscode;
-    extensions = with pkgs.vscode-extensions; [
-      bbenoist.nix
+    # package = pkgs.vscode;
+    # extensions = with pkgs.vscode-extensions; [
+    package = pkgs.unstable.vscode;
+    extensions = with pkgs.unstable.vscode-extensions; [
+      #bbenoist.nix
       dart-code.dart-code
       dart-code.flutter
       golang.go
@@ -356,7 +363,7 @@
       zxh404.vscode-proto3
       yzhang.markdown-all-in-one
       #platformio.platformio-ide
-      github.copilot
+      #github.copilot
       # nix
       #brettm12345.nixfmt.vscode
       jnoortheen.nix-ide
@@ -568,7 +575,10 @@
   };
   # https://github.com/colemickens/nixcfg/blob/1915d408ea28a5b7279f94df7a982dbf2cf692ef/mixins/ghostty.nix#L19
 
+  # set at flake.nix level
   nixpkgs.config.allowUnfree = true;
+
+  nixpkgs.overlays = [ overlay-unstable ];
 
   #home.stateVersion = "23.11";
   home.stateVersion = "24.11";

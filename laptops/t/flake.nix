@@ -36,7 +36,17 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
-        config = { allowUnfree = true; };
+        config = {
+          allowUnfree = true;
+            allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+              "nvidia-x11"
+              "nvidia-settings"
+              "nvidia-persistenced"
+              "google-chrome"
+              "android-studio"
+              "android-studio-stable"
+              ];
+        };
       };
       # https://nixos.wiki/wiki/Flakes#Importing_packages_from_multiple_channels
       # overlay-unstable = final: prev: {
@@ -45,23 +55,35 @@
       overlay-unstable = final: prev: {
         unstable = import nixpkgs-unstable {
           inherit system;
-          config = { allowUnfree = true; };
+          config = {
+            allowUnfree = true;
+            # allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+            #   "vscode"
+            #   "code-cursor"
+            #   "slack"
+            #   "zoom-us"
+            #   "nvidia-x11"
+            #   ];
+          };
         };
       };
       lib = nixpkgs.lib;
     in {
     nixosConfigurations = {
       t = lib.nixosSystem rec {
-        #system ="x86_64-linux";
         inherit system;
-        specialArgs = { inherit hyprland; };
+        specialArgs = {
+          inherit hyprland;
+          inherit overlay-unstable;
+        };
         modules = [
           ({ config, pkgs, ... }: { nixpkgs.overlays = [ overlay-unstable ]; })
           ./configuration.nix
           hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
-            home-manager.useGlobalPkgs = true;
+            # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
+            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
             home-manager.useUserPackages = true;
             home-manager.users.das = import ./home.nix;
             home-manager.extraSpecialArgs = specialArgs;

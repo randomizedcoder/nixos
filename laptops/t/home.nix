@@ -58,11 +58,24 @@
     tmux
     screen
 
+    # LLVM/Clang toolchain (needed for race detection and C/C++ builds)
+    llvmPackages_19.libcxxClang
+    llvmPackages_19.lld
+    llvmPackages_19.libcxx.dev
+
+    # Essential development libraries (minimal headers)
+    glibc.dev
+    stdenv.cc.cc.lib
+    zlib.dev
+    openssl.dev
+    ncurses.dev
+    libyaml.dev
+
     # Build Tools
     libgcc
     # https://nixos.wiki/wiki/C
     # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
-    gcc
+    #gcc
     automake
     gnumake
     #cmake
@@ -79,6 +92,8 @@
     btop
     minicom
 
+    bc
+
     # Compression
     bzip2
     gzip
@@ -87,6 +102,8 @@
     unzip
     xz
     zstd
+
+    gnutar
 
     # File Transfer/Management
     rsync
@@ -165,7 +182,8 @@
     # removing bazel and moving to the "nix develop" shell
     # # https://github.com/bazelbuild/bazel/tags
     # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/tools/build-managers/bazel/bazel_7/default.nix#L524
-    # unstable.bazel_7
+    unstable.bazel_7
+    unstable.bazel-buildtools
 
     unstable.code-cursor
 

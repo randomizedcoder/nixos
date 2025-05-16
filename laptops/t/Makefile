@@ -54,4 +54,7 @@ update_oldm.:
 	sudo nixos-rebuild switch
 	#nix-shell -p vim
 
+restart_display_manager:
+	sudo systemctl restart display-manager.service
+
 # end

@@ -1,6 +1,6 @@
 # Edit this configuration file to define what should be installed on
 # your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
+# and in the NixOS manual (accessible by running 'nixos-help').
 
 # sudo nixos-rebuild switch
 # sudo nix-channel --update
@@ -46,7 +46,6 @@
     ];
 
   boot = {
-
     loader.systemd-boot = {
       enable = true;
       consoleMode = "max";
@@ -63,8 +62,8 @@
 
     # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
     kernelParams = [
-      #"nvidia-drm.modeset=1"
-      #"nvidia-drm.fbdev=1"
+      "nvidia-drm.modeset=1"
+      "nvidia-drm.fbdev=1"
       # https://www.reddit.com/r/NixOS/comments/u5l3ya/cant_start_x_in_nixos/?rdt=56160
       #"nomodeset"
     ];
@@ -78,49 +77,33 @@
     # https://nixos.org/manual/nixos/stable/options#opt-boot.binfmt.emulatedSystems
     binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
 
-    extraModulePackages = with config.boot.kernelPackages; [
-      v4l2loopback
-      #nvidia_x11
+    extraModulePackages = [
+      config.boot.kernelPackages.v4l2loopback
+      pkgs.unstable.linuxPackages.nvidiaPackages.production
     ];
 
-    # https://nixos.wiki/wiki/Libvirt#Nested_virtualization
-    #extraModprobeConfig = "options kvm_intel nested=1";
-    # https://gist.github.com/chrisheib/162c8cad466638f568f0fb7e5a6f4f6b#file-config_working-nix-L19
-    extraModprobeConfig =
-      "options nvidia "
-      #""
-      + lib.concatStringsSep " " [
-      # nvidia assume that by default your CPU does not support PAT,
-      # but this is effectively never the case in 2023
-      "NVreg_UsePageAttributeTable=1"
-      # This is sometimes needed for ddc/ci support, see
-      # https://www.ddcutil.com/nvidia/
-      #
-      # Current monitor does not support it, but this is useful for
-      # the future
-      "NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100"
-      "options kvm_intel nested=1"
-      # # https://nixos.wiki/wiki/OBS_Studio
-      ''
-        options v4l2loopback devices=1 video_nr=1 card_label="OBS Cam" exclusive_caps=1
-      ''
-      ];
+    extraModprobeConfig = ''
+      options nvidia NVreg_UsePageAttributeTable=1
+      options nvidia NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100
+      options kvm_intel nested=1
+      options v4l2loopback devices=1 video_nr=1 card_label="OBS Cam" exclusive_caps=1
+    '';
   };
 
   # For OBS
   security.polkit.enable = true;
 
   nix = {
-    gc = {
-      automatic = true;                  # Enable automatic execution of the task
-      dates = "weekly";                  # Schedule the task to run weekly
-      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
-      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
-    };
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
+    };
+    gc = {
+      automatic = true;                  # Enable automatic execution of the task
+      dates = "daily";                   # Schedule the task to run daily
+      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
+      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
     };
   };
 
@@ -280,7 +263,7 @@
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
+  # on your system were taken. It's perfectly fine and recommended to leave
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
@@ -290,10 +273,20 @@
 
   nixpkgs.config = {
     allowUnfree = true;
-    allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-      "nvidia-x11"
-      "nvidia-settings"
-      "nvidia-persistenced"
-    ];
+    # allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    #   "nvidia-x11"
+    #   "nvidia-settings"
+    #   "nvidia-persistenced"
+    # ];
   };
+
+  # hardware.opengl = {
+  #   enable = true;
+  #   driSupport = true;
+  #   driSupport32Bit = true;
+  #   extraPackages = with pkgs; [
+  #     vaapiVdpau
+  #     libvdpau-va-gl
+  #   ];
+  # };
 }

@@ -182,8 +182,9 @@
     # removing bazel and moving to the "nix develop" shell
     # # https://github.com/bazelbuild/bazel/tags
     # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/tools/build-managers/bazel/bazel_7/default.nix#L524
-    unstable.bazel_7
+    #unstable.bazel_7
     unstable.bazel-buildtools
+    unstable.bazelisk
 
     unstable.code-cursor
 

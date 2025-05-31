@@ -90,6 +90,24 @@
     '';
   };
 
+  # https://fzakaria.com/2025/02/26/nix-pragmatism-nix-ld-and-envfs
+  # Enable nix-ld for better compatibility with non-Nix binaries
+  programs.nix-ld = {
+    enable = false;
+    # Add commonly needed libraries
+    libraries = with pkgs; [
+      stdenv.cc.cc.lib
+      zlib
+      libxml2
+      # Add more libraries as needed
+    ];
+  };
+
+  # Enable envfs for better compatibility with FHS expectations
+  services.envfs = {
+    enable = false;
+  };
+
   # For OBS
   security.polkit.enable = true;
 

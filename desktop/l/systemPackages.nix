@@ -36,6 +36,11 @@
     wayland-utils
     wl-clipboard
 
+    xscreensaver
+
+    clinfo
+    lact
+
     # https://wiki.nixos.org/wiki/Flameshot
     #(flameshot.override { enableWlrSupport = true; })
   ];

@@ -16,16 +16,13 @@
   ...
 }:
 
-# https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
-# https://discourse.nixos.org/t/differences-between-nix-channels/13998
-
 {
   # https://nixos.wiki/wiki/NixOS_modules
   # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
   imports =
     [
       ./hardware-configuration.nix
-      ./hardware-graphics.nix
+      #./hardware-graphics.nix
       ./sysctl.nix
       ./wireless_desktop.nix
       ./locale.nix
@@ -43,6 +40,7 @@
       ./docker-daemon.nix
       #./smokeping.nix
       ./distributed-builds.nix
+      ./hyprland.nix
     ];
 
   boot = {
@@ -56,8 +54,8 @@
 
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
-    kernelPackages = pkgs.unstable.linuxPackages;
-    #boot.kernelPackages = pkgs.linuxPackages_latest;
+    #kernelPackages = pkgs.linuxPackages;
+    kernelPackages = pkgs.linuxPackages_latest;
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
     # # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
@@ -67,6 +65,10 @@
     #   # https://www.reddit.com/r/NixOS/comments/u5l3ya/cant_start_x_in_nixos/?rdt=56160
     #   #"nomodeset"
     # ];
+
+    initrd.kernelModules = [
+      "amdgpu"
+    ];
 
     blacklistedKernelModules = [
       "nouveau"
@@ -79,7 +81,6 @@
 
     extraModulePackages = [
       config.boot.kernelPackages.v4l2loopback
-      #pkgs.unstable.linuxPackages.nvidiaPackages.production
     ];
 
     extraModprobeConfig = ''
@@ -91,7 +92,7 @@
   # https://fzakaria.com/2025/02/26/nix-pragmatism-nix-ld-and-envfs
   # Enable nix-ld for better compatibility with non-Nix binaries
   programs.nix-ld = {
-    enable = false;
+    enable = true;
     # Add commonly needed libraries
     libraries = with pkgs; [
       stdenv.cc.cc.lib
@@ -103,7 +104,7 @@
 
   # Enable envfs for better compatibility with FHS expectations
   services.envfs = {
-    enable = false;
+    enable = true;
   };
 
   # For OBS
@@ -131,8 +132,8 @@
   services.udev.packages = [ pkgs.gnome-settings-daemon ];
   # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
-  # https://nixos.wiki/wiki/NixOS_Wiki:Audio
-  hardware.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
+  # # https://nixos.wiki/wiki/NixOS_Wiki:Audio
+  # services.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
 
   security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
 
@@ -182,7 +183,6 @@
   environment.sessionVariables = {
     TERM = "xterm-256color";
     #MY_VARIABLE = "my-value";
-    #ANOTHER_VARIABLE = "another-value";
   };
 
   users.users.das = {
@@ -209,35 +209,44 @@
      enableSSHSupport = true;
   };
 
-  # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
-  programs.hyprland = {
-    enable = true;
-    # Nvidia patches are no longer needed
-    #nvidiaPatches = true;
-    xwayland.enable = true;
+  hardware.graphics = {
+    enable = true; # auto includes mesa
+    package = pkgs.mesa;
+    extraPackages = with pkgs; [
+      libglvnd
+      libva-vdpau-driver
+      libvdpau-va-gl
+      rocmPackages.clr.icd
+    ];
   };
+  services.xserver = {
+    enable = true;
+    videoDrivers = [ "amdgpu" ];
+    xkb = {
+      layout = "us";
+      variant = "";
+    };
+  };
+
+  services.desktopManager.gnome.enable = true;
+  services.displayManager.gdm.enable = true;
+
+  # https://nixos.wiki/wiki/AMD_GPU
+  systemd.tmpfiles.rules = [
+    "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
+  ];
+  systemd.services.lactd.wantedBy = [ "multi-user.target" ];
+
+  xdg.portal = {
+    enable = true;
+    extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
+    config.common.default = "gtk";
+  };
+
+  # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
   # programs.hyprland = {
   #   enable = true;
-  #   # set the flake package
-  #   package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
-  #   # make sure to also set the portal package, so that they are in sync
-  #   portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
-  # };
-
-  # programs.chromium.enable = true;
-  # # programs.chromium.package = pkgs.google-chrome;
-  # # https://nixos.wiki/wiki/Chromium#Enabling_native_Wayland_support
-  # nixpkgs.config.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
-  # #programs.chromium.commandLineArgs = "--enable-features=UseOzonePlatform --ozone-platform=wayland";
-
-  # programs.firefox.enable = true;
-  # # # https://github.com/TLATER/dotfiles/blob/master/nixos-modules/nvidia/default.nix
-  # programs.firefox.preferences = {
-  #   "media.ffmpeg.vaapi.enabled" = true;
-  #   "media.rdd-ffmpeg.enabled" = true;
-  #   "media.av1.enabled" = true; # Won't work on the 2060
-  #   "gfx.x11-egl.force-enabled" = true;
-  #   "widget.dmabuf.force-enabled" = true;
+  #   xwayland.enable = true;
   # };
 
   # Open ports in the firewall.
@@ -277,32 +286,10 @@
 
   # https://wiki.nixos.org/wiki/Laptop
 
-  # This value determines the NixOS release from which the default
-  # settings for stateful data, like file locations and database versions
-  # on your system were taken. It's perfectly fine and recommended to leave
-  # this value at the release version of the first install of this system.
-  # Before changing this value read the documentation for this option
-  # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  #system.stateVersion = "23.11";
-
   system.stateVersion = "24.11";
 
   nixpkgs.config = {
     allowUnfree = true;
-    # allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-    #   "nvidia-x11"
-    #   "nvidia-settings"
-    #   "nvidia-persistenced"
-    # ];
   };
 
-  # hardware.opengl = {
-  #   enable = true;
-  #   driSupport = true;
-  #   driSupport32Bit = true;
-  #   extraPackages = with pkgs; [
-  #     vaapiVdpau
-  #     libvdpau-va-gl
-  #   ];
-  # };
 }

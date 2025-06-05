@@ -57,4 +57,16 @@ update_oldm.:
 restart_display_manager:
 	sudo systemctl restart display-manager.service
 
+#ls -l /run/opengl-driver/lib/gbm/
+#readlink /run/opengl-driver/lib/gbm/dri_gbm.so
+#glxinfo | grep -i 'renderer'
+
+#journalctl -b | grep -Ei 'X.*fatal|gdm|wayland|mesa|amdgpu' --no-pager
+#less /var/log/Xorg.0.log
+
+#nix-shell -p mesa-demos
+#glxinfo | grep -i opengl
+
+# cat configuration.nix | grep -A 20 "hardware.graphics ="
+
 # end

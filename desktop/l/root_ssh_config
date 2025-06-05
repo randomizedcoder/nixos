@@ -1,0 +1,21 @@
+host hp4 hp4.home
+        user remotebuild
+        IdentityFile ~/.ssh/remotebuild
+        ServerAliveInterval 10
+        Protocol 2
+        #UseRoaming no
+        ForwardAgent yes
+        # Modern Key Exchange Algorithms (Kex) - Prioritizes Post-Quantum (if available) and Curve25519
+        KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256@libssh.org,curve25519-sha256,diffie-hellman-group-exchange-sha256
+        # Modern Ciphers - Prioritizes ChaCha20 and AES-GCM (Authenticated Encryption)
+        Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+        # Modern MACs - Prioritizes Encrypt-then-MAC (EtM) modes
+        MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com
+        # temp hmac-md5
+        #MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-md5
+        ControlMaster auto
+        ControlPath ~/.ssh/master-%r@%h:%p
+        ControlPersist 10m
+        Compression yes
+        Connecttimeout 10
+        HashKnownHosts no

@@ -12,9 +12,13 @@
   inputs,
   config,
   pkgs,
+  unstable,
   lib,
   ...
 }:
+
+# https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
+# https://discourse.nixos.org/t/differences-between-nix-channels/13998
 
 {
   # https://nixos.wiki/wiki/NixOS_modules
@@ -40,7 +44,6 @@
       ./docker-daemon.nix
       #./smokeping.nix
       ./distributed-builds.nix
-      ./hyprland.nix
     ];
 
   boot = {
@@ -54,8 +57,8 @@
 
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
-    #kernelPackages = pkgs.linuxPackages;
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.unstable.linuxPackages;
+    #boot.kernelPackages = pkgs.linuxPackages_latest;
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
     # # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
@@ -81,6 +84,7 @@
 
     extraModulePackages = [
       config.boot.kernelPackages.v4l2loopback
+      #pkgs.unstable.linuxPackages.nvidiaPackages.production
     ];
 
     extraModprobeConfig = ''
@@ -92,7 +96,7 @@
   # https://fzakaria.com/2025/02/26/nix-pragmatism-nix-ld-and-envfs
   # Enable nix-ld for better compatibility with non-Nix binaries
   programs.nix-ld = {
-    enable = true;
+    enable = false;
     # Add commonly needed libraries
     libraries = with pkgs; [
       stdenv.cc.cc.lib
@@ -104,7 +108,7 @@
 
   # Enable envfs for better compatibility with FHS expectations
   services.envfs = {
-    enable = true;
+    enable = false;
   };
 
   # For OBS
@@ -132,8 +136,8 @@
   services.udev.packages = [ pkgs.gnome-settings-daemon ];
   # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
-  # # https://nixos.wiki/wiki/NixOS_Wiki:Audio
-  # services.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
+  # https://nixos.wiki/wiki/NixOS_Wiki:Audio
+  hardware.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
 
   security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
 
@@ -146,15 +150,8 @@
     # jack.enable = true;
   };
 
-  services.openssh.enable = true;
-  programs.ssh.extraConfig = ''
-  Host hp4.home
-    PubkeyAcceptedKeyTypes ssh-ed25519
-    ServerAliveInterval 60
-    IPQoS throughput
-  '';
-
   services.lldpd.enable = true;
+  services.openssh.enable = true;
   services.timesyncd.enable = true;
   services.fstrim.enable = true;
   services.avahi = {
@@ -218,25 +215,21 @@
 
   hardware.graphics = {
     enable = true; # auto includes mesa
-    package = pkgs.mesa;
+    package = unstable.mesa;
     extraPackages = with pkgs; [
-      libglvnd
-      libva-vdpau-driver
-      libvdpau-va-gl
-      rocmPackages.clr.icd
+      unstable.libglvnd
+      unstable.libva-vdpau-driver
+      unstable.libvdpau-va-gl
+      unstable.rocmPackages.clr.icd
     ];
   };
   services.xserver = {
     enable = true;
+    displayManager.gdm.enable = true;
+    #displayManager.gdm.wayland = true;
+    desktopManager.gnome.enable = true;
     videoDrivers = [ "amdgpu" ];
-    xkb = {
-      layout = "us";
-      variant = "";
-    };
   };
-
-  services.desktopManager.gnome.enable = true;
-  services.displayManager.gdm.enable = true;
 
   # https://nixos.wiki/wiki/AMD_GPU
   systemd.tmpfiles.rules = [
@@ -244,17 +237,19 @@
   ];
   systemd.services.lactd.wantedBy = [ "multi-user.target" ];
 
-  xdg.portal = {
-    enable = true;
-    extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
-    config.common.default = "gtk";
+  # Configure keymap in X11
+  services.xserver.xkb = {
+    layout = "us";
+    variant = "";
   };
 
   # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
-  # programs.hyprland = {
-  #   enable = true;
-  #   xwayland.enable = true;
-  # };
+  programs.hyprland = {
+    enable = true;
+    # Nvidia patches are no longer needed
+    #nvidiaPatches = true;
+    xwayland.enable = true;
+  };
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
@@ -297,6 +292,20 @@
 
   nixpkgs.config = {
     allowUnfree = true;
+    # allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    #   "nvidia-x11"
+    #   "nvidia-settings"
+    #   "nvidia-persistenced"
+    # ];
   };
 
+  # hardware.opengl = {
+  #   enable = true;
+  #   driSupport = true;
+  #   driSupport32Bit = true;
+  #   extraPackages = with pkgs; [
+  #     vaapiVdpau
+  #     libvdpau-va-gl
+  #   ];
+  # };
 }

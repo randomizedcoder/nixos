@@ -15,10 +15,30 @@
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINjiY/MIQUyp58JXt+fuy1mQWCZfFhbYoRK6jJN5ZxeV root@t"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMO7liZykpeI/ggPRBXQswdLAZWNWj+h8QA3hzQLi0ai das@hp1"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIBUWTELKL25XhSi+le+KNqaeAQvZ4Sh0/+lmRpiJzKn root@l"
     ];
   };
 
   users.groups.remotebuild = {};
 
-  nix.settings.trusted-users = [ "remotebuild" ];
+  # https://nix.dev/tutorials/nixos/distributed-builds-setup.html#optimise-the-remote-builder-configuration
+  # nix.settings.trusted-users = [ "remotebuild" ];
+  nix = {
+    nrBuildUsers = 64;
+    settings = {
+      trusted-users = [ "remotebuild" ];
+
+      min-free = 10 * 1024 * 1024;
+      max-free = 200 * 1024 * 1024;
+
+      max-jobs = "auto";
+      cores = 0;
+    };
+  };
+
+  systemd.services.nix-daemon.serviceConfig = {
+    MemoryAccounting = true;
+    MemoryMax = "90%";
+    OOMScoreAdjust = 500;
+  };
 }

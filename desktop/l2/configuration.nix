@@ -125,7 +125,7 @@
   };
 
   # https://nixos.wiki/wiki/Networking
-  networking.hostName = "l";
+  networking.hostName = "l2";
 
   time.timeZone = "America/Los_Angeles";
 

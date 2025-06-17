@@ -39,7 +39,7 @@
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
-      ./distributed-builds.nix
+      #./distributed-builds.nix
       ./hyprland.nix
     ];
 
@@ -115,6 +115,11 @@
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
+      # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-jobs
+      max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
+      http-connections = 100; # default 25
+      # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-substitution-jobs
+      max-substitution-jobs = 64; # default 16
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task

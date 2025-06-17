@@ -658,6 +658,9 @@
     #silly
     cmatrix
     sl
+    vectoroids # game
+    # https://feralinteractive.github.io/gamemode/
+    # sameboy
 
     #gpu monitoring
     lact

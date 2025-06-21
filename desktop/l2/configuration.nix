@@ -41,6 +41,7 @@
       #./smokeping.nix
       #./distributed-builds.nix
       ./hyprland.nix
+      ./hostapd.nix
     ];
 
   boot = {

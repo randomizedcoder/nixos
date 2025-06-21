@@ -33,6 +33,10 @@ rebuild_trace:
 update:
 	sudo nix flake update;
 
+sync:
+	rsync -av /home/das/nixos/desktop/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/desktop/"${EXPECTED_HOSTNAME}"/
+	#rsync -av /home/das/nixos/modules/ hp1:/home/das/nixos/modules/
+
 rebuild_old:
 	# sudo cp ./flake.nix /etc/nixos/
 	# sudo cp ./flake.lock /etc/nixos/

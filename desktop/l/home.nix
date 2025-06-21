@@ -395,6 +395,8 @@
     #cmake
     pkg-config
 
+    gdb
+
     # Scripting/Utils
     perl
     #3.12.8 on 12th of Feb 2025

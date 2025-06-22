@@ -21,13 +21,8 @@
   outputs = { self, nixpkgs, home-manager, hyprland, ... }:
     let
       system = "x86_64-linux";
-      overlays = [
-        (final: prev: {
-          hostapd = import ./hostapd-80211r.nix { pkgs = prev; };
-        })
-      ];
       pkgs = import nixpkgs {
-        inherit system overlays;
+        inherit system;
         config = {
           allowUnfree = true;
             allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
@@ -67,11 +62,6 @@
             # see also: https://github.com/HeinzDev/Hyprland-dotfiles/blob/main/flake.nix
           }
         ];
-      };
-    };
-    packages = {
-      x86_64-linux = {
-        hostapd = pkgs.hostapd;
       };
     };
   };

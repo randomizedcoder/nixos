@@ -34,8 +34,7 @@ update:
 	sudo nix flake update;
 
 sync:
-	rsync -av /home/das/nixos/desktop/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/desktop/"${EXPECTED_HOSTNAME}"/
-	#rsync -av /home/das/nixos/modules/ hp1:/home/das/nixos/modules/
+	rsync -avz /home/das/nixos/ "${EXPECTED_HOSTNAME}":/home/das/nixos/
 
 rebuild_old:
 	# sudo cp ./flake.nix /etc/nixos/

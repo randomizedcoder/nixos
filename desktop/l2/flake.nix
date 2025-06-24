@@ -1,3 +1,6 @@
+#
+# l2/flake.nix
+#
 {
   description = "l2 Flake";
 
@@ -10,56 +13,30 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hyprland.url = "github:hyprwm/Hyprland";
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      inputs.hyprland.follows = "hyprland";
-    };
   };
 
-  #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, home-manager, hyprland, ... }:
+  outputs = { self, nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
         config = {
           allowUnfree = true;
-            allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-              # "nvidia-x11"
-              # "nvidia-settings"
-              # "nvidia-persistenced"
-              "google-chrome"
-              "android-studio"
-              "android-studio-stable"
-              ];
         };
       };
-
       lib = nixpkgs.lib;
     in {
     nixosConfigurations = {
       l2 = lib.nixosSystem rec {
         inherit system;
-        specialArgs = {
-          inherit hyprland;
-          unstable = pkgs;
-        };
         modules = [
           ./configuration.nix
-          hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
-            # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
-            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
             home-manager.useUserPackages = true;
             home-manager.users.das = { config, pkgs, ... }: {
-              imports = [
-                ./home.nix
-              ];
+              imports = [ ./home.nix ];
             };
-            home-manager.extraSpecialArgs = specialArgs;
-            # see also: https://github.com/HeinzDev/Hyprland-dotfiles/blob/main/flake.nix
           }
         ];
       };

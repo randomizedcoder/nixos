@@ -377,11 +377,28 @@
     llvmPackages_20.clang-tools
     llvmPackages_20.lld
 
+    # LLVM C++ Standard Library, compiler runtime, and unwind library
+    llvmPackages_20.stdenv
+    llvmPackages_20.libcxxStdenv
+    llvmPackages_20.libcxxClang
+    llvmPackages_20.libcxx          # Provides libc++.so, libc++.a (libraries)
+    llvmPackages_20.libcxx.dev      # Provides C++ headers
+    # do NOT include llvm.libc-full, because it will override glibc
+    #llvm.libc-full
+    llvmPackages_20.compiler-rt     # Provides libclang_rt.builtins*.a
+    llvmPackages_20.compiler-rt.dev # Provides libclang_rt headers
+    llvmPackages_20.libunwind       # Provides libunwind for exception handling
+    llvmPackages_20.libunwind.dev   # Provides libunwind headers
+
+    libclang libclang.dev libclang.lib
+
     # Essential development libraries (minimal headers)
-    glibc.dev
+    glibc glibc.dev glibc.static
+    libgcc libgcc.lib
+    gcc-unwrapped gcc-unwrapped.lib gcc-unwrapped.libgcc
     stdenv.cc.cc.lib
     zlib.dev
-    openssl.dev
+    openssl openssl.dev openssl.out
     ncurses.dev
     libyaml.dev
 

@@ -42,6 +42,7 @@
     lact
 
     hostapd
+    bridge-utils
 
     # https://wiki.nixos.org/wiki/Flameshot
     #(flameshot.override { enableWlrSupport = true; })

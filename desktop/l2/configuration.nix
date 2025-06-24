@@ -24,7 +24,7 @@
       ./hardware-configuration.nix
       #./hardware-graphics.nix
       ./sysctl.nix
-      ./wireless_desktop.nix
+      #./wireless_desktop.nix
       ./locale.nix
       ./hosts.nix
       ./firewall.nix
@@ -40,8 +40,9 @@
       ./docker-daemon.nix
       #./smokeping.nix
       #./distributed-builds.nix
-      ./hyprland.nix
-      ./hostapd.nix
+      #./hyprland.nix
+      #./hostapd.nix
+      ./hostapd-multi.nix
     ];
 
   boot = {
@@ -141,16 +142,16 @@
   # # https://nixos.wiki/wiki/NixOS_Wiki:Audio
   # services.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
 
-  security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
+  # security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
 
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-    # Uncomment the following line if you want to use JACK applications
-    # jack.enable = true;
-  };
+  # services.pipewire = {
+  #   enable = true;
+  #   alsa.enable = true;
+  #   alsa.support32Bit = true;
+  #   pulse.enable = true;
+  #   # Uncomment the following line if you want to use JACK applications
+  #   # jack.enable = true;
+  # };
 
   services.openssh.enable = true;
   programs.ssh.extraConfig = ''
@@ -176,7 +177,7 @@
   # services.libinput.enable = true;
 
   # https://nixos.wiki/wiki/Printing
-  services.printing.enable = true;
+  #services.printing.enable = true;
 
   # https://wiki.nixos.org/wiki/Flameshot
   # services.flameshot = {
@@ -222,39 +223,39 @@
      enableSSHSupport = true;
   };
 
-  hardware.graphics = {
-    enable = true; # auto includes mesa
-    package = pkgs.mesa;
-    extraPackages = with pkgs; [
-      libglvnd
-      libva-vdpau-driver
-      libvdpau-va-gl
-      rocmPackages.clr.icd
-    ];
-  };
-  services.xserver = {
-    enable = true;
-    videoDrivers = [ "amdgpu" ];
-    xkb = {
-      layout = "us";
-      variant = "";
-    };
-  };
+  # hardware.graphics = {
+  #   enable = true; # auto includes mesa
+  #   package = pkgs.mesa;
+  #   extraPackages = with pkgs; [
+  #     libglvnd
+  #     libva-vdpau-driver
+  #     libvdpau-va-gl
+  #     rocmPackages.clr.icd
+  #   ];
+  # };
+  # services.xserver = {
+  #   enable = true;
+  #   videoDrivers = [ "amdgpu" ];
+  #   xkb = {
+  #     layout = "us";
+  #     variant = "";
+  #   };
+  # };
 
-  services.desktopManager.gnome.enable = true;
-  services.displayManager.gdm.enable = true;
+  # services.desktopManager.gnome.enable = true;
+  # services.displayManager.gdm.enable = true;
 
-  # https://nixos.wiki/wiki/AMD_GPU
-  systemd.tmpfiles.rules = [
-    "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
-  ];
-  systemd.services.lactd.wantedBy = [ "multi-user.target" ];
+  # # https://nixos.wiki/wiki/AMD_GPU
+  # systemd.tmpfiles.rules = [
+  #   "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
+  # ];
+  # systemd.services.lactd.wantedBy = [ "multi-user.target" ];
 
-  xdg.portal = {
-    enable = true;
-    extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
-    config.common.default = "gtk";
-  };
+  # xdg.portal = {
+  #   enable = true;
+  #   extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
+  #   config.common.default = "gtk";
+  # };
 
   # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
   # programs.hyprland = {
@@ -286,7 +287,7 @@
 
   # https://nixos.wiki/wiki/Virt-manager
   virtualisation.libvirtd.enable = true;
-  programs.virt-manager.enable = true;
+  #programs.virt-manager.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
 
   virtualisation.containers = {

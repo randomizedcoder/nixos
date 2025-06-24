@@ -1,3 +1,6 @@
+#
+# sysctl.nix
+#
 { config, pkgs, ... }:
 
 {
@@ -51,5 +54,8 @@
     #net.ipv4.tcp_reflect_tos = 0
     "net.ipv4.tcp_rto_min_us" = 50000; #50ms
     #net.ipv4.tcp_rto_min_us = 200000 #200ms
+
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
   };
 }

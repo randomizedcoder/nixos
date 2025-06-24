@@ -9,55 +9,83 @@
 
   services.hostapd.radios = {
     wlp35s0 = {
-      interface = "wlp35s0";
-      ssid = "myssid";
       countryCode = "US";
-      channel = 52; # 5.26 GHz
-      hwMode = "a";
-      bridge = "br0";
-      auth.algo = "open";
-      wpa.enable = true;
-      wpa.passphrase = "strongpassword";
-      wpa.keyMgmt = [ "WPA-PSK" ];
+      band = "5g";
+      channel = 52;
+
+      networks.wlp35s0 = {
+        ssid = "myssid";
+        authentication = {
+          mode = "wpa3-sae";
+          saePasswords = [
+            { password = "strongpassword"; }
+          ];
+        };
+        settings = {
+          bridge = "br0";
+          ieee80211w = 2;
+        };
+      };
     };
 
     wlp65s0 = {
-      interface = "wlp65s0";
-      ssid = "myssid";
       countryCode = "US";
-      channel = 56; # 5.28 GHz
-      hwMode = "a";
-      bridge = "br0";
-      auth.algo = "open";
-      wpa.enable = true;
-      wpa.passphrase = "strongpassword";
-      wpa.keyMgmt = [ "WPA-PSK" ];
+      band = "5g";
+      channel = 56;
+
+      networks.wlp65s0 = {
+        ssid = "myssid";
+        authentication = {
+          mode = "wpa3-sae";
+          saePasswords = [
+            { password = "strongpassword"; }
+          ];
+        };
+        settings = {
+          bridge = "br0";
+          ieee80211w = 2;
+        };
+      };
     };
 
     wlp66s0 = {
-      interface = "wlp66s0";
-      ssid = "myssid";
       countryCode = "US";
-      channel = 60; # 5.30 GHz
-      hwMode = "a";
-      bridge = "br0";
-      auth.algo = "open";
-      wpa.enable = true;
-      wpa.passphrase = "strongpassword";
-      wpa.keyMgmt = [ "WPA-PSK" ];
+      band = "5g";
+      channel = 60;
+
+      networks.wlp66s0 = {
+        ssid = "myssid";
+        authentication = {
+          mode = "wpa3-sae";
+          saePasswords = [
+            { password = "strongpassword"; }
+          ];
+        };
+        settings = {
+          bridge = "br0";
+          ieee80211w = 2;
+        };
+      };
     };
 
     wlp97s0 = {
-      interface = "wlp97s0";
-      ssid = "myssid";
       countryCode = "US";
-      channel = 64; # 5.32 GHz
-      hwMode = "a";
-      bridge = "br0";
-      auth.algo = "open";
-      wpa.enable = true;
-      wpa.passphrase = "strongpassword";
-      wpa.keyMgmt = [ "WPA-PSK" ];
+      band = "5g";
+      channel = 64;
+
+      networks.wlp97s0 = {
+        ssid = "myssid";
+        authentication = {
+          mode = "wpa3-sae";
+          saePasswords = [
+            { password = "strongpassword"; }
+          ];
+        };
+        settings = {
+          bridge = "br0";
+          ieee80211w = 2;
+        };
+      };
     };
   };
 
@@ -87,3 +115,5 @@
     };
   };
 }
+
+# end

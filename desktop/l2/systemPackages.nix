@@ -29,22 +29,13 @@
     neofetch
     libxml2  # Added for bazel/clang development
 
-    # Wayland support
-    xwayland
-    meson
-    wayland-protocols
-    wayland-utils
-    wl-clipboard
-
-    xscreensaver
-
     clinfo
     lact
 
     hostapd
     bridge-utils
+    wireless-regdb
+    linux-firmware
 
-    # https://wiki.nixos.org/wiki/Flameshot
-    #(flameshot.override { enableWlrSupport = true; })
   ];
 }

@@ -130,12 +130,12 @@ in {
       };
     };
   };
-  services.prometheus.exporters.kea = {
-    enable = true;
-    openFirewall = true;
-    #port = 9547; # default port ( https://mynixos.com/nixpkgs/option/services.prometheus.exporters.kea.port )
-    targets = [ "/run/kea/kea-dhcp4.socket" ];
-  };
+  # services.prometheus.exporters.kea = {
+  #   enable = true;
+  #   openFirewall = true;
+  #   #port = 9547; # default port ( https://mynixos.com/nixpkgs/option/services.prometheus.exporters.kea.port )
+  #   targets = [ "/run/kea/kea-dhcp4.socket" ];
+  # };
 
   # PowerDNS Recursor
   # sudo lsof -i :53

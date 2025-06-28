@@ -25,14 +25,14 @@
         inherit system;
         config = {
           allowUnfree = true;
-            allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-              # "nvidia-x11"
-              # "nvidia-settings"
-              # "nvidia-persistenced"
-              "google-chrome"
-              "android-studio"
-              "android-studio-stable"
-              ];
+          allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+            # "nvidia-x11"
+            # "nvidia-settings"
+            # "nvidia-persistenced"
+            "google-chrome"
+            "android-studio"
+            "android-studio-stable"
+            ];
         };
       };
       lib = nixpkgs.lib;

@@ -32,9 +32,8 @@ let
 
   genRadio = iface: channel: {
     countryCode = "US";
-    band = "2g";
-    # 5g isn't working for some reason.  Can't set the region to US.
-    #band = "5g";
+    #band = "2g";
+    band = "5g";
     channel = channel;
     # settings = {
     #   country_code = "US";
@@ -207,7 +206,7 @@ systemd.network.networks."dummy0" = {
         DHCP = "ipv4";
         IPv6AcceptRA = true;
         IPv6PrivacyExtensions = true;
-        #IPMasquerade = true;
+        # IPMasquerade handled by nftables for better control
         LLDP = true;
         EmitLLDP = true;
       };
@@ -243,38 +242,6 @@ systemd.network.networks."dummy0" = {
     };
   };
 
-  # # Networking setup
-  # networking = {
-
-  #   networkmanager.enable = false;
-
-  #   # useNetworkd = true;
-
-  #   # useDHCP = false;
-
-  #   # # Need an interface to bring it up, to allow the IP assignment
-  #   # bridges.br0.interfaces = [ ];
-
-  #   # interfaces.br0 = {
-  #   #   ipv4.addresses = [{
-  #   #     address = "192.168.1.1";
-  #   #     prefixLength = 24;
-  #   #   }];
-  #   #   ipv6.addresses = [{
-  #   #     address = "fd00::1";
-  #   #     prefixLength = 64;
-  #   #   }];
-  #   # };
-
-  #   # interfaces.enp1s0.useDHCP = true;
-
-  #   nat = {
-  #     enable = true;
-  #     externalInterface = "enp1s0";
-  #     internalInterfaces = [ "br0" ];
-  #   };
-  # };
-
   # Disable conflicting resolvers and provide local one
   services.resolved.enable = false;
   networking.nameservers = [ "127.0.0.1" "::1" ];
@@ -292,5 +259,142 @@ systemd.network.networks."dummy0" = {
 #systemctl status kea
 #systemctl status pdns-recursor
 #systemctl status radvd
+
+# [das@l2:~/nixos/desktop/l2]$ sudo ethtool --driver enp1s0
+# driver: atlantic
+# version: 6.15.3
+# firmware-version: 4.2.32
+# expansion-rom-version:
+# bus-info: 0000:01:00.0
+# supports-statistics: yes
+# supports-test: no
+# supports-eeprom-access: no
+# supports-register-dump: yes
+# supports-priv-flags: yes
+
+# [das@l2:~/nixos/desktop/l2]$ sudo ethtool --show-ring enp1s0
+# Ring parameters for enp1s0:
+# Pre-set maximums:
+# RX:                     8184
+# RX Mini:                n/a
+# RX Jumbo:               n/a
+# TX:                     8184
+# TX push buff len:       n/a
+# Current hardware settings:
+# RX:                     2048
+# RX Mini:                n/a
+# RX Jumbo:               n/a
+# TX:                     4096
+# RX Buf Len:             n/a
+# CQE Size:               n/a
+# TX Push:                off
+# RX Push:                off
+# TX push buff len:       n/a
+# TCP data split:         n/a
+
+# [das@l2:~/nixos/desktop/l2]$ sudo ethtool --show-features enp1s0
+# Features for enp1s0:
+# rx-checksumming: on
+# tx-checksumming: on
+#         tx-checksum-ipv4: off [fixed]
+#         tx-checksum-ip-generic: on
+#         tx-checksum-ipv6: off [fixed]
+#         tx-checksum-fcoe-crc: off [fixed]
+#         tx-checksum-sctp: off [fixed]
+# scatter-gather: on
+#         tx-scatter-gather: on
+#         tx-scatter-gather-fraglist: off [fixed]
+# tcp-segmentation-offload: on
+#         tx-tcp-segmentation: on
+#         tx-tcp-ecn-segmentation: off [fixed]
+#         tx-tcp-mangleid-segmentation: off
+#         tx-tcp6-segmentation: on
+#         tx-tcp-accecn-segmentation: off [fixed]
+# generic-segmentation-offload: on
+# generic-receive-offload: on
+# large-receive-offload: off
+# rx-vlan-offload: on
+# tx-vlan-offload: on
+# ntuple-filters: on
+# receive-hashing: on
+# highdma: off [fixed]
+# rx-vlan-filter: on
+# vlan-challenged: off [fixed]
+# tx-gso-robust: off [fixed]
+# tx-fcoe-segmentation: off [fixed]
+# tx-gre-segmentation: off [fixed]
+# tx-gre-csum-segmentation: off [fixed]
+# tx-ipxip4-segmentation: off [fixed]
+# tx-ipxip6-segmentation: off [fixed]
+# tx-udp_tnl-segmentation: off [fixed]
+# tx-udp_tnl-csum-segmentation: off [fixed]
+# tx-gso-partial: on
+# tx-tunnel-remcsum-segmentation: off [fixed]
+# tx-sctp-segmentation: off [fixed]
+# tx-esp-segmentation: off [fixed]
+# tx-udp-segmentation: on
+# tx-gso-list: off [fixed]
+# tx-nocache-copy: off
+# loopback: off [fixed]
+# rx-fcs: off [fixed]
+# rx-all: off [fixed]
+# tx-vlan-stag-hw-insert: off [fixed]
+# rx-vlan-stag-hw-parse: off [fixed]
+# rx-vlan-stag-filter: off [fixed]
+# l2-fwd-offload: off [fixed]
+# hw-tc-offload: on
+# esp-hw-offload: off [fixed]
+# esp-tx-csum-hw-offload: off [fixed]
+# rx-udp_tunnel-port-offload: off [fixed]
+# tls-hw-tx-offload: off [fixed]
+# tls-hw-rx-offload: off [fixed]
+# rx-gro-hw: off [fixed]
+# tls-hw-record: off [fixed]
+# rx-gro-list: off
+# macsec-hw-offload: off [fixed]
+# rx-udp-gro-forwarding: off
+# hsr-tag-ins-offload: off [fixed]
+# hsr-tag-rm-offload: off [fixed]
+# hsr-fwd-offload: off [fixed]
+# hsr-dup-offload: off [fixed]
+
+# [das@l2:~/nixos/desktop/l2]$
+
+# [das@l2:~/nixos/desktop/l2]$ sudo ethtool --show-coalesce enp1s0
+# Coalesce parameters for enp1s0:
+# Adaptive RX: n/a  TX: n/a
+# stats-block-usecs:      n/a
+# sample-interval:        n/a
+# pkt-rate-low:           n/a
+# pkt-rate-high:          n/a
+
+# rx-usecs:       256
+# rx-frames:      0
+# rx-usecs-irq:   n/a
+# rx-frames-irq:  n/a
+
+# tx-usecs:       1022
+# tx-frames:      0
+# tx-usecs-irq:   n/a
+# tx-frames-irq:  n/a
+
+# rx-usecs-low:   n/a
+# rx-frame-low:   n/a
+# tx-usecs-low:   n/a
+# tx-frame-low:   n/a
+
+# rx-usecs-high:  n/a
+# rx-frame-high:  n/a
+# tx-usecs-high:  n/a
+# tx-frame-high:  n/a
+
+# CQE mode RX: n/a  TX: n/a
+
+# tx-aggr-max-bytes:      n/a
+# tx-aggr-max-frames:     n/a
+# tx-aggr-time-usecs:     n/a
+
+
+# [das@l2:~/nixos/desktop/l2]$
 
 # end

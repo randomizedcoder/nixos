@@ -41,7 +41,8 @@
     #net.core.rmem_max = 212992
     #net.core.wmem_default = 212992
     #net.core.wmem_max = 212992
-    "net.ipv4.ip_local_port_range" = "1025 65535";
+    #not using 1025 because the kernel complains about wanting different parity
+    "net.ipv4.ip_local_port_range" = "1026 65535";
     #net.ipv4.ip_local_port_range ="32768 60999"
     #
     #net.ipv4.inet_peer_maxttl = 600
@@ -57,5 +58,25 @@
 
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
+
+    # Additional network optimizations for WiFi access point
+    # TCP optimizations
+    "net.ipv4.tcp_window_scaling" = 1;
+    "net.ipv4.tcp_sack" = 1;
+    "net.ipv4.tcp_fack" = 1;
+    "net.ipv4.tcp_fin_timeout" = 30;
+
+    # Increase connection tracking table size for multiple WiFi clients
+    "net.netfilter.nf_conntrack_max" = 262144;
+    "net.netfilter.nf_conntrack_tcp_timeout_established" = 86400;
+
+    # Network interface optimizations
+    "net.core.netdev_max_backlog" = 5000;
+    "net.core.netdev_budget" = 600; # default 300
+    "net.core.netdev_budget_usecs" = 8000; #default 2000, increasing to 8ms
+
+    # IPv6 optimizations
+    "net.ipv6.tcp_rmem" = "4096	1000000	16000000";
+    "net.ipv6.tcp_wmem" = "4096	1000000	16000000";
   };
 }

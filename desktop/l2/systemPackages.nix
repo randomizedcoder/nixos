@@ -1,12 +1,12 @@
+#
+# l2/systemPackages.nix
+#
 {
   config,
   pkgs,
   ...
 }:
 {
-  # set at flake.nix level
-  nixpkgs.config.allowUnfree = true;
-
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     # Basic system tools

@@ -32,12 +32,13 @@
       ./grafana.nix
       # clickhouse
       #./docker-compose.nix
-      ./docker-daemon.nix
+      #./docker-daemon.nix
       #./smokeping.nix
       #./distributed-builds.nix
       #./hyprland.nix
       #./hostapd.nix
       ./hostapd-multi.nix
+      ./network-optimization.nix
     ];
 
   boot = {
@@ -164,26 +165,16 @@
      enableSSHSupport = true;
   };
 
-  # https://nixos.wiki/wiki/Virt-manager
-  virtualisation.libvirtd.enable = true;
-  #programs.virt-manager.enable = true;
-  virtualisation.spiceUSBRedirection.enable = true;
+  # # https://nixos.wiki/wiki/Virt-manager
+  # virtualisation.libvirtd.enable = true;
+  # #programs.virt-manager.enable = true;
+  # virtualisation.spiceUSBRedirection.enable = true;
 
-  virtualisation.containers = {
-    ociSeccompBpfHook.enable = true;
-  };
-
-  # guest
-  # services.qemuGuest.enable = true;
-  # services.spice-vdagentd.enable = true;
-
-  # https://wiki.nixos.org/wiki/Laptop
+  # virtualisation.containers = {
+  #   ociSeccompBpfHook.enable = true;
+  # };
 
   system.stateVersion = "24.11";
-
-  nixpkgs.config = {
-    allowUnfree = true;
-  };
 
 }
 

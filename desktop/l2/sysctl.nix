@@ -78,5 +78,48 @@
     # IPv6 optimizations
     "net.ipv6.tcp_rmem" = "4096	1000000	16000000";
     "net.ipv6.tcp_wmem" = "4096	1000000	16000000";
+
+    # Additional network stack optimizations
+    "net.core.netdev_tstamp_prequeue" = 0;    # Disable prequeue timestamping
+    "net.core.rps_sock_flow_entries" = 32768; # RPS flow entries
+
+    # TCP optimizations for high performance
+    "net.ipv4.tcp_slow_start_after_idle" = 0;      # Disable slow start after idle
+    "net.ipv4.tcp_fastopen" = 3;                   # Enable TCP Fast Open
+
+    # IPv6 parameters
+    "net.ipv6.conf.all.accept_ra" = 2;             # Accept RA
+    "net.ipv6.conf.default.accept_ra" = 2;         # Accept RA
+    "net.ipv6.conf.all.autoconf" = 1;              # Enable autoconf
+    "net.ipv6.conf.default.autoconf" = 1;          # Enable autoconf
+
+    # Connection tracking optimizations
+    "net.netfilter.nf_conntrack_tcp_timeout_time_wait" = 120;
+    "net.netfilter.nf_conntrack_tcp_timeout_close_wait" = 60;
+    "net.netfilter.nf_conntrack_tcp_timeout_fin_wait" = 120;
+    "net.netfilter.nf_conntrack_udp_timeout" = 30;
+    "net.netfilter.nf_conntrack_udp_timeout_stream" = 180;
+
+    # Memory management optimizations
+    "vm.swappiness" = 1;                           # Minimize swapping
+    "vm.dirty_ratio" = 15;                         # Dirty page ratio
+    "vm.dirty_background_ratio" = 5;               # Background dirty ratio
+    "vm.dirty_writeback_centisecs" = 500;          # Writeback interval
+    "vm.dirty_expire_centisecs" = 3000;            # Expire interval
+    "vm.vfs_cache_pressure" = 50;                  # Cache pressure
+    "vm.overcommit_memory" = 1;                    # Allow overcommit
+
+    # NUMA optimization
+    "vm.numa_balancing" = 0;                       # Disable NUMA balancing
+
+    # Process limits
+    "kernel.pid_max" = 65536;                      # Increase PID limit
+    "kernel.threads-max" = 2097152;                # Increase thread limit
+    "kernel.sched_rt_runtime_us" = -1;             # Disable RT throttling
+    "kernel.sched_rt_period_us" = 1000000;         # RT period
+
+    # Security (minimal impact)
+    "kernel.kptr_restrict" = 0;                    # Allow kptr access
+    "kernel.perf_event_paranoid" = 0;              # Allow perf events
   };
 }

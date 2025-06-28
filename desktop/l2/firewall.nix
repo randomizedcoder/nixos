@@ -1,3 +1,41 @@
+#
+# l2/firewall.nix
+#
+# Firewall configuration for WiFi access point
+#
+# # List all rules (most common)
+# sudo nft list ruleset
+
+# # List specific table
+# sudo nft list table inet filter
+
+# # List specific chain
+# sudo nft list chain inet filter input
+
+# # Show rules with handles (useful for deleting specific rules)
+# sudo nft list ruleset -a
+
+# # Monitor nftables events in real-time
+# sudo nft monitor
+
+# # Monitor specific events (new rules, deleted rules, etc.)
+# sudo nft monitor new rules
+# sudo nft monitor destroy rules
+
+# # Show packet counters
+# sudo nft list ruleset -n
+
+# # Show rules with statistics
+# sudo nft list ruleset -s
+# #
+# # See all filter rules (input, forward, output chains)
+# sudo nft list table inet filter
+
+# # See NAT rules
+# sudo nft list table ip nat
+# sudo nft list table ip6 nat
+#
+
 { config, pkgs, ... }:
 
 {

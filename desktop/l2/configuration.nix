@@ -39,6 +39,10 @@
       #./hostapd.nix
       ./hostapd-multi.nix
       ./network-optimization.nix
+      # CPU and IRQ optimization modules
+      ./irq-affinity.nix
+      ./kernel-params.nix
+      ./monitoring.nix
     ];
 
   boot = {

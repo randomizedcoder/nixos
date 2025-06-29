@@ -1,3 +1,6 @@
+#
+# hp/hp1/configuration.nix
+#
 { config, pkgs, ... }:
 
 # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
@@ -60,16 +63,27 @@
   };
 
   nix = {
+    settings = {
+      auto-optimise-store = true;
+      experimental-features = [ "nix-command" "flakes" ];
+      download-buffer-size = "100000000";
+      builders-use-substitutes = true;
+    };
+    # https://nix.dev/tutorials/nixos/distributed-builds-setup.html#set-up-distributed-builds
+    distributedBuilds = true;
+    buildMachines = [{
+      hostName = "hp4";
+      sshUser = "remotebuild";
+      #sshKey = "/root/.ssh/remotebuild";
+      sshKey = "/home/das/.ssh/remotebuild";
+      system = pkgs.stdenv.hostPlatform.system;
+      supportedFeatures = [ "nixos-test" "big-parallel" "kvm" ];
+    }];
     gc = {
       automatic = true;                  # Enable automatic execution of the task
       dates = "weekly";                  # Schedule the task to run weekly
       options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
       randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
-    };
-    settings = {
-      auto-optimise-store = true;
-      experimental-features = [ "nix-command" "flakes" ];
-      download-buffer-size = "100000000";
     };
   };
 
@@ -102,9 +116,6 @@
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
-
   environment.sessionVariables = {
     TERM = "xterm-256color";
     #MY_VARIABLE = "my-value";
@@ -121,8 +132,23 @@
     # https://nixos.wiki/wiki/SSH_public_key_authentication
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOP3x3r8OZ5ya1GNLqmKOsKDX7oAR+BG9u4EozXvydtC das@hp0"
     ];
   };
+
+  # # https://github.com/colemickens/nixcfg/blob/1915d408ea28a5b7279f94df7a982dbf2cf692ef/mixins/ssh.nix#L13C1-L28C7
+  # system.activationScripts.root_ssh_config = {
+  #   text = ''
+  #     (
+  #       # symlink root ssh config to ours so daemon can use our agent/keys/etc...
+  #       mkdir -p /root/.ssh
+  #       ln -sf /home/das/.ssh/config /root/.ssh/config
+  #       ln -sf /home/das/.ssh/known_hosts /root/.ssh/known_hosts
+  #       ln -sf /home/das/.ssh/known_hosts /root/.ssh/known_hosts
+  #     )
+  #   '';
+  #   deps = [ ];
+  # };
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -136,6 +162,8 @@
      enableSSHSupport = true;
   };
 
+
+  # https://nixos.wiki/wiki/SSH
   services.openssh.enable = true;
 
   services.timesyncd.enable = true;

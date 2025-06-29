@@ -1,0 +1,98 @@
+{ config, pkgs, lib, ... }:
+
+{
+  networking = {
+    useNetworkd = true;
+    useDHCP = false;
+    interfaces = {
+      enp1s0 = {
+        useDHCP = true;
+        ipv6 = {
+          enable = true;
+          acceptRA = true;
+        };
+      };
+
+      wlp35s0 = {
+        ipv4.addresses = [{
+          address = "10.0.35.1";
+          prefixLength = 24;
+        }];
+        ipv6.addresses = [];
+      };
+
+      wlp65s0 = {
+        ipv4.addresses = [{
+          address = "10.0.65.1";
+          prefixLength = 24;
+        }];
+        ipv6.addresses = [];
+      };
+
+      wlp70s0 = {
+        ipv4.addresses = [{
+          address = "10.0.70.1";
+          prefixLength = 24;
+        }];
+        ipv6.addresses = [];
+      };
+    };
+
+    firewall = {
+      enable = true;
+      allowedTCPPorts = [ 22 53 67 ];  # SSH, DNS, DHCP
+      allowedUDPPorts = [ 53 67 68 ];  # DNS, DHCP client/server
+    };
+
+    enableIPv6 = true;
+    ipForward = true;
+    ipv6 = {
+      enable = true;
+      forward = true;
+    };
+  };
+
+  # Enable kea DHCP server
+  services.kea = {
+    enable = true;
+    dhcp4 = {
+      enable = true;
+      settings = {
+        interfaces-config.interfaces = [ "wlp35s0" "wlp65s0" "wlp70s0" ];
+        subnet4 = [
+          {
+            subnet = "10.0.35.0/24";
+            pools = [{ pool = "10.0.35.100 - 10.0.35.200"; }];
+            option-data = [
+              { name = "routers"; data = "10.0.35.1"; }
+              { name = "domain-name-servers"; data = "10.0.35.1"; }
+            ];
+          }
+          {
+            subnet = "10.0.65.0/24";
+            pools = [{ pool = "10.0.65.100 - 10.0.65.200"; }];
+            option-data = [
+              { name = "routers"; data = "10.0.65.1"; }
+              { name = "domain-name-servers"; data = "10.0.65.1"; }
+            ];
+          }
+          {
+            subnet = "10.0.70.0/24";
+            pools = [{ pool = "10.0.70.100 - 10.0.70.200"; }];
+            option-data = [
+              { name = "routers"; data = "10.0.70.1"; }
+              { name = "domain-name-servers"; data = "10.0.70.1"; }
+            ];
+          }
+        ];
+      };
+    };
+  };
+
+  # Enable PowerDNS recursor
+  services.pdns-recursor = {
+    enable = true;
+    localAddress = "127.0.0.1";
+    allowFrom = [ "127.0.0.0/8" "10.0.35.0/24" "10.0.65.0/24" "10.0.70.0/24" ];
+  };
+}

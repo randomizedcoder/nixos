@@ -2,6 +2,7 @@
   hyprland,
   config,
   pkgs,
+  overlay-unstable,
   ...
 }:
 #{ config, pkgs, ... }:
@@ -26,54 +27,74 @@
 
   # https://nix-community.github.io/home-manager/options.xhtml#opt-home.sessionVariables
   home.sessionVariables = {
-      QT_QPA_PLATFORM = "wayland";
-      GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
-      # disable wayland
-      NIXOS_OZONE_WL = "1";
-      GOPRIVATE = "gitlab.com/sidenio/*";
-      TERM = "xterm-256color";
+    NIXPKGS_ALLOW_UNFREE = "1";
+
+    QT_QPA_PLATFORM = "wayland";
+    GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
+    # disable wayland
+    NIXOS_OZONE_WL = "1";
+    GOPRIVATE = "gitlab.com/sidenio/*";
+    TERM = "xterm-256color";
+
+    #HTTP_PROXY = "http://hp4.home:3128";
+    #HTTPS_PROXY = "http://hp4.home:3128";
+    #NO_PROXY = "localhost,127.0.0.1,::1,172.16.0.0/16";
+    # You can also use ALL_PROXY or FTP_PROXY if needed
+    # ALL_PROXY = "http://hp4:3128";
   };
 
   home.packages = with pkgs; [
-    #
+    # System/Info Tools
     killall
     hw-probe
-    #
-    gparted
-    #
-    ncdu
-    #
-    hw-probe
     lshw
-    #
+    hwloc
+    gparted
+    ncdu
+    neofetch
+    file
+
+    # Terminal Multiplexers
     tmux
     screen
-    #
+
+    # LLVM/Clang toolchain (needed for race detection and C/C++ builds)
+    llvmPackages_19.libcxxClang
+    llvmPackages_19.lld
+    llvmPackages_19.libcxx.dev
+
+    # Essential development libraries (minimal headers)
+    glibc.dev
+    stdenv.cc.cc.lib
+    zlib.dev
+    openssl.dev
+    ncurses.dev
+    libyaml.dev
+
+    # Build Tools
     libgcc
     # https://nixos.wiki/wiki/C
     # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
-    gcc
+    #gcc
     automake
     gnumake
     #cmake
     pkg-config
-    #
 
-    #
-    # alsa-lib
-    # alsa-lib-with-plugins
-    #
+    # Scripting/Utils
     perl
     #3.12.8 on 12th of Feb 2025
     python3Full
-    #
     gawk
     jq
     git
     htop
     btop
     minicom
-    #
+
+    bc
+
+    # Compression
     bzip2
     gzip
     lz4
@@ -81,16 +102,20 @@
     unzip
     xz
     zstd
-    #
+
+    gnutar
+
+    # File Transfer/Management
     rsync
     tree
-    file
-    #
+
+    # Terminals
     alacritty
     kitty
     #https://ghostty.org/
     ghostty
-    #
+
+    # Networking
     ethtool
     iproute2
     vlan
@@ -101,34 +126,33 @@
     flent
     bpftools
     fping
-    inetutils
-    #
-    hwloc
-    bpftools
-    #
+    inetutils # Includes telnet
+    netcat-gnu
+
+    # Filesystem/Monitoring
     inotify-tools
-    #
-    # HP Printers
+
+    # Printing
     hplip
     #hplipWithPlugin
-    #
+
+    # SDR
     gnuradio
     hackrf
     gqrx
     cubicsdr
-    #
-    neofetch
-    #
+
+    # Media
     vlc
     # ffmpeg moved to system package
     #ffmpeg_7-full
     #ffmpeg-full
-    # go
+
+    # Go Development
     # https://nixos.wiki/wiki/Go
     # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
     # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
     libcap
-    gcc
     #gcc_multi
     #glibc_multi
     #  thunderbird
@@ -154,32 +178,50 @@
     #buf-language-server
     # https://tinygo.org/
     #tinygo
-    #
-    graphviz
-    #
+
+    # removing bazel and moving to the "nix develop" shell
+    # # https://github.com/bazelbuild/bazel/tags
+    # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/tools/build-managers/bazel/bazel_7/default.nix#L524
+    #unstable.bazel_7
+    unstable.bazel-buildtools
+    unstable.bazelisk
+
+    unstable.code-cursor
+
+    # # https://github.com/bazel-contrib/bazel-gazelle/tags
+    # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/ba/bazel-gazelle/package.nix#L26
+    # unstable.bazel-gazelle
+    # unstable.bazel-buildtools
+    # unstable.bazelisk
+    # # https://github.com/buchgr/bazel-remote - maybe something to look at?
+    # # https://github.com/buildfarm/buildfarm?tab=readme-ov-file#helm-chart
+
+    # Debugging/Profiling
+    graphviz # for pprof
+    strace
+
+    # Diffing
     meld
-    #
-    # https://nixos.wiki/wiki/Helix
+
+    # Editors
     helix
-    # rust
+
+    # Rust Development
     # https://nixos.wiki/wiki/Rust
-    #pkgs.cargo
-    #pkgs.rustc
     cargo
     rustc
     rustfmt
     rust-analyzer
     clippy
     #clang_multi
-    #
+
+    # Mobile Development
     flutter
     android-studio
     android-tools
     android-udev-rules
-    #
-    # debug
-    strace
-    # Gnome related / extensions
+
+    # Gnome Related / Extensions
     # gnomeExtensions.emoji-copy
     # unstable.gnomeExtensions.workspace-switcher-manager
     gnome-extension-manager
@@ -207,13 +249,15 @@
     # https://github.com/AstraExt/astra-monitor
     gnomeExtensions.astra-monitor
     libgtop
-    #
+
+    # Office/Documents
     libreoffice-qt
     hunspell
     hunspellDicts.en_AU
     #hunspellDicts.en_US
-    #
     evince
+
+    # Browsers
     # https://nixos.wiki/wiki/Firefox
     firefox
     # https://nixos.wiki/wiki/Chromium
@@ -226,25 +270,29 @@
         "--ozone-platform=wayland"
       ];
     })
+
+    # Communication
     # https://nixos.wiki/wiki/Slack
-    slack
-    #
-    zoom-us
-    #
+    unstable.slack
+    unstable.zoom-us
+
+    # Screenshots/Screen Recording
     # https://wiki.nixos.org/wiki/Flameshot
     (flameshot.override { enableWlrSupport = true; })
     grim # screenshot functionality
     slurp # screenshot functionality
-    #
-    gimp-with-plugins
-    #
     simplescreenrecorder
     # https://wiki.nixos.org/wiki/Gpu-screen-recorder
     gpu-screen-recorder # CLI
     gpu-screen-recorder-gtk # GUI
-    #
+
+    # Graphics
+    gimp-with-plugins
+
+    # Text Editors
     gedit
-    #
+
+    # Containers
     # https://nixos.wiki/wiki/Podman
     dive
     podman
@@ -253,10 +301,8 @@
     podman-tui
     podman-compose
     docker-buildx
-    #
-    rofi-wayland
-    wofi
-    #
+
+    # Kubernetes
     #clickhouse
     #clickhouse-cli
     # https://github.com/int128/kubelogin
@@ -274,18 +320,20 @@
     kdash
     # k9s --kubeconfig=dev-d.kubeconfig
     k9s
-    #
+
+    # Misc
     # https://github.com/jrincayc/ucblogo-code
     ucblogo
     # https://github.com/wagoodman/dive
-    dive
+    # dive # Duplicate removed
     # https://github.com/sharkdp/hyperfine
     hyperfine
-    # app launchers
+
+    # App Launchers
     rofi-wayland
     wofi
-    #
-    # raspberry pi
+
+    # Raspberry Pi
     rpi-imager
   ];
 
@@ -296,9 +344,11 @@
   # https://mynixos.com/home-manager/options/programs.vscode
   programs.vscode = {
     enable = true;
-    package = pkgs.vscode;
-    extensions = with pkgs.vscode-extensions; [
-      bbenoist.nix
+    # package = pkgs.vscode;
+    # extensions = with pkgs.vscode-extensions; [
+    package = pkgs.unstable.vscode;
+    extensions = with pkgs.unstable.vscode-extensions; [
+      #bbenoist.nix
       dart-code.dart-code
       dart-code.flutter
       golang.go
@@ -332,12 +382,14 @@
       zxh404.vscode-proto3
       yzhang.markdown-all-in-one
       #platformio.platformio-ide
-      github.copilot
+      #github.copilot
       # nix
       #brettm12345.nixfmt.vscode
       jnoortheen.nix-ide
       #jeff-hykin.better-nix-syntax
       rust-lang.rust-analyzer
+      #bazel
+      bazelbuild.vscode-bazel
     ];
   };
 
@@ -453,6 +505,28 @@
     #   inputs.hyprland-plugins.packages.${pkgs.system}.hyprbars
     #   # ...
     #];
+    extraConfig = ''
+      # Monitor configuration (Example - replace with yours)
+      monitor=,preferred,auto,1
+
+      # Execute-once startup commands (Example)
+      exec-once = waybar &
+      exec-once = nm-applet --indicator
+
+      # Keybindings (Example)
+      bind = SUPER, Q, killactive,
+      bind = SUPER, RETURN, exec, ${pkgs.alacritty}/bin/alacritty
+
+      # Include other settings...
+      # input { ... }
+      # general { ... }
+      # decoration { ... }
+      # animations { ... }
+      # etc...
+
+      # Source other files if needed (less common with inline config)
+      # source = ~/.config/hypr/myColors.conf
+    '';
   };
 
   #   # Optional
@@ -503,6 +577,7 @@
       }
     '';
   };
+  # https://mynixos.com/home-manager/options/programs.ghostty
   home.file.".config/ghostty/ghostty.toml" = {
     target = ".config/ghostty/ghostty.toml";
     text = ''
@@ -517,8 +592,12 @@
       sidebar_position = "right"
     '';
   };
+  # https://github.com/colemickens/nixcfg/blob/1915d408ea28a5b7279f94df7a982dbf2cf692ef/mixins/ghostty.nix#L19
 
+  # set at flake.nix level
   nixpkgs.config.allowUnfree = true;
+
+  nixpkgs.overlays = [ overlay-unstable ];
 
   #home.stateVersion = "23.11";
   home.stateVersion = "24.11";

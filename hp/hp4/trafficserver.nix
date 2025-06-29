@@ -7,8 +7,12 @@
   };
   # https://search.nixos.org/options?channel=24.11&size=50&sort=relevance&type=packages&query=trafficserver
   # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/services/web-servers/trafficserver/default.nix
+  # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/services/web-servers/trafficserver/default.nix
   services.trafficserver = {
     enable = true;
+
+    #openFirewall = true; # doesn't exist
+
     #volume = "volume=1 scheme=http size=20%";
     storage = "/var/cache/trafficserver 200G";
     # storage = "/var/cache/trafficserver 256M";
@@ -16,6 +20,10 @@
     records = {
       proxy = {
         config = {
+          dns = {
+            nameservers = "127.0.0.1";
+            round_robin_nameservers = 0;
+          };
           # Anonymize the forward proxy
           http = {
             anonymize_remove_from = 1;
@@ -24,7 +32,7 @@
             anonymize_remove_cookie = 1;
             anonymize_remove_client_ip = 1;
 
-            cache.http = 0;
+            cache.http = 1;
             insert_client_ip = 0;
             insert_squid_x_forwarded_for = 0;
             insert_request_via_str = 0;
@@ -32,6 +40,10 @@
             response_server_enabled = 0;
             #server_ports = toString cfg.proxyPort;
             server_ports = "3128 3128:ipv6";
+          };
+          cache = {
+            ram_cache.size = "2G";
+            #ram_cache.lru_algorithm = 0; # 0 is default, 1 is basic LRU
           };
 
           # Set logging and disable reverse proxy
@@ -46,45 +58,25 @@
 
     ipAllow = {
       ip_allow = [
-        {
-          apply = "in";
-          ip_addrs = "127.0.0.1";
-          action = "allow";
-          methods = "ALL";
-        }
-        {
-          apply = "in";
-          ip_addrs = "::1";
-          action = "allow";
-          methods = "ALL";
-        }
-        {
-          apply = "in";
-          ip_addrs = "172.16.0.0/16";
-          action = "allow";
-          methods = "ALL";
-        }
-        {
-          apply = "in";
-          # 4x4x4=64
-          # 2603:8000:9c01:3b00
-          ip_addrs = "2603:8000:9c01:3b00/64";
-          action = "allow";
-          methods = "ALL";
-        }
-        {
-          apply = "in";
-          ip_addrs = "0/0";
-          action = "deny";
-          methods = "ALL";
-        }
-        {
-          apply = "in";
-          ip_addrs = "::/0";
-          action = "deny";
-          methods = "ALL";
-        }
+        { apply = "in"; ip_addrs = "0/0"; action = "allow"; methods = "ALL"; }
+        { apply = "in"; ip_addrs = "::/0"; action = "allow"; methods = "ALL"; }
+
+        # { apply = "in"; ip_addrs = "127.0.0.1"; action = "allow"; methods = "ALL"; }
+        # { apply = "in"; ip_addrs = "::1"; action = "allow"; methods = "ALL"; }
+        # { apply = "in"; ip_addrs = "172.16.0.0/16"; action = "allow"; methods = "ALL"; }
+        # { apply = "in"; ip_addrs = "2603:8000:9c01:3b00/64"; action = "allow"; methods = "ALL"; }
+        # # Deny all others
+        # { apply = "in"; ip_addrs = "0/0"; action = "deny"; methods = "ALL"; }
+        # { apply = "in"; ip_addrs = "::/0"; action = "deny"; methods = "ALL"; }
       ];
+    };
+  };
+
+  systemd.tmpfiles.settings."trafficserver-dirs" = {
+    "/var/cache/trafficserver"."d" = {
+      mode = "0750";
+      user = "ats";
+      group = "ats";
     };
   };
 }

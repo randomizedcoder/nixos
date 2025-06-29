@@ -23,7 +23,7 @@ rebuild:
 	#sudo nix flake update;
 	sudo nix --extra-experimental-features nix-command --extra-experimental-features flakes flake update;
 	#sudo nix-channel --update;
-	sudo nixos-rebuild switch --flake .#pi5-1
+	sudo nixos-rebuild switch --flake .#pi5-1-os
 
 sync:
 	rsync -av /home/das/nixos/arm/pi5-1-os/ pi5-1:/home/das/nixos/arm/pi5-1-os/

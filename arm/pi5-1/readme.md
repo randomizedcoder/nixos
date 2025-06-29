@@ -77,4 +77,13 @@ lrwxrwxrwx 1 das users         99 Jan 21 08:55 result -> /nix/store/z5bdj3iczgzm
 -rw-r--r-- 1 das users 1013224749 Jan 21 13:44 sda2.tar.gz
 ```
 
+dd if=/dev/mmcblk0 of=/dev/nvme0n1 bs=10MB oflag=dsync status=progress
 
+
+https://discourse.nixos.org/t/cross-compiling-building-a-flake-for-raspberry-pi-taking-too-long/51951/2
+
+
+https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation
+
+
+https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation#cross-compilation

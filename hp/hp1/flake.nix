@@ -16,6 +16,15 @@
     };
   };
 
+  nixConfig = {
+    extra-substituters = [
+      "http://hp4:5000"
+    ];
+    extra-trusted-public-keys = [
+      "hp4:YkYI70Fsy07fHWdh++V82b5Lgz03J9oE3KcIiFaJg8w="
+    ];
+  };
+
   outputs = inputs@{ nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";

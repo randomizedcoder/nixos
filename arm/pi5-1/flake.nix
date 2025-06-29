@@ -1,13 +1,27 @@
+#
+# arm/pi5-1/flake.nix
+#
+# This is based on
+# https://github.com/NixOS/nixpkgs/issues/260754#issuecomment-2501839916
+#
+# My own success comment
+# https://github.com/NixOS/nixpkgs/issues/260754#issuecomment-2614122573
+#
+# https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation#cross-compilation
+#
 {
   description = "Base system for raspberry pi 5";
   inputs = {
+    # nixpkgs.url = "nixpkgs/nixos-unstable";
     nixpkgs.url = "nixpkgs/nixos-24.11";
+    # nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixos-generators = {
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
+  #outputs = { self, nixpkgs, nixpkgs-unstable, nixos-generators, ... }:
   outputs = { self, nixpkgs, nixos-generators, ... }:
   {
     nixosModules = {
@@ -28,6 +42,14 @@
               "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
             ];
           };
+          brent = {
+            password = "admin123";
+            isNormalUser = true;
+            extraGroups = [ "wheel" ];
+            openssh.authorizedKeys.keys = [
+              "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBHhM04LlDK/gOItDXa2mzMof6LhXT9IBJ9liFPEn0xJ brent@mckee.is"
+            ];
+          };
         };
       };
     };
@@ -37,7 +59,7 @@
         system = "aarch64-linux";
         format = "sd-aarch64";
         modules = [
-          ./extra-config.nix
+          ./configuration.nix
           self.nixosModules.system
           self.nixosModules.users
           ( { ... }: {

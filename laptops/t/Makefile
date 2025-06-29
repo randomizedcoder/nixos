@@ -18,6 +18,12 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
+rebuild_t:
+	sudo nixos-rebuild switch --flake .#t
+
+#https://nixos.org/manual/nixos/unstable/index.html#sec-nix-network-issues
+#nixos-rebuild switch --option binary-caches http://my-cache.example.org/
+
 impure:
 	sudo nixos-rebuild switch --impure --flake .
 
@@ -47,5 +53,8 @@ update_oldm.:
 	sudo nix-channel --update
 	sudo nixos-rebuild switch
 	#nix-shell -p vim
+
+restart_display_manager:
+	sudo systemctl restart display-manager.service
 
 # end

@@ -1,0 +1,300 @@
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         X.Org ANSI C Emulation: 0.4
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         X.Org Video Driver: 25.2
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         X.Org XInput driver : 24.4
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         X.Org Server Extension : 10.0
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (++) using VT number 7
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) systemd-logind: took control of session /org/freedesktop/login1/session/c23
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) xfree86: Adding drm device (/dev/dri/card1)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Platform probe for /sys/devices/pci0000:60/0000:60:03.1/0000:61:00.0/0000:62:00.0/0000:63:00.0/drm/card1
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) systemd-logind: got fd for /dev/dri/card1 226:1 fd 14 paused 0
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (--) PCI:*(99@0:0:0) 1002:7312:1002:031e rev 0, Mem @ 0x13e00000000/8589934592, 0x14000000000/268435456, 0xcde00000/524288, I/O @ 0x0000f000/256, BIOS @ 0x????????/131072
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (WW) Open ACPI failed (/var/run/acpid.socket) (No such file or directory)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) "glx" will be loaded by default.
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) LoadModule: "glx"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Loading /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules/extensions/libglx.so
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Module glx: vendor="X.Org Foundation"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         compiled for 1.21.1.16, module version = 1.0.0
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         ABI class: X.Org Server Extension, version 10.0
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) LoadModule: "amdgpu"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Loading /nix/store/1syfpzn0s39fh62xcq5jaahar619gbds-xf86-video-amdgpu-23.0.0/lib/xorg/modules/drivers/amdgpu_drv.so
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Module amdgpu: vendor="X.Org Foundation"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         compiled for 1.21.1.16, module version = 23.0.0
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         Module class: X.Org Video Driver
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         ABI class: X.Org Video Driver, version 25.2
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) AMDGPU: Driver for AMD Radeon:
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         All GPUs supported by the amdgpu kernel driver
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (WW) VGA arbiter: cannot open kernel arbiter, no multi-card support
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) AMDGPU(0): Creating default Display subsection in Screen section
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         "Screen-amdgpu[0]" for depth/fbbpp 24/32
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (==) AMDGPU(0): Depth 24, (--) framebuffer bpp 32
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) AMDGPU(0): Pixel depth = 24 bits stored in 4 bytes (32 bpp pixmaps)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (==) AMDGPU(0): Default visual is TrueColor
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (==) AMDGPU(0): RGB weight 888
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) AMDGPU(0): Using 8 bits per RGB (8 bit DAC)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (--) AMDGPU(0): Chipset: "AMD Radeon Pro W5700" (ChipID = 0x7312)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Loading sub module "fb"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) LoadModule: "fb"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Module "fb" already built-in
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Loading sub module "dri2"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) LoadModule: "dri2"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Module "dri2" already built-in
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Loading sub module "glamoregl"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) LoadModule: "glamoregl"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Loading /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules/libglamoregl.so
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (II) Module glamoregl: vendor="X.Org Foundation"
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         compiled for 1.21.1.16, module version = 1.0.1
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:         ABI class: X.Org ANSI C Emulation, version 0.4
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) Backtrace:
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) 0: /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/bin/X (OsSigHandler+0x33) [0x5c35e3]
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) unw_get_proc_name failed: no unwind info found [-10]
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) 1: /nix/store/p9kdj55g5l39nbrxpjyz5wc1m0s7rzsx-glibc-2.40-66/lib/libc.so.6 (?+0x0) [0x7f321be49620]
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) Segmentation fault at address 0x0
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: Fatal server error:
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) Caught signal 11 (Segmentation fault). Server aborting
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: Please consult the The X.Org Foundation support
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:          at http://wiki.x.org
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]:  for help.
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) Please also check the log file at "/dev/null" for additional information.
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE)
+Jun 02 13:22:23 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54130]: (EE) Server terminated with error (1). Closing log file.
+                                           Module libdrm_amdgpu.so.1 without build-id.
+                                           Module amdgpu_drv.so without build-id.
+                                           #5  0x00000000005ccd95 FatalError (Xorg + 0x1ccd95)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54128]: Unable to run X server
+Jun 02 13:22:24 l gdm[53976]: Gdm: GdmDisplay: Session never registered, failing
+Jun 02 13:22:24 l gdm[53976]: Gdm: Child process -54128 was already dead.
+Jun 02 13:22:24 l gdm[53976]: Gdm: GdmDisplay: Session never registered, failing
+Jun 02 13:22:24 l gdm[53976]: Gdm: Child process -54128 was already dead.
+Jun 02 13:22:24 l systemd-logind[1623]: New session c24 of user gdm.
+Jun 02 13:22:24 l systemd[1]: Started Session c24 of User gdm.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: X.Org X Server 1.21.1.16
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: X Protocol Version 11, Revision 0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: Current Operating System: Linux l 6.12.25 #1-NixOS SMP PREEMPT_DYNAMIC Fri Apr 25 08:48:08 UTC 2025 x86_64
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: Kernel command line: initrd=\EFI\nixos\ddwdrb723gkjnw86zlcpzdzns53599kb-initrd-linux-6.12.25-initrd.efi init=/nix/store/zgv335j605i6kzm2r7hfca41029fdi12-nixos-system-l-24.11.20250502.bf3287d/init loglevel=4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:  
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: Current version of pixman: 0.43.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         Before reporting problems, check http://wiki.x.org
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         to make sure that you have the latest version.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: Markers: (--) probed, (**) from config file, (==) default setting,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         (++) from command line, (!!) notice, (II) informational,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         (WW) warning, (EE) error, (NI) not implemented, (??) unknown.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (++) Log file: "/dev/null", Time: Mon Jun  2 13:22:24 2025
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (++) Using config file: "/nix/store/fym223impgdfyvxh0cpk9vnrk0lywbxm-xserver.conf"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Using config directory: "/etc/X11/xorg.conf.d"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Using system config directory "/nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/share/X11/xorg.conf.d"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) ServerLayout "Layout[all]"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) |-->Screen "Screen-amdgpu[0]" (0)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) |   |-->Monitor "<default monitor>"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) |   |-->Device "Device-amdgpu[0]"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) No monitor specified for screen "Screen-amdgpu[0]".
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         Using a default monitor configuration.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) Option "DontZap" "on"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) Option "AllowMouseOpenFail" "on"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) Allowing byte-swapped clients
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Automatically adding devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Automatically enabling devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Automatically adding GPU devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Automatically binding GPU devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) Max clients allowed: 256, resource mask: 0x1fffff
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) FontPath set to:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         /nix/store/xh83kpkqq7xvqyqlc7j4gmphf6jc8g5f-font-cursor-misc-1.0.4/lib/X11/fonts/misc,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         /nix/store/p8zdmv713rmrjv0qdxv58cmy0nh427w3-font-misc-misc-1.1.3/lib/X11/fonts/misc,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         /nix/store/lc9l1wg361h0zrw1hcv78aygzcyxsa88-unifont-16.0.01/share/fonts,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         /nix/store/42350zvqxga4vfwdaky5mjhjrfh00y0m-font-adobe-100dpi-1.0.4/lib/X11/fonts/100dpi,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         /nix/store/brzcaxpd0bq424cd7wqd59bvxfhxpmny-font-adobe-75dpi-1.0.4/lib/X11/fonts/75dpi
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (**) ModulePath set to "/nix/store/1syfpzn0s39fh62xcq5jaahar619gbds-xf86-video-amdgpu-23.0.0/lib/xorg/modules,/nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules,/nix/store/1dx1w0hkdaycrcyjpwyq4i1nc0j6my36-xf86-input-evdev-2.11.0/lib/xorg/modules,/nix/store/hc4vy0scpvr0k10bm1sjqn40qql1725r-xf86-input-libinput-1.5.0/lib/xorg/modules"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) The server relies on udev to provide the list of input devices.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         If no devices become available, reconfigure udev or disable AutoAddDevices.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loader magic: 0x64fe40
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Module ABI versions:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         X.Org ANSI C Emulation: 0.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         X.Org Video Driver: 25.2
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         X.Org XInput driver : 24.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         X.Org Server Extension : 10.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (++) using VT number 7
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) systemd-logind: took control of session /org/freedesktop/login1/session/c24
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) xfree86: Adding drm device (/dev/dri/card1)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Platform probe for /sys/devices/pci0000:60/0000:60:03.1/0000:61:00.0/0000:62:00.0/0000:63:00.0/drm/card1
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) systemd-logind: got fd for /dev/dri/card1 226:1 fd 14 paused 0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (--) PCI:*(99@0:0:0) 1002:7312:1002:031e rev 0, Mem @ 0x13e00000000/8589934592, 0x14000000000/268435456, 0xcde00000/524288, I/O @ 0x0000f000/256, BIOS @ 0x????????/131072
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (WW) Open ACPI failed (/var/run/acpid.socket) (No such file or directory)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) "glx" will be loaded by default.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) LoadModule: "glx"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loading /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules/extensions/libglx.so
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Module glx: vendor="X.Org Foundation"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         compiled for 1.21.1.16, module version = 1.0.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         ABI class: X.Org Server Extension, version 10.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) LoadModule: "amdgpu"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loading /nix/store/1syfpzn0s39fh62xcq5jaahar619gbds-xf86-video-amdgpu-23.0.0/lib/xorg/modules/drivers/amdgpu_drv.so
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Module amdgpu: vendor="X.Org Foundation"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         compiled for 1.21.1.16, module version = 23.0.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         Module class: X.Org Video Driver
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         ABI class: X.Org Video Driver, version 25.2
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) AMDGPU: Driver for AMD Radeon:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         All GPUs supported by the amdgpu kernel driver
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (WW) VGA arbiter: cannot open kernel arbiter, no multi-card support
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) AMDGPU(0): Creating default Display subsection in Screen section
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         "Screen-amdgpu[0]" for depth/fbbpp 24/32
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) AMDGPU(0): Depth 24, (--) framebuffer bpp 32
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) AMDGPU(0): Pixel depth = 24 bits stored in 4 bytes (32 bpp pixmaps)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) AMDGPU(0): Default visual is TrueColor
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (==) AMDGPU(0): RGB weight 888
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) AMDGPU(0): Using 8 bits per RGB (8 bit DAC)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (--) AMDGPU(0): Chipset: "AMD Radeon Pro W5700" (ChipID = 0x7312)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loading sub module "fb"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) LoadModule: "fb"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Module "fb" already built-in
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loading sub module "dri2"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) LoadModule: "dri2"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Module "dri2" already built-in
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loading sub module "glamoregl"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) LoadModule: "glamoregl"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Loading /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules/libglamoregl.so
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (II) Module glamoregl: vendor="X.Org Foundation"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         compiled for 1.21.1.16, module version = 1.0.1
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:         ABI class: X.Org ANSI C Emulation, version 0.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) Backtrace:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) 0: /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/bin/X (OsSigHandler+0x33) [0x5c35e3]
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) unw_get_proc_name failed: no unwind info found [-10]
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) 1: /nix/store/p9kdj55g5l39nbrxpjyz5wc1m0s7rzsx-glibc-2.40-66/lib/libc.so.6 (?+0x0) [0x7fbd5d795620]
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) Segmentation fault at address 0x0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: Fatal server error:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) Caught signal 11 (Segmentation fault). Server aborting
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: Please consult the The X.Org Foundation support
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:          at http://wiki.x.org
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]:  for help.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) Please also check the log file at "/dev/null" for additional information.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54159]: (EE) Server terminated with error (1). Closing log file.
+                                           Module libdrm_amdgpu.so.1 without build-id.
+                                           Module amdgpu_drv.so without build-id.
+                                           #5  0x00000000005ccd95 FatalError (Xorg + 0x1ccd95)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54157]: Unable to run X server
+Jun 02 13:22:24 l gdm[53976]: Gdm: GdmDisplay: Session never registered, failing
+Jun 02 13:22:24 l gdm[53976]: Gdm: Child process -54157 was already dead.
+Jun 02 13:22:24 l gdm[53976]: Gdm: GdmDisplay: Session never registered, failing
+Jun 02 13:22:24 l gdm[53976]: Gdm: Child process -54157 was already dead.
+Jun 02 13:22:24 l systemd-logind[1623]: New session c25 of user gdm.
+Jun 02 13:22:24 l systemd[1]: Started Session c25 of User gdm.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: X.Org X Server 1.21.1.16
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: X Protocol Version 11, Revision 0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: Current Operating System: Linux l 6.12.25 #1-NixOS SMP PREEMPT_DYNAMIC Fri Apr 25 08:48:08 UTC 2025 x86_64
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: Kernel command line: initrd=\EFI\nixos\ddwdrb723gkjnw86zlcpzdzns53599kb-initrd-linux-6.12.25-initrd.efi init=/nix/store/zgv335j605i6kzm2r7hfca41029fdi12-nixos-system-l-24.11.20250502.bf3287d/init loglevel=4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:  
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: Current version of pixman: 0.43.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         Before reporting problems, check http://wiki.x.org
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         to make sure that you have the latest version.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: Markers: (--) probed, (**) from config file, (==) default setting,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         (++) from command line, (!!) notice, (II) informational,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         (WW) warning, (EE) error, (NI) not implemented, (??) unknown.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (++) Log file: "/dev/null", Time: Mon Jun  2 13:22:24 2025
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (++) Using config file: "/nix/store/fym223impgdfyvxh0cpk9vnrk0lywbxm-xserver.conf"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Using config directory: "/etc/X11/xorg.conf.d"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Using system config directory "/nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/share/X11/xorg.conf.d"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) ServerLayout "Layout[all]"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) |-->Screen "Screen-amdgpu[0]" (0)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) |   |-->Monitor "<default monitor>"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) |   |-->Device "Device-amdgpu[0]"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) No monitor specified for screen "Screen-amdgpu[0]".
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         Using a default monitor configuration.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) Option "DontZap" "on"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) Option "AllowMouseOpenFail" "on"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) Allowing byte-swapped clients
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Automatically adding devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Automatically enabling devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Automatically adding GPU devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Automatically binding GPU devices
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) Max clients allowed: 256, resource mask: 0x1fffff
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) FontPath set to:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         /nix/store/xh83kpkqq7xvqyqlc7j4gmphf6jc8g5f-font-cursor-misc-1.0.4/lib/X11/fonts/misc,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         /nix/store/p8zdmv713rmrjv0qdxv58cmy0nh427w3-font-misc-misc-1.1.3/lib/X11/fonts/misc,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         /nix/store/lc9l1wg361h0zrw1hcv78aygzcyxsa88-unifont-16.0.01/share/fonts,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         /nix/store/42350zvqxga4vfwdaky5mjhjrfh00y0m-font-adobe-100dpi-1.0.4/lib/X11/fonts/100dpi,
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         /nix/store/brzcaxpd0bq424cd7wqd59bvxfhxpmny-font-adobe-75dpi-1.0.4/lib/X11/fonts/75dpi
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (**) ModulePath set to "/nix/store/1syfpzn0s39fh62xcq5jaahar619gbds-xf86-video-amdgpu-23.0.0/lib/xorg/modules,/nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules,/nix/store/1dx1w0hkdaycrcyjpwyq4i1nc0j6my36-xf86-input-evdev-2.11.0/lib/xorg/modules,/nix/store/hc4vy0scpvr0k10bm1sjqn40qql1725r-xf86-input-libinput-1.5.0/lib/xorg/modules"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) The server relies on udev to provide the list of input devices.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         If no devices become available, reconfigure udev or disable AutoAddDevices.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loader magic: 0x64fe40
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Module ABI versions:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         X.Org ANSI C Emulation: 0.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         X.Org Video Driver: 25.2
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         X.Org XInput driver : 24.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         X.Org Server Extension : 10.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (++) using VT number 7
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) systemd-logind: took control of session /org/freedesktop/login1/session/c25
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) xfree86: Adding drm device (/dev/dri/card1)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Platform probe for /sys/devices/pci0000:60/0000:60:03.1/0000:61:00.0/0000:62:00.0/0000:63:00.0/drm/card1
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) systemd-logind: got fd for /dev/dri/card1 226:1 fd 14 paused 0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (--) PCI:*(99@0:0:0) 1002:7312:1002:031e rev 0, Mem @ 0x13e00000000/8589934592, 0x14000000000/268435456, 0xcde00000/524288, I/O @ 0x0000f000/256, BIOS @ 0x????????/131072
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (WW) Open ACPI failed (/var/run/acpid.socket) (No such file or directory)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) "glx" will be loaded by default.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) LoadModule: "glx"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loading /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules/extensions/libglx.so
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Module glx: vendor="X.Org Foundation"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         compiled for 1.21.1.16, module version = 1.0.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         ABI class: X.Org Server Extension, version 10.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) LoadModule: "amdgpu"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loading /nix/store/1syfpzn0s39fh62xcq5jaahar619gbds-xf86-video-amdgpu-23.0.0/lib/xorg/modules/drivers/amdgpu_drv.so
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Module amdgpu: vendor="X.Org Foundation"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         compiled for 1.21.1.16, module version = 23.0.0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         Module class: X.Org Video Driver
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         ABI class: X.Org Video Driver, version 25.2
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) AMDGPU: Driver for AMD Radeon:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         All GPUs supported by the amdgpu kernel driver
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (WW) VGA arbiter: cannot open kernel arbiter, no multi-card support
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) AMDGPU(0): Creating default Display subsection in Screen section
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         "Screen-amdgpu[0]" for depth/fbbpp 24/32
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) AMDGPU(0): Depth 24, (--) framebuffer bpp 32
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) AMDGPU(0): Pixel depth = 24 bits stored in 4 bytes (32 bpp pixmaps)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) AMDGPU(0): Default visual is TrueColor
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (==) AMDGPU(0): RGB weight 888
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) AMDGPU(0): Using 8 bits per RGB (8 bit DAC)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (--) AMDGPU(0): Chipset: "AMD Radeon Pro W5700" (ChipID = 0x7312)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loading sub module "fb"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) LoadModule: "fb"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Module "fb" already built-in
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loading sub module "dri2"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) LoadModule: "dri2"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Module "dri2" already built-in
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loading sub module "glamoregl"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) LoadModule: "glamoregl"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Loading /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/lib/xorg/modules/libglamoregl.so
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (II) Module glamoregl: vendor="X.Org Foundation"
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         compiled for 1.21.1.16, module version = 1.0.1
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:         ABI class: X.Org ANSI C Emulation, version 0.4
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) Backtrace:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) 0: /nix/store/j93m21y17jbs7sa380gdyv5236q27rss-xorg-server-21.1.16/bin/X (OsSigHandler+0x33) [0x5c35e3]
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) unw_get_proc_name failed: no unwind info found [-10]
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) 1: /nix/store/p9kdj55g5l39nbrxpjyz5wc1m0s7rzsx-glibc-2.40-66/lib/libc.so.6 (?+0x0) [0x7f2325759620]
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) Segmentation fault at address 0x0
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: Fatal server error:
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) Caught signal 11 (Segmentation fault). Server aborting
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: Please consult the The X.Org Foundation support
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:          at http://wiki.x.org
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]:  for help.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) Please also check the log file at "/dev/null" for additional information.
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54188]: (EE) Server terminated with error (1). Closing log file.
+                                           Module libdrm_amdgpu.so.1 without build-id.
+                                           Module amdgpu_drv.so without build-id.
+                                           #5  0x00000000005ccd95 FatalError (Xorg + 0x1ccd95)
+Jun 02 13:22:24 l /nix/store/jwdv2db2wqvnm1c5fjjav0iqq2764dfp-gdm-47.0/libexec/gdm-x-session[54186]: Unable to run X server
+Jun 02 13:22:24 l gdm[53976]: Gdm: GdmDisplay: Session never registered, failing
+Jun 02 13:22:24 l gdm[53976]: Gdm: GdmLocalDisplayFactory: maximum number of X display failures reached: check X server log for errors
+Jun 02 13:22:24 l gdm[53976]: Gdm: Child process -54186 was already dead.
+Jun 02 13:22:35 l (sd-pam)[53991]: pam_unix(systemd-user:session): session closed for user gdm

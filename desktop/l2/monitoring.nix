@@ -96,7 +96,7 @@ let
         if [[ -e "/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_cur_freq" ]]; then
           freq=$(cat "/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_cur_freq")
           governor=$(cat "/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_governor")
-          log "  CPU $cpu: ${freq}kHz ($governor)"
+          log "  CPU $cpu: \$freq kHz (\$governor)"
         fi
       done
 
@@ -230,6 +230,7 @@ in {
       ExecStart = "${monitoringScript}";
       StandardOutput = "journal";
       StandardError = "journal";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.coreutils pkgs.procps pkgs.sysstat pkgs.perf-tools pkgs.jq pkgs.gawk pkgs.gnugrep pkgs.gnused ]}";
     };
   };
 
@@ -255,6 +256,7 @@ in {
       ExecStart = "${performanceTestScript}";
       StandardOutput = "journal";
       StandardError = "journal";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.coreutils pkgs.procps pkgs.iperf3 pkgs.jq pkgs.gawk pkgs.gnugrep pkgs.gnused pkgs.iputils pkgs.sysstat ]}";
     };
   };
 
@@ -305,6 +307,7 @@ in {
       '';
       Restart = "always";
       RestartSec = "10";
+      Environment = "PATH=${lib.makeBinPath [ pkgs.coreutils pkgs.sysstat pkgs.gnugrep ]}";
     };
   };
 
@@ -336,7 +339,6 @@ in {
     iperf3
     netperf
     wrk
-    apache-bench
 
     # System analysis tools
     strace
@@ -348,7 +350,6 @@ in {
     jq
 
     # Additional monitoring
-    dstat
     glances
     s-tui
     stress-ng
@@ -357,7 +358,6 @@ in {
   # Enable sysstat for historical monitoring
   services.sysstat = {
     enable = true;
-    interval = 60; # Collect stats every minute
   };
 
   # Configure rsyslog for monitoring

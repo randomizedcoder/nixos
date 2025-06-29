@@ -43,7 +43,7 @@
       ./irq-affinity.nix
       ./systemd-slices.nix
       ./kernel-params.nix
-      ./monitoring.nix
+      #./monitoring.nix
     ];
 
   boot = {
@@ -180,6 +180,9 @@
   # };
 
   system.stateVersion = "24.11";
+
+  systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
+  systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
 
 }
 

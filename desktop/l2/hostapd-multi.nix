@@ -127,7 +127,6 @@ in {
           }
         ];
       };
-      serviceConfig.Slice = "kea.slice";
     };
   };
   # services.prometheus.exporters.kea = {
@@ -149,7 +148,6 @@ in {
         serve_rfc1918 = true;
       };
     };
-    serviceConfig.Slice = "pdns.slice";
   };
 
   # IPv6 SLAAC via radvd
@@ -168,7 +166,6 @@ in {
         };
       };
     '';
-    serviceConfig.Slice = "radvd.slice";
   };
 
   # https://nixos.wiki/wiki/Systemd-networkd

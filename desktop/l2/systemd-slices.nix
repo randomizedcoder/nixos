@@ -1,35 +1,19 @@
 # Systemd Slices Configuration for L2 WiFi Access Point
-# Defines hierarchical slice structure with CPU affinity and resource limits
+# Defines hierarchical slice structure with resource limits (no CPUAffinity)
 
 { config, lib, pkgs, ... }:
 
 let
-  # Network core assignments (cache-aware, paired SMT siblings)
-  networkCores = "0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19";  # Dedicated network processing cores
-  userlandCores = "8,20,9,21,10,22,11,23"; # Remaining cores for userland
+  # Userland core assignments (remaining cores after network IRQ isolation)
+  userlandCores = "8,20,9,21,10,22,11,23";
 
 in {
   # Systemd slices for better resource organization
   systemd.slices = {
-    # Network processing slice - Critical network services (paired SMT siblings)
-    network-processing = {
-      description = "Critical network processing (hostapd)";
-      sliceConfig = {
-        CPUAffinity = networkCores;
-        Nice = -10;
-        IOSchedulingClass = 1; # Real-time I/O
-        IOSchedulingPriority = 4;
-        MemoryHigh = "8G";
-        MemoryMax = "16G";
-      };
-    };
-
-    # Network services slice - DHCP, DNS, RA (userland cores)
+    # Network services slice - DHCP, DNS, RA, hostapd (userland cores)
     network-services = {
-      description = "Network services (DHCP, DNS, RA)";
+      description = "Network services (DHCP, DNS, RA, hostapd)";
       sliceConfig = {
-        CPUAffinity = userlandCores;
-        Nice = -5;
         MemoryHigh = "4G";
         MemoryMax = "8G";
       };
@@ -39,8 +23,6 @@ in {
     system = {
       description = "System and userland services";
       sliceConfig = {
-        CPUAffinity = userlandCores;
-        Nice = 0;
         MemoryHigh = "32G";
         MemoryMax = "64G";
       };
@@ -65,14 +47,20 @@ in {
         Slice = "network-services.slice";
       };
     };
+    hostapd = {
+      description = "hostapd WiFi access point slice";
+      sliceConfig = {
+        Slice = "network-services.slice";
+      };
+    };
   };
 
   # CPU Affinity for Network Services
   systemd.services = {
-    # Critical network processing services (network-processing slice)
+    # Critical network processing services (network-services slice)
     hostapd = {
       serviceConfig = {
-        Slice = "network-processing.slice";
+        Slice = "hostapd.slice";
         Nice = -10;
         IOSchedulingClass = 1; # Real-time I/O
         IOSchedulingPriority = 4;
@@ -107,41 +95,6 @@ in {
         Nice = -5;
         Restart = "always";
         RestartSec = "10s";
-      };
-    };
-
-    # Monitoring and userland services (system.slice)
-    network-monitoring = {
-      serviceConfig = {
-        Slice = "system.slice";
-        Nice = 0;
-      };
-    };
-    performance-test = {
-      serviceConfig = {
-        Slice = "system.slice";
-        Nice = 0;
-      };
-    };
-    realtime-monitoring = {
-      serviceConfig = {
-        Slice = "system.slice";
-        Nice = 0;
-      };
-    };
-
-    # IRQ affinity service (system.slice - runs early)
-    irq-affinity = {
-      serviceConfig = {
-        Slice = "system.slice";
-        Nice = -10;
-      };
-    };
-    # CPU performance service (system.slice - runs early)
-    cpu-performance = {
-      serviceConfig = {
-        Slice = "system.slice";
-        Nice = -10;
       };
     };
   };

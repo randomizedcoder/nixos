@@ -465,9 +465,6 @@
     # Filesystem/Monitoring
     inotify-tools
 
-    # Printing
-    hplip
-    #hplipWithPlugin
 
     # SDR
     gnuradio

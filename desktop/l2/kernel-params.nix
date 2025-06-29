@@ -6,53 +6,53 @@
 {
   # Boot kernel parameters for network optimization
   boot.kernelParams = [
-    # CPU isolation for network cores
-    "isolcpus=0-7"           # Isolate cores 0-7 from scheduler
-    "nohz_full=0-7"          # Disable tick for network cores
-    "rcu_nocbs=0-7"          # Disable RCU callbacks on network cores
+    # CPU isolation for network cores (cache-aware, paired SMT siblings)
+    "isolcpus=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
+    "nohz_full=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
+    "rcu_nocbs=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
 
     # Interrupt handling
-    "irqaffinity=0-7"        # Default IRQ affinity to network cores
-    "threadirqs"             # Threaded IRQs for better performance
+    "irqaffinity=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
+    "threadirqs"
 
     # Memory management
-    "hugepagesz=1G"          # 1GB huge pages for network buffers
-    "hugepages=4"            # Allocate 4 huge pages
+    "hugepagesz=1G"
+    "hugepages=4"
 
     # CPU frequency scaling
-    "intel_pstate=performance"  # Performance governor
+    "intel_pstate=performance"
     "cpufreq.default_governor=performance"
 
     # NUMA optimization
-    "numa_balancing=0"       # Disable automatic NUMA balancing
+    "numa_balancing=0"
 
     # I/O scheduler
-    "elevator=bfq"           # Budget Fair Queueing scheduler
+    "elevator=bfq"
 
     # Security mitigations (minimal impact on network performance)
-    "mitigations=off"        # Disable security mitigations for performance
+    "mitigations=off"
     "spectre_v2=off"
     "spec_store_bypass_disable=off"
     "retbleed=off"
 
     # WiFi optimizations
-    "cfg80211.ieee80211_regdom=US"            # Set regulatory domain
-    "iwlwifi.power_save=0"                    # Disable power saving
-    "iwlwifi.11n_disable=0"                   # Enable 802.11n
-    "iwlwifi.bt_coex_active=0"                # Disable Bluetooth coexistence
+    "cfg80211.ieee80211_regdom=US"
+    "iwlwifi.power_save=0"
+    "iwlwifi.11n_disable=0"
+    "iwlwifi.bt_coex_active=0"
 
     # PCIe optimizations
-    "pcie_aspm=off"                           # Disable ASPM for performance
-    "pcie_aspm.policy=performance"            # Performance policy
+    "pcie_aspm=off"
+    "pcie_aspm.policy=performance"
 
     # Bluetooth disabling
-    "bluetooth.blacklist=1"                   # Disable Bluetooth
-    "btusb.blacklist=1"                       # Disable USB Bluetooth
-    "btintel.blacklist=1"                     # Disable Intel Bluetooth
+    "bluetooth.blacklist=1"
+    "btusb.blacklist=1"
+    "btintel.blacklist=1"
 
     # Debugging (disable for production)
-    "quiet"                                   # Quiet boot
-    "loglevel=3"                              # Reduce log level
+    "quiet"
+    "loglevel=3"
   ];
 
   # CPU frequency scaling
@@ -73,8 +73,8 @@
           echo performance > "$cpu" 2>/dev/null || true
         done
 
-        # Set minimum and maximum frequency to maximum for network cores
-        for cpu in {0..7}; do
+        # Set min/max frequency to maximum for network cores (paired SMT siblings)
+        for cpu in 0 12 1 13 2 14 3 15 4 16 5 17 6 18 7 19; do
           if [[ -e "/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq" ]]; then
             max_freq=$(cat "/sys/devices/system/cpu/cpu$cpu/cpufreq/cpuinfo_max_freq")
             echo "$max_freq" > "/sys/devices/system/cpu/cpu$cpu/cpufreq/scaling_min_freq" 2>/dev/null || true
@@ -82,7 +82,7 @@
           fi
         done
 
-        echo "CPU performance governor set for network optimization"
+        echo "CPU performance governor set for network optimization (paired SMT siblings)"
       '';
       RemainAfterExit = true;
       StandardOutput = "journal";

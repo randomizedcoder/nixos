@@ -17,7 +17,7 @@ let
     bridge = "br0";
     ieee80211w = 2;
 
-    # WMM tuning
+    # WMM tuning (as recommended by Koen De Schepper, Nokia)
     wmm_ac_be_aifs = 1;
     wmm_ac_be_cwmin = 4;
     wmm_ac_be_cwmax = 4;
@@ -127,6 +127,7 @@ in {
           }
         ];
       };
+      serviceConfig.Slice = "kea.slice";
     };
   };
   # services.prometheus.exporters.kea = {
@@ -148,6 +149,7 @@ in {
         serve_rfc1918 = true;
       };
     };
+    serviceConfig.Slice = "pdns.slice";
   };
 
   # IPv6 SLAAC via radvd
@@ -166,6 +168,7 @@ in {
         };
       };
     '';
+    serviceConfig.Slice = "radvd.slice";
   };
 
   # https://nixos.wiki/wiki/Systemd-networkd

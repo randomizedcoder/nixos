@@ -9,6 +9,7 @@
 {
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+
     # Basic system tools
     psmisc
     vim
@@ -17,25 +18,41 @@
     tcpdump
     iproute2
     nftables
-    iptables
+    #iptables
     pciutils
     usbutils
     iw
     wirelesstools
-    wpa_supplicant
+    #wpa_supplicant
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp
     neofetch
-    libxml2  # Added for bazel/clang development
 
-    clinfo
-    lact
 
     hostapd
     bridge-utils
     wireless-regdb
     linux-firmware
 
+    # Network testing and performance tools
+    iperf2
+    flent
+    netperf
+    ethtool
+    sysstat
+    htop
+    iftop
+    nethogs
+    nload
+    speedtest-cli
+    mtr
+    traceroute
+    nmap
+    tshark
+    perf-tools
+    linuxPackages_latest.perf
   ];
 }
+
+# end

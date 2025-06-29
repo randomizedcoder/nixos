@@ -1,6 +1,7 @@
 #
 # l2/network-optimization.nix
 #
+
 # Network interface optimizations for Atlantic NIC in WiFi access point configuration
 #
 # Ring Buffer Optimizations:

@@ -63,6 +63,21 @@ The system manages 4 WiFi interfaces:
 
 All interfaces operate in 5GHz band with WPA3-SAE authentication.
 
+### WiFi WMM (QoS) Configuration
+
+This system uses specific WMM (Wi-Fi Multimedia) settings for the best effort (AC_BE) access category, as suggested by Nokia WiFi engineer Koen De Schepper, to optimize WiFi performance for normal-priority traffic:
+
+```
+# Normal priority / AC_BE = best effort
+wmm_ac_be_aifs=1
+wmm_ac_be_cwmin=4
+wmm_ac_be_cwmax=4
+wmm_ac_be_txop_limit=32
+wmm_ac_be_acm=0
+```
+
+These values are set in the `hostapd-multi.nix` configuration and ensure that best effort traffic is handled with optimal latency and fairness, as recommended by industry experts.
+
 ## CPU and IRQ Optimization
 
 ### System Architecture

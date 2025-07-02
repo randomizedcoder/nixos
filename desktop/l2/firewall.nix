@@ -111,6 +111,32 @@ in {
           }
         }
 
+        # Define set for link-local IPv6 addresses (essential for IPv6 operation)
+        set link_local_ipv6 {
+          type ipv6_addr
+          flags interval
+          elements = {
+            fe80::/10            # Link-Local Addresses
+          }
+        }
+
+        # Define sets for our internal networks
+        set internal_ipv4 {
+          type ipv4_addr
+          flags interval
+          elements = {
+            ${internalIPv4Prefix}  # Internal IPv4 subnet
+          }
+        }
+
+        set internal_ipv6 {
+          type ipv6_addr
+          flags interval
+          elements = {
+            ${internalIPv6Prefix}  # Internal IPv6 subnet
+          }
+        }
+
         # Define sets for common service ports
         set ssh_ports {
           type inet_service
@@ -181,8 +207,18 @@ in {
           # Early drop for invalid packets
           ct state invalid drop
 
-          # Drop fragmented packets (potential evasion technique)
-          ip frag-off & 0x1fff != 0 drop
+          # Allow fragment reassembly - let the router reassemble fragments
+          # and then apply security rules to the reassembled packets
+          # This prevents fragment-based attacks while maintaining compatibility
+          ip frag-off & 0x1fff != 0 accept
+
+          # Accept all traffic on the loopback interface, and drop spoofed
+          # loopback packets on any other interface.
+          iif lo accept
+          iif != "lo" ip saddr @loopback_ipv4 drop
+          iif != "lo" ip daddr @loopback_ipv4 drop
+          iif != "lo" ip6 saddr @loopback_ipv6 drop
+          iif != "lo" ip6 daddr @loopback_ipv6 drop
 
           # Drop packets with invalid TCP flag combinations
           tcp flags & (fin|syn|rst|psh|ack|urg) == (fin|syn|rst|psh|ack|urg) drop
@@ -196,18 +232,22 @@ in {
           # Allow established and related connections
           ct state established,related accept
 
-          # Accept all traffic on the loopback interface, and drop spoofed
-          # loopback packets on any other interface.
-          iif lo accept
-          iif != "lo" ip saddr @loopback_ipv4 drop
-          iif != "lo" ip daddr @loopback_ipv4 drop
-          iif != "lo" ip6 saddr @loopback_ipv6 drop
-          iif != "lo" ip6 daddr @loopback_ipv6 drop
-
           # Drop incoming traffic from special-purpose/unroutable source addresses (RFC 6890)
           # This provides strong anti-spoofing protection for the router itself.
+          # EXCEPTION: Allow essential IPv6 link-local communication (needed for IPv6 operation)
+          ip6 saddr @link_local_ipv6 icmpv6 type @icmpv6_allowed accept
+
+          # Allow legitimate internal traffic from our networks
+          iifname "${lanInterface}" ip saddr @internal_ipv4 accept
+          iifname "${lanInterface}" ip6 saddr @internal_ipv6 accept
+
+          # Block spoofed special-purpose addresses from all interfaces
           ip saddr @special_purpose_ipv4 drop
           ip6 saddr @special_purpose_ipv6 drop
+
+          # Block destination special-purpose addresses from all interfaces
+          ip daddr @special_purpose_ipv4 drop
+          ip6 daddr @special_purpose_ipv6 drop
 
           # Allow management and network services from the internal interface (${lanInterface})
           # Rate limit SSH to prevent brute force attacks
@@ -247,8 +287,9 @@ in {
           # Early drop for invalid packets being forwarded
           ct state invalid drop
 
-          # Drop fragmented packets being forwarded
-          ip frag-off & 0x1fff != 0 drop
+          # Allow fragment reassembly for forwarded packets
+          # Let the router reassemble fragments and apply security rules to reassembled packets
+          ip frag-off & 0x1fff != 0 accept
 
           # Drop packets with invalid TCP flag combinations
           tcp flags & (fin|syn|rst|psh|ack|urg) == (fin|syn|rst|psh|ack|urg) drop
@@ -264,6 +305,14 @@ in {
 
           # Drop traffic from internal clients pretending to be on the upstream LAN.
           iifname "${lanInterface}" ip saddr ${upstreamLanPrefix} drop
+
+          # Allow legitimate internal traffic to external network
+          iifname "${lanInterface}" oifname "${wanInterface}" ip saddr @internal_ipv4 accept
+          iifname "${lanInterface}" oifname "${wanInterface}" ip6 saddr @internal_ipv6 accept
+
+          # Block spoofed special-purpose addresses from internal clients
+          iifname "${lanInterface}" ip saddr @special_purpose_ipv4 drop
+          iifname "${lanInterface}" ip6 saddr @special_purpose_ipv6 drop
 
           # Drop traffic from internal clients to private/reserved ranges.
           # This prevents traffic from being forwarded to non-routable destinations.
@@ -300,13 +349,9 @@ in {
           # Drop invalid packets originating from the local machine
           ct state invalid drop
 
-          # Drop fragmented packets from router
-          ip frag-off & 0x1fff != 0 drop
-
-          # Drop packets with invalid TCP flag combinations
-          tcp flags & (fin|syn|rst|psh|ack|urg) == (fin|syn|rst|psh|ack|urg) drop
-          tcp flags & (fin|syn) == (fin|syn) drop
-          tcp flags & (syn|rst) == (syn|rst) drop
+          # Allow fragment reassembly for outgoing packets
+          # Let the router reassemble fragments before sending
+          ip frag-off & 0x1fff != 0 accept
 
           # Drop spoofed loopback packets on non-loopback interfaces.
           # Legitimate traffic to/from loopback addresses should only be on the 'lo' interface.
@@ -314,6 +359,11 @@ in {
           oif != "lo" ip daddr @loopback_ipv4 drop
           oif != "lo" ip6 saddr @loopback_ipv6 drop
           oif != "lo" ip6 daddr @loopback_ipv6 drop
+
+          # Drop packets with invalid TCP flag combinations
+          tcp flags & (fin|syn|rst|psh|ack|urg) == (fin|syn|rst|psh|ack|urg) drop
+          tcp flags & (fin|syn) == (fin|syn) drop
+          tcp flags & (syn|rst) == (syn|rst) drop
 
           # Allow essential ICMPv6 traffic from router (Router Advertisement, Neighbor Advertisement, etc.)
           oifname "${lanInterface}" icmpv6 type @icmpv6_allowed accept
@@ -328,13 +378,13 @@ in {
 
           # Block allocated subnets from going out the WAN interface (${wanInterface})
           # to prevent internal network leakage
-          oifname "${wanInterface}" ip daddr ${internalIPv4Prefix} drop
-          oifname "${wanInterface}" ip6 daddr ${internalIPv6Prefix} drop
+          oifname "${wanInterface}" ip daddr @internal_ipv4 drop
+          oifname "${wanInterface}" ip6 daddr @internal_ipv6 drop
 
           # Allow allocated subnets to go out the internal interface (${lanInterface})
           # for legitimate internal network communication
-          oifname "${lanInterface}" ip daddr ${internalIPv4Prefix} accept
-          oifname "${lanInterface}" ip6 daddr ${internalIPv6Prefix} accept
+          oifname "${lanInterface}" ip daddr @internal_ipv4 accept
+          oifname "${lanInterface}" ip6 daddr @internal_ipv6 accept
         }
       }
 
@@ -357,7 +407,7 @@ in {
 
         chain postrouting {
           type nat hook postrouting priority srcnat;
-          # IPv6 masquerading
+          # IPv6 masquerading for private fd00::/64 network
           oifname "${wanInterface}" masquerade
         }
       }

@@ -82,6 +82,7 @@ in {
   systemd.tmpfiles.rules = [
     "L+ /lib/firmware/regulatory.db - - - - ${pkgs.wireless-regdb}/lib/firmware/regulatory.db"
     "L+ /lib/firmware/regulatory.db.p7s - - - - ${pkgs.wireless-regdb}/lib/firmware/regulatory.db.p7s"
+    "d /run/radvd 0755 radvd radvd - -"
   ];
 
   systemd.services.set-regdom = {
@@ -171,9 +172,19 @@ in {
   # Add necessary capabilities to RADVD for ICMPv6 Router Advertisement
   systemd.services.radvd = {
     serviceConfig = {
+      # Run as radvd user from the start
+      User = "radvd";
+      Group = "radvd";
+      # Override ExecStart to remove -u radvd flag since we're already running as radvd user
+      # Use -p flag to specify a writable PID file location
+      ExecStart = lib.mkForce "${pkgs.radvd}/bin/radvd -n -p /run/radvd/radvd.pid -d 0 -C ${pkgs.writeText "radvd.conf" config.services.radvd.config}";
+      # Let systemd manage the PID file
+      PIDFile = "/run/radvd/radvd.pid";
       # Add CAP_NET_RAW capability to allow sending ICMPv6 messages
       CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" "CAP_NET_BROADCAST" "CAP_NET_RAW" ];
       AmbientCapabilities = [ "CAP_NET_RAW" ];
+      # Ensure the process can bind to privileged ports if needed
+      NoNewPrivileges = false;
     };
   };
 
@@ -213,14 +224,20 @@ systemd.network.networks."dummy0" = {
       matchConfig.Name = "enp1s0";
       networkConfig = {
         DHCP = "ipv4";
-        IPv4Forwarding = true;
-        IPv6Forwarding = true;
+        #IPv4Forwarding = true;
+        #IPv6Forwarding = true;
         IPv6AcceptRA = true;
         IPv6PrivacyExtensions = true;
         # IPMasquerade handled by nftables for better control
         LLDP = true;
         EmitLLDP = true;
       };
+      # # Explicitly enable Router Advertisement acceptance
+      # ipv6AcceptRAConfig = {
+      #   AcceptRA = true;
+      #   UseDNS = false;  # We handle DNS ourselves
+      #   UseDomains = false;
+      # };
     };
 
     "br0" = {
@@ -230,8 +247,8 @@ systemd.network.networks."dummy0" = {
           "192.168.1.1/24"
           "fd00::1/64"
         ];
-        IPv4Forwarding = true;
-        IPv6Forwarding = true;
+        # IPv4Forwarding = true;
+        # IPv6Forwarding = true;
         ConfigureWithoutCarrier = true;
       };
       linkConfig = {

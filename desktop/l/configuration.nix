@@ -139,11 +139,12 @@
 
   services.pipewire = {
     enable = true;
+    audio.enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # Uncomment the following line if you want to use JACK applications
-    # jack.enable = true;
+    jack.enable = true;
+    wireplumber.enable = true;
   };
 
   services.openssh.enable = true;
@@ -249,6 +250,11 @@
     extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
     config.common.default = "gtk";
   };
+
+  services.dbus.packages = with pkgs; [
+    xdg-desktop-portal
+    xdg-desktop-portal-gtk
+  ];
 
   # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
   # programs.hyprland = {

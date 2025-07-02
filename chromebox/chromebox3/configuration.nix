@@ -85,8 +85,8 @@
     description = "das";
     password = "admin123";
     extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
-    packages = with pkgs; [
-    ];
+    # packages = with pkgs; [
+    # ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"

@@ -475,8 +475,7 @@
     # Media
     vlc
     # ffmpeg moved to system package
-    #ffmpeg_7-full
-    #ffmpeg-full
+    ffmpeg_7-full
 
     # Go Development
     # https://nixos.wiki/wiki/Go
@@ -680,6 +679,11 @@
 
     #gpu monitoring
     lact
+
+    # virtual camera control
+    # v4l2-ctl --list-devices
+    v4l-utils
+    libsForQt5.kdenlive
   ];
 
   # vscode
@@ -753,7 +757,6 @@
   };
 
   # https://nixos.wiki/wiki/OBS_Studio
-  # TODO add kernel module for virtual camera
   programs.obs-studio = {
     enable = true;
     plugins = with pkgs.obs-studio-plugins; [

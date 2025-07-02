@@ -53,6 +53,18 @@ in {
         Slice = "network-services.slice";
       };
     };
+    crowdsec = {
+      description = "CrowdSec threat detection engine slice";
+      sliceConfig = {
+        Slice = "network-services.slice";
+      };
+    };
+    crowdsec-firewall-bouncer = {
+      description = "CrowdSec firewall bouncer slice";
+      sliceConfig = {
+        Slice = "network-services.slice";
+      };
+    };
   };
 
   # CPU Affinity for Network Services

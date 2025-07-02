@@ -168,6 +168,15 @@ in {
     '';
   };
 
+  # Add necessary capabilities to RADVD for ICMPv6 Router Advertisement
+  systemd.services.radvd = {
+    serviceConfig = {
+      # Add CAP_NET_RAW capability to allow sending ICMPv6 messages
+      CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" "CAP_NET_BROADCAST" "CAP_NET_RAW" ];
+      AmbientCapabilities = [ "CAP_NET_RAW" ];
+    };
+  };
+
   # https://nixos.wiki/wiki/Systemd-networkd
   networking.useNetworkd = true;
   networking.useDHCP = false;
@@ -204,6 +213,8 @@ systemd.network.networks."dummy0" = {
       matchConfig.Name = "enp1s0";
       networkConfig = {
         DHCP = "ipv4";
+        IPv4Forwarding = true;
+        IPv6Forwarding = true;
         IPv6AcceptRA = true;
         IPv6PrivacyExtensions = true;
         # IPMasquerade handled by nftables for better control
@@ -219,6 +230,8 @@ systemd.network.networks."dummy0" = {
           "192.168.1.1/24"
           "fd00::1/64"
         ];
+        IPv4Forwarding = true;
+        IPv6Forwarding = true;
         ConfigureWithoutCarrier = true;
       };
       linkConfig = {
@@ -247,7 +260,7 @@ systemd.network.networks."dummy0" = {
   networking.nameservers = [ "127.0.0.1" "::1" ];
 
   environment.etc."resolv.conf".text = ''
-    # dnsmasq
+    # pdns
     nameserver 127.0.0.1
     nameserver ::1
     # emergency cloudflare

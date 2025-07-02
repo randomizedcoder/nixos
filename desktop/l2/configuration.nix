@@ -16,6 +16,7 @@
   # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
   imports =
     [
+      ./disko-l2.nix
       ./hardware-configuration.nix
       #./hardware-graphics.nix
       ./sysctl.nix
@@ -23,6 +24,7 @@
       ./locale.nix
       ./hosts.nix
       ./firewall.nix
+      ./crowdsec.nix
       #./systemdSystem.nix
       ./systemPackages.nix
       # home manager is imported in the flake
@@ -127,7 +129,16 @@
 
   systemd.services.systemd-udev-settle.enable = false;
 
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "yes"; # Change me to "no"!!
+      #AllowUsers = [ "das" ]
+    };
+  };
+
   programs.ssh.extraConfig = ''
   Host hp4.home
     PubkeyAcceptedKeyTypes ssh-ed25519
@@ -156,6 +167,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
+    password = "admin123"; # FIX ME!!
     extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
     packages = with pkgs; [
     ];
@@ -179,7 +191,8 @@
   #   ociSeccompBpfHook.enable = true;
   # };
 
-  system.stateVersion = "24.11";
+  #system.stateVersion = "24.11";
+  system.stateVersion = "25.05";
 
   systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
   systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";

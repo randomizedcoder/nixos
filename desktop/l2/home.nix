@@ -16,14 +16,7 @@
 
   # https://nix-community.github.io/home-manager/options.xhtml#opt-home.sessionVariables
   home.sessionVariables = {
-    #NIXPKGS_ALLOW_UNFREE = "1";
-    ELECTRON_OZONE_PLATFORM_HINT = "auto";
 
-    QT_QPA_PLATFORM = "wayland";
-    # GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
-    # disable wayland
-    # NIXOS_OZONE_WL = "1";
-    GOPRIVATE = "gitlab.com/sidenio/*";
     TERM = "xterm-256color";
 
     #HTTP_PROXY = "http://hp4.home:3128";
@@ -44,67 +37,53 @@
     neofetch
     file
 
-    # # Hyprland related
-    # waybar
-    # swaybg
-    # swaylock
-    # wl-clipboard
-    # wf-recorder
-    # grimblast
-    # hyprpaper
-    # hyprpicker
-    # hypridle
-    # hyprlock
-
     # Terminal Multiplexers
     tmux
     screen
 
-    # LLVM/Clang toolchain (needed for race detection and C/C++ builds)
-    llvmPackages_20.clang-tools
-    llvmPackages_20.lld
+    # # Essential development libraries (minimal headers)
+    # glibc.dev
+    # stdenv.cc.cc.lib
+    # zlib.dev
+    # openssl.dev
+    # ncurses.dev
+    # libyaml.dev
 
-    # Essential development libraries (minimal headers)
-    glibc.dev
-    stdenv.cc.cc.lib
-    zlib.dev
-    openssl.dev
-    ncurses.dev
-    libyaml.dev
+    # # Build Tools
+    # libgcc
+    # # https://nixos.wiki/wiki/C
+    # # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
+    # #gcc
+    # automake
+    # gnumake
+    gnumake42
+    # #cmake
+    # pkg-config
 
-    # Build Tools
-    libgcc
-    # https://nixos.wiki/wiki/C
-    # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
-    #gcc
-    automake
-    gnumake
-    #cmake
-    pkg-config
+    # # Scripting/Utils
+    # perl
+    # #3.12.8 on 12th of Feb 2025
+    # python3Full
+    # gawk
+    # jq
 
-    # Scripting/Utils
-    perl
-    #3.12.8 on 12th of Feb 2025
-    python3Full
-    gawk
-    jq
     git
     htop
     btop
     minicom
 
-    bc
+    # bc
 
-    # Compression
-    bzip2
-    gzip
-    lz4
-    zip
-    unzip
+    # # Compression
+    # bzip2
+    # gzip
+    # lz4
+    # zip
+    # unzip
     #xz
     #zstd
 
-    gnutar
+    #gnutar
 
     # File Transfer/Management
     rsync
@@ -170,5 +149,6 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  home.stateVersion = "24.11";
+  #home.stateVersion = "24.11";
+  home.stateVersion = "25.05";
 }

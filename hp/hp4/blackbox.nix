@@ -318,11 +318,34 @@ let
 
 in {
   # Blackbox exporter configuration
+  # systemctl status prometheus-blackbox-exporter
+  # journalctl -u  prometheus-blackbox-exporter -f -n 20
   services.prometheus.exporters.blackbox = {
     enable = true;
     port = 9115;
-    listenAddress = "::1";
+    listenAddress = "127.0.0.1";
     configFile = pkgs.writeText "blackbox.yml" (builtins.toJSON blackboxConfig);
+  };
+
+  # Systemd service configuration for blackbox exporter with memory limits
+  systemd.services.prometheus-blackbox-exporter = {
+    serviceConfig = {
+      # Resource limits
+      MemoryMax = "300M";
+      MemoryHigh = "280M";
+      CPUQuota = "25%";
+      TasksMax = 100;
+
+      # Process limits
+      LimitNOFILE = 1024;
+      LimitNPROC = 50;
+
+      # Environment variable for Go memory limit (260MB = ~90% of 300MB)
+      Environment = [ "GOMEMLIMIT=260MiB" ];
+
+      # Nice priority
+      Nice = 10;
+    };
   };
 
   # Export targets for use in prometheus.nix

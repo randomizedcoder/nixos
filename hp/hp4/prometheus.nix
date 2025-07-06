@@ -158,6 +158,27 @@ in {
     ];
   };
 
+  # Systemd service configuration for Prometheus with security restrictions
+  systemd.services.prometheus = {
+    serviceConfig = {
+      # Resource limits - generous for time series storage
+      MemoryMax = "10G";
+      MemoryHigh = "9.5G";
+      CPUQuota = "50%";
+      TasksMax = 500;
+
+      # Process limits
+      LimitNOFILE = 65536;
+      LimitNPROC = 200;
+
+      # Environment variable for Go memory limit (9GB = ~90% of 10GB limit)
+      Environment = [ "GOMEMLIMIT=9GiB" ];
+
+      # Nice priority
+      Nice = 5;
+    };
+  };
+
   # Firewall rules for Prometheus
   networking.firewall.allowedTCPPorts = [ 9090 ];
 }

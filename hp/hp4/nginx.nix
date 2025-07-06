@@ -98,6 +98,24 @@
     process.group = "smokeping";
     socket = { inherit (config.services.nginx) user group; };
   };
+
+  # Systemd service configuration for nginx with resource limits
+  systemd.services.nginx = {
+    serviceConfig = {
+      # Resource limits - moderate for web server
+      MemoryMax = "300M";
+      MemoryHigh = "250M";
+      CPUQuota = "20%";
+      TasksMax = 200;
+
+      # Process limits
+      LimitNOFILE = 65536;
+      LimitNPROC = 100;
+
+      # Nice priority
+      Nice = 10;
+    };
+  };
 }
 # {
 #   # https://nixos.wiki/wiki/Nginx

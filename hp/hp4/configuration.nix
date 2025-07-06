@@ -48,6 +48,9 @@
       ./athens.nix
       ./remote-builder.nix
       ./services.ssh.nix
+      ./smokeping.nix
+      ./blackbox.nix
+      ./pdns-recursor.nix
     ];
 
   # Bootloader.
@@ -116,14 +119,6 @@
   networking.interfaces.enp1s0f0np0.useDHCP = false;
   networking.interfaces.enp1s0f1.useDHCP = false;
   networking.interfaces.enp1s0f1np1.useDHCP = false;
-  boot.kernel.sysctl."net.ipv6.conf.enp1s0f0.disable_ipv6" = true;
-  boot.kernel.sysctl."net.ipv6.conf.enp1s0f0np0.disable_ipv6" = true;
-  boot.kernel.sysctl."net.ipv6.conf.enp1s0f1.disable_ipv6" = true;
-  boot.kernel.sysctl."net.ipv6.conf.enp1s0f1np1.disable_ipv6" = true;
-  # networking.interfaces.enp1s0f0.ipv4.addresses = [{
-  #   address = "76.174.138.10";
-  #   prefixLength = 24;
-  # }];
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
@@ -134,7 +129,7 @@
     #ANOTHER_VARIABLE = "another-value";
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
+  # Define a user account. Don't forget to set a password with 'passwd'.
   users.users.das = {
     isNormalUser = true;
     description = "das";
@@ -259,14 +254,9 @@
     OOMScoreAdjust = 500;
   };
 
-  services.pdns-recursor = {
-    enable = true;
-    # openFirewall = false; # Default
-  };
-
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
+  # on your system were taken. It's perfectly fine and recommended to leave
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).

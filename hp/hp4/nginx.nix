@@ -1,3 +1,6 @@
+#
+# nixos/hp/hp4/nginx.nix
+#
 { pkgs, config, ... }:
 
 {
@@ -45,6 +48,30 @@
           deny all;
         '';
       };
+
+      # Add smokeping to the default virtual host
+      locations."/smokeping/" = {
+        extraConfig = ''
+          root /var/lib;
+          index smokeping.fcgi;
+        '';
+      };
+
+      locations."/smokeping/smokeping.fcgi" = {
+        extraConfig = ''
+          include ${pkgs.nginx}/conf/fastcgi_params;
+          fastcgi_pass unix:/run/fcgiwrap-smokeping.sock;
+          fastcgi_param SCRIPT_FILENAME /var/lib/smokeping/smokeping.fcgi;
+          fastcgi_param DOCUMENT_ROOT /var/lib/smokeping;
+        '';
+      };
+
+      locations."/smokeping/cache/" = {
+        extraConfig = ''
+          root /var/lib;
+          autoindex off;
+        '';
+      };
     };
   };
 
@@ -65,6 +92,12 @@
     # port = 9113; # Default
   };
 
+  # Enable fcgiwrap for smokeping
+  services.fcgiwrap.instances.smokeping = {
+    process.user = "smokeping";
+    process.group = "smokeping";
+    socket = { inherit (config.services.nginx) user group; };
+  };
 }
 # {
 #   # https://nixos.wiki/wiki/Nginx

@@ -2,6 +2,12 @@
 
 {
   networking.hosts = {
+    # Prioritize IPv6 for localhost
+    "::1" = ["localhost" "hp4"];
+    "127.0.0.1" = ["localhost"];
+    "127.0.0.2" = ["hp4"];
+
+    # Other hosts
     "172.16.40.198" = ["hp0" "hp0eth"]; # adi's room
     "172.16.40.141" = ["hp0wifi"];
     "172.16.40.142" = ["hp1" "hp1eth"];

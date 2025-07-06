@@ -29,7 +29,6 @@
     net-snmp
     neofetch
 
-
     hostapd
     bridge-utils
     wireless-regdb

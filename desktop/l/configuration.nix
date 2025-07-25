@@ -40,7 +40,7 @@
       ./docker-daemon.nix
       #./smokeping.nix
       ./distributed-builds.nix
-      ./hyprland.nix
+      #./hyprland.nix
     ];
 
   boot = {
@@ -147,6 +147,16 @@
     wireplumber.enable = true;
   };
 
+  # Enable PipeWire screen capture
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    # PipeWire screen capture
+    PIPEWIRE_SCREEN_CAPTURE = "1";
+    # Force Flameshot to use Wayland
+    QT_QPA_PLATFORM = "wayland";
+    #MY_VARIABLE = "my-value";
+  };
+
   services.openssh.enable = true;
   programs.ssh.extraConfig = ''
   Host hp4.home
@@ -173,6 +183,7 @@
   # https://nixos.wiki/wiki/Printing
   services.printing.enable = true;
 
+  # flameshot now in home.nix
   # https://wiki.nixos.org/wiki/Flameshot
   # services.flameshot = {
   #   enable = true;
@@ -188,15 +199,15 @@
   services.clickhouse.enable = false;
 
   # environment.variables defined in hardware-graphics.nix
-  environment.sessionVariables = {
-    TERM = "xterm-256color";
-    #MY_VARIABLE = "my-value";
-  };
+  # environment.sessionVariables = {
+  #   TERM = "xterm-256color";
+  #   #MY_VARIABLE = "my-value";
+  # };
 
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -247,8 +258,11 @@
 
   xdg.portal = {
     enable = true;
-    extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
-    config.common.default = "gtk";
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-gnome
+    ];
+    config.common.default = "gnome";
+    config.gnome.default = "gnome";
   };
 
   services.dbus.packages = with pkgs; [

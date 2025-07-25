@@ -51,6 +51,7 @@
       ./smokeping.nix
       ./blackbox.nix
       ./pdns-recursor.nix
+      ./home-assistant.nix
     ];
 
   # Bootloader.

@@ -22,7 +22,10 @@ rebuild:
 	#sudo nixos-rebuild switch
 	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
-	sudo systemctl restart ffmpeg-stream
+	#sudo systemctl restart ffmpeg-stream
+
+upgrade:
+	nixos-rebuild boot --flake . --upgrade
 
 rebuild_trace:
 	sudo nixos-rebuild switch --show-trace --flake .

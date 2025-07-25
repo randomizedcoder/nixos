@@ -611,8 +611,6 @@
 
     # Screenshots/Screen Recording
     # https://wiki.nixos.org/wiki/Flameshot
-    flameshot
-    #(flameshot.override { enableWlrSupport = true; })
     grim # screenshot functionality
     slurp # screenshot functionality
     simplescreenrecorder
@@ -684,6 +682,9 @@
     # v4l2-ctl --list-devices
     v4l-utils
     libsForQt5.kdenlive
+
+    # Screenshot tool with Wayland support
+    (flameshot.override { enableWlrSupport = true; })
   ];
 
   # vscode

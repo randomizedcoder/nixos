@@ -5,6 +5,7 @@
   # https://xeiaso.net/blog/prometheus-grafana-loki-nixos-2020-11-20/
   # https://grafana.com/grafana/dashboards/1860-node-exporter-full/
   # https://grafana.com/grafana/dashboards/7587-prometheus-blackbox-exporter/
+  # https://grafana.com/grafana/dashboards/14928-prometheus-blackbox-exporter/
   services.grafana = {
     enable = true;
     #openFirewall = true; # this doesn't exist

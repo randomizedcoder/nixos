@@ -36,6 +36,13 @@
     wayland-utils
     wl-clipboard
 
+    # Screen capture and PipeWire debugging
+    grim
+    slurp
+    wf-recorder
+    pipewire
+    xdg-desktop-portal-gnome
+
     xscreensaver
 
     clinfo

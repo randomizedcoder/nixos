@@ -10,15 +10,16 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hyprland.url = "github:hyprwm/Hyprland";
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      inputs.hyprland.follows = "hyprland";
-    };
+    # hyprland.url = "github:hyprwm/Hyprland";
+    # hyprland-plugins = {
+    #   url = "github:hyprwm/hyprland-plugins";
+    #   inputs.hyprland.follows = "hyprland";
+    # };
   };
 
   #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, home-manager, hyprland, ... }:
+  #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
+  outputs = { self, nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -41,12 +42,11 @@
       l = lib.nixosSystem rec {
         inherit system;
         specialArgs = {
-          inherit hyprland;
           unstable = pkgs;
         };
         modules = [
           ./configuration.nix
-          hyprland.nixosModules.default
+          #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
             # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs

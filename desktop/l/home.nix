@@ -465,7 +465,6 @@
     # Filesystem/Monitoring
     inotify-tools
 
-
     # SDR
     gnuradio
     hackrf
@@ -498,8 +497,8 @@
     # https://github.com/aarzilli/gdlv
     gdlv
     buf
-    protobuf_27
-    grpcurl
+    #protobuf_27
+    #grpcurl
     # https://github.com/go-gorm/gen
     # https://github.com/infobloxopen/protoc-gen-gorm/blob/main/example/postgres_arrays/buf.gen.yaml
     gorm-gentool

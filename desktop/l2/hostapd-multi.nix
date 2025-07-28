@@ -211,12 +211,12 @@ in {
     };
   };
 
-systemd.network.networks."dummy0" = {
-  matchConfig.Name = "dummy0";
-  networkConfig = {
-    Bridge = "br0";
+  systemd.network.networks."dummy0" = {
+    matchConfig.Name = "dummy0";
+    networkConfig = {
+      Bridge = "br0";
+    };
   };
-};
 
   # https://www.freedesktop.org/software/systemd/man/latest/systemd.network.html
   systemd.network.networks = {

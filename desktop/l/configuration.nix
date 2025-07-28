@@ -39,7 +39,7 @@
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
-      ./distributed-builds.nix
+      #./distributed-builds.nix
       #./hyprland.nix
     ];
 

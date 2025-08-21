@@ -3,67 +3,60 @@
 
   # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    # https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
-    # nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/8f146535307f0168d758fe6fee6f52663cb11695";#iperf2_2.2.1
-    # nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/c9580e24eb621d72eda63355d7c8dbfb1654d333";
-    # https://github.com/NixOS/nix/issues/12022
-    #nix flake lock --override-input nixpkgs /home/eelco/Dev/nixpkgs
-    #nix flake lock --override-input nixpkgs "/home/das/Downloads/nixpkgs
-    #nixpkgs.url = "/home/das/Downloads/nixpkgs";
-    #nixpkgs = "../../../Downloads/nixpkgs/";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
-      # The `follows` keyword in inputs is used for inheritance.
-      # Here, `inputs.nixpkgs` of home-manager is kept consistent with
-      # the `inputs.nixpkgs` of the current flake,
-      # to avoid problems caused by different versions of nixpkgs.
+      url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hyprland.url = "github:hyprwm/Hyprland";
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      # https://github.com/hyprwm/hyprland-plugins
-      inputs.hyprland.follows = "hyprland";
-    };
+    # hyprland.url = "github:hyprwm/Hyprland";
+    # hyprland-plugins = {
+    #   url = "github:hyprwm/hyprland-plugins";
+    #   inputs.hyprland.follows = "hyprland";
+    # };
   };
 
   #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, hyprland, ... }:
+  #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
+  outputs = { self, nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
-        config = { allowUnfree = true; };
-      };
-      # https://nixos.wiki/wiki/Flakes#Importing_packages_from_multiple_channels
-      # overlay-unstable = final: prev: {
-      #   unstable = nixpkgs-unstable.legacyPackages.${prev.system};
-      # };
-      overlay-unstable = final: prev: {
-        unstable = import nixpkgs-unstable {
-          inherit system;
-          config = { allowUnfree = true; };
+        config = {
+          allowUnfree = true;
+          allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+            # "nvidia-x11"
+            # "nvidia-settings"
+            # "nvidia-persistenced"
+            "google-chrome"
+            "android-studio"
+            "android-studio-stable"
+            ];
         };
       };
       lib = nixpkgs.lib;
     in {
     nixosConfigurations = {
       t14 = lib.nixosSystem rec {
-        #system ="x86_64-linux";
         inherit system;
-        specialArgs = { inherit hyprland; };
+        specialArgs = {
+          unstable = pkgs;
+        };
         modules = [
-          ({ config, pkgs, ... }: { nixpkgs.overlays = [ overlay-unstable ]; })
           ./configuration.nix
-          hyprland.nixosModules.default
+          #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
-            home-manager.useGlobalPkgs = true;
+            # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
+            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
             home-manager.useUserPackages = true;
-            home-manager.users.das = import ./home.nix;
+            home-manager.users.das = { config, pkgs, ... }: {
+              imports = [
+                ./home.nix
+              ];
+            };
             home-manager.extraSpecialArgs = specialArgs;
             # see also: https://github.com/HeinzDev/Hyprland-dotfiles/blob/main/flake.nix
           }

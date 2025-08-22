@@ -197,6 +197,13 @@
   systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
   systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
 
+  #systemd.settings.Manager = {
+  #  CPUAffinity = "8,20,9,21,10,22,11,23";
+  #};
+  # systemd.user.settings.Manager = {
+  #   CPUAffinity = "8,20,9,21,10,22,11,23";
+  # };
+
 }
 
 # end

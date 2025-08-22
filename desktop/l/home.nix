@@ -128,7 +128,8 @@
     jq
     git
     htop
-    btop
+    # using btop-romc
+    #btop
     minicom
 
     bc
@@ -379,9 +380,28 @@
     vectoroids # game
     # https://feralinteractive.github.io/gamemode/
     # sameboy
+    # https://github.com/dreamchess/dreamchess
+    # dreamchess
+    # https://github.com/ccMSC/glava
+    # glava
+    # gzdoom needs .wad files
+    # https://github.com/colemickens/gzdoom
+    # gzdoom
+
+    # https://github.com/sonald/blur-effect
+    # blur-effect
 
     #gpu monitoring
+    rocmPackages.rocm-smi
     lact
+    # https://github.com/aristocratos/btop
+    btop-rocm
+
+    # https://github.com/ollama/ollama
+    ollama-rocm
+    rocmPackages.rccl
+    # https://jeffser.com/alpaca/
+    alpaca
 
     # virtual camera control
     # v4l2-ctl --list-devices

@@ -36,6 +36,7 @@
       ./prometheus.nix
       ./grafana.nix
       # clickhouse
+      ./clickhouse-service.nix
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
@@ -196,7 +197,7 @@
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
-  services.clickhouse.enable = false;
+  # ClickHouse enabled in clickhouse-service.nix
 
   # environment.variables defined in hardware-graphics.nix
   # environment.sessionVariables = {

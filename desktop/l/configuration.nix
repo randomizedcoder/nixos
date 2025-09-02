@@ -37,11 +37,17 @@
       ./grafana.nix
       # clickhouse
       ./clickhouse-service.nix
+      # GPU fan control
+      ./gpu-fan-control.nix
+      # Corsair fan control
+      ./corsair-fan-control.nix
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
       #./distributed-builds.nix
       #./hyprland.nix
+      ./nginx.nix
+      ./ollama-service.nix
     ];
 
   boot = {
@@ -66,6 +72,8 @@
     #   # https://www.reddit.com/r/NixOS/comments/u5l3ya/cant_start_x_in_nixos/?rdt=56160
     #   #"nomodeset"
     # ];
+
+    kernelParams = [ "acpi_enforce_resources=lax" ];
 
     initrd.kernelModules = [
       "amdgpu"

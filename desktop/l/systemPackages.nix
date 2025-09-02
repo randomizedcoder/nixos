@@ -50,5 +50,9 @@
 
     # https://wiki.nixos.org/wiki/Flameshot
     #(flameshot.override { enableWlrSupport = true; })
+
+    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/fancontrol.nix
+    lm_sensors
+    liquidctl
   ];
 }

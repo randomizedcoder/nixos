@@ -41,6 +41,7 @@
     ethtool
     sysstat
     htop
+    below
     iftop
     nethogs
     nload

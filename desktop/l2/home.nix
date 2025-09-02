@@ -49,16 +49,16 @@
     # ncurses.dev
     # libyaml.dev
 
-    # # Build Tools
-    # libgcc
-    # # https://nixos.wiki/wiki/C
-    # # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
-    # #gcc
-    # automake
-    # gnumake
+    # Build Tools
+    libgcc
+    # https://nixos.wiki/wiki/C
+    # https://search.nixos.org/packages?channel=24.05&show=gcc&from=0&size=50&sort=relevance&type=packages&query=gcc
+    gcc
+    automake
+    gnumake
     gnumake42
-    # #cmake
-    # pkg-config
+    cmake
+    pkg-config
 
     # # Scripting/Utils
     # perl
@@ -75,13 +75,13 @@
     # bc
 
     # # Compression
-    # bzip2
-    # gzip
-    # lz4
-    # zip
-    # unzip
-    #xz
-    #zstd
+    bzip2
+    gzip
+    lz4
+    zip
+    unzip
+    xz
+    zstd
 
     #gnutar
 

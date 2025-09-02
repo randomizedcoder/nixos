@@ -88,8 +88,8 @@ in {
         Slice = "kea.slice";
         Nice = -5;
         LimitNOFILE = 65536;
-        Restart = "always";
-        RestartSec = "10s";
+        #Restart = lib.mkForce "always";
+        #RestartSec = "10s";
       };
     };
     pdns-recursor = {

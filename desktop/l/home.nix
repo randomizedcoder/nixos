@@ -45,11 +45,19 @@
     GOPRIVATE = "gitlab.com/sidenio/*";
     TERM = "xterm-256color";
 
+    #HIP_VISIBLE_DEVICES=0
+
     #HTTP_PROXY = "http://hp4.home:3128";
     #HTTPS_PROXY = "http://hp4.home:3128";
     #NO_PROXY = "localhost,127.0.0.1,::1,172.16.0.0/16";
     # You can also use ALL_PROXY or FTP_PROXY if needed
     # ALL_PROXY = "http://hp4:3128";
+
+    # Flutter development environment variables
+    JAVA_HOME = "${pkgs.jdk17}/lib/openjdk";
+    #CHROME_EXECUTABLE = "/etc/profiles/per-user/das/bin/google-chrome-stable";
+    CHROME_EXECUTABLE = "${pkgs.google-chrome}/bin/google-chrome-stable";
+    GOOGLE_APPLICATION_CREDENTIALS="~/Downloads/dashboard-dev-3da32-83d127a0f9ba.json";
   };
 
   home.packages = with pkgs; [
@@ -130,6 +138,7 @@
     htop
     # using btop-romc
     #btop
+    below
     minicom
 
     bc
@@ -168,6 +177,7 @@
     fping
     inetutils # Includes telnet
     netcat-gnu
+    net-tools # for netstat
 
     # Filesystem/Monitoring
     inotify-tools
@@ -251,10 +261,14 @@
     #clang_multi
 
     # Mobile Development
-    flutter
+    #flutter
+    flutter329
+    firebase-tools
     android-studio
     android-tools
     android-udev-rules
+    # Java for Android development
+    jdk17
 
     nordic
     gnome-themes-extra
@@ -287,6 +301,7 @@
     gnomeExtensions.space-bar
     # https://github.com/AstraExt/astra-monitor
     gnomeExtensions.astra-monitor
+    gnomeExtensions.obs-status
     libgtop
 
     # Office/Documents
@@ -381,7 +396,19 @@
     # https://feralinteractive.github.io/gamemode/
     # sameboy
     # https://github.com/dreamchess/dreamchess
-    # dreamchess
+    chessx
+    chessdb
+    gnuchess
+    dreamchess
+    xboard
+    fairymax # required by xboard
+    stockfish # for xboard
+    #pychess
+    gnome-chess
+    arena
+    # Audio utilities for chess applications (xboard uses aplay for sound effects)
+    alsa-utils
+
     # https://github.com/ccMSC/glava
     # glava
     # gzdoom needs .wad files
@@ -392,7 +419,10 @@
     # blur-effect
 
     #gpu monitoring
+    rocmPackages.rocminfo
     rocmPackages.rocm-smi
+    rocmPackages.rocm-core
+    rocmPackages.rocmPath
     lact
     # https://github.com/aristocratos/btop
     btop-rocm
@@ -406,7 +436,12 @@
     # virtual camera control
     # v4l2-ctl --list-devices
     v4l-utils
-    libsForQt5.kdenlive
+    kdePackages.kdenlive
+
+    flightgear
+
+    i2c-tools # sudo i2cdetect -l
+    #liquidctl # moved to systemPackages.nix
 
     # Screenshot tool with Wayland support
     (flameshot.override { enableWlrSupport = true; })
@@ -417,13 +452,14 @@
   # https://github.com/thexyno/nixos-config/blob/main/hm-modules/vscode/default.nix
   # nix run github:nix-community/nix-vscode-extensions# -- --list-extensions
   # https://mynixos.com/home-manager/options/programs.vscode
+  # https://search.nixos.org/packages?channel=unstable&query=vscode-extensions
   programs.vscode = {
     enable = true;
     package = pkgs.vscode;
     profiles.default.extensions = with pkgs.vscode-extensions; [
+      golang.go
       dart-code.dart-code
       dart-code.flutter
-      golang.go
       hashicorp.terraform
       ms-azuretools.vscode-docker
       ms-vscode-remote.remote-containers
@@ -445,6 +481,9 @@
       jnoortheen.nix-ide
       rust-lang.rust-analyzer
       bazelbuild.vscode-bazel
+      continue.continue
+      rooveterinaryinc.roo-cline
+      waderyan.gitblame
     ];
   };
 
@@ -483,12 +522,55 @@
   };
 
   # https://nixos.wiki/wiki/OBS_Studio
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/programs/obs-studio.nix
   programs.obs-studio = {
     enable = true;
+    # virtual camera is not a home manager option, and we have v4l2loopback enabled in extraModprobeConfig
+    #enableVirtualCamera = true;
     plugins = with pkgs.obs-studio-plugins; [
+      obs-3d-effect
       wlrobs
+      #obs-vnc
+      obs-ndi
+      waveform
+      pixel-art
+      obs-vaapi
+      obs-noise
+      obs-teleport
+      obs-markdown
+      obs-webkitgtk
+      obs-gstreamer
+      input-overlay
+      obs-rgb-levels
+      obs-mute-filter
+      obs-source-clone
+      obs-shaderfilter
+      obs-source-record
+      obs-retro-effects
+      obs-replay-source
+      obs-freeze-filter
+      obs-color-monitor
+      #looking-glass-obs
+      obs-vintage-filter
+      obs-scale-to-sound
+      obs-media-controls
+      obs-composite-blur
+      obs-advanced-masks
+      #obs-vertical-canvas # not sure what this is, but it flickered
+      obs-source-switcher
+      obs-move-transition
+      obs-gradient-source
+      #obs-dvd-screensaver
+      #obs-dir-watch-media
+      obs-transition-table
+      obs-recursion-effect
       obs-backgroundremoval
+      obs-stroke-glow-shadow
+      obs-scene-as-transition
+      obs-browser-transition
+      advanced-scene-switcher
       obs-pipewire-audio-capture
+
     ];
   };
 

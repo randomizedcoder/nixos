@@ -33,6 +33,7 @@
       ./prometheus.nix
       ./grafana.nix
       # clickhouse
+      ./clickhouse-service.nix
       #./docker-compose.nix
       #./docker-daemon.nix
       #./smokeping.nix
@@ -194,12 +195,12 @@
   #system.stateVersion = "24.11";
   system.stateVersion = "25.05";
 
-  systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
-  systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
+  # systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
+  # systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
 
-  #systemd.settings.Manager = {
-  #  CPUAffinity = "8,20,9,21,10,22,11,23";
-  #};
+  # systemd.settings.Manager = {
+  #   CPUAffinity = "8,20,9,21,10,22,11,23";
+  # };
   # systemd.user.settings.Manager = {
   #   CPUAffinity = "8,20,9,21,10,22,11,23";
   # };

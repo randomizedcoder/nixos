@@ -5,14 +5,16 @@
 # Uses liquidctl to control the fan speed.
 #
 
+# sudo liquidctl status --match corsair
+
 { config, lib, pkgs, ... }:
 
 let
   # Configuration - modify these values for your setup
   fanNumber = "fan1";      # Change this to control different fans (fan1, fan2, fan3, etc.)
-  fanSpeed = 100;          # Change this to desired fan speed (0-100)
+  fanSpeed = 50;          # Change this to desired fan speed (0-100)
 
-    # Script to set fan speed using liquidctl
+  # Script to set fan speed using liquidctl
   corsairFanControlScript = pkgs.writeShellScript "corsair-fan-control" ''
     #!/bin/sh
     set -eu
@@ -22,15 +24,8 @@ let
 
     echo "Setting Corsair Commander ${fanNumber} speed to ${toString fanSpeed}%"
 
-    # Check if liquidctl is available
-    if ! command -v liquidctl >/dev/null 2>&1; then
-      echo "Error: liquidctl not found. Please install it first."
-      exit 1
-    fi
-
-    # Set the fan speed
-    # Note: fanSpeed is interpolated by Nix, so we use toString to convert the integer to string
-    if liquidctl --match corsair set "$FAN_NUMBER" speed "$FAN_SPEED"; then
+    # Set the fan speed using the full path to liquidctl
+    if ${pkgs.liquidctl}/bin/liquidctl --match corsair set "$FAN_NUMBER" speed "$FAN_SPEED"; then
       echo "Fan speed set successfully to ${toString fanSpeed}%"
       exit 0
     else

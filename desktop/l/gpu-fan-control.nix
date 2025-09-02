@@ -5,6 +5,19 @@
 # Configure the GPU bus address and desired fan speed below.
 #
 
+# [nix-shell:~/nixos/desktop/l]$ rocm-smi
+
+
+# =========================================== ROCm System Management Interface ===========================================
+# ===================================================== Concise Info =====================================================
+# Device  Node  IDs              Temp    Power     Partitions          SCLK    MCLK    Fan     Perf  PwrCap  VRAM%  GPU%
+#               (DID,     GUID)  (Edge)  (Socket)  (Mem, Compute, ID)
+# ========================================================================================================================
+# 0       2     0x66a1,   33678  35.0°C  19.0W     N/A, N/A, 0         938Mhz  350Mhz  100.0%  auto  225.0W  0%     0%
+# 1       1     0x7312,   11012  45.0°C  33.0W     N/A, N/A, 0         800Mhz  900Mhz  49.41%  auto  140.0W  22%    2%
+# ========================================================================================================================
+# ================================================= End of ROCm SMI Log ==================================================
+
 { config, lib, pkgs, ... }:
 
 let
@@ -15,7 +28,7 @@ let
   #44:00.0 Display controller: Advanced Micro Devices, Inc. [AMD/ATI] Vega 20 [Radeon Pro VII/Radeon Instinct MI50 32GB]
   #63:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Navi 10 [Radeon Pro W5700]
 
-  fanSpeedPercent = 50;      # Change this to desired fan speed (0-100)
+  fanSpeedPercent = 40;      # Change this to desired fan speed (0-100)
 
   # Calculate the actual PWM value based on percentage
   fanSpeedPWM = builtins.toString (fanSpeedPercent * 255 / 100);
@@ -50,8 +63,8 @@ let
               echo "Max PWM: $max_pwm"
 
               # Calculate actual PWM value based on percentage
-              # Note: fanSpeedPercent is interpolated by Nix as a literal number, so we use it directly in Bash arithmetic
-              actual_pwm=$(( max_pwm * ${fanSpeedPercent} / 100 ))
+              # Note: fanSpeedPercent is interpolated by Nix, so we use toString to convert the integer to string
+              actual_pwm=$(( max_pwm * ${toString fanSpeedPercent} / 100 ))
               echo "Setting PWM to $actual_pwm"
               echo "$actual_pwm" > "$hwmon/pwm1"
 

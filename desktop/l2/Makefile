@@ -45,4 +45,7 @@ sync:
 s:
 	rsync -avz /home/das/nixos/ 172.16.40.47:/home/das/nixos/
 
+l2s:
+	rsync -avzd /home/das/nixos/ l2:/home/das/nixos/
+
 # end

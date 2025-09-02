@@ -57,7 +57,7 @@
     automake
     gnumake
     gnumake42
-    cmake
+    # cmake
     pkg-config
 
     # # Scripting/Utils

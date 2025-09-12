@@ -52,6 +52,10 @@
     tshark
     perf-tools
     linuxPackages_latest.perf
+
+    rdma-core # ibv_devinfo, rdma
+    pciutils
+    libpciaccess
   ];
 }
 

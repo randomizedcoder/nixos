@@ -67,6 +67,13 @@
       "amdgpu"
     ];
 
+    kernelModules = [
+      "bnxt_en"      # Ethernet
+      "bnxt_re"      # RoCEv2 RDMA provider
+      "ib_uverbs"    # RDMA verbs
+      "rdma_ucm"
+    ];
+
     blacklistedKernelModules = [
       "nouveau"
       #"i915"
@@ -96,6 +103,7 @@
       stdenv.cc.cc.lib
       zlib
       libxml2
+      pciutils # for broadcom niccli
     ];
   };
 

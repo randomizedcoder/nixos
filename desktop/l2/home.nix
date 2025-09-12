@@ -56,7 +56,7 @@
     gcc
     automake
     gnumake
-    gnumake42
+    # gnumake42  # Removed to avoid version conflict with gnumake
     # cmake
     pkg-config
 

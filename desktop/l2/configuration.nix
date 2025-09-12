@@ -50,6 +50,7 @@
     ];
 
   boot = {
+
     loader.systemd-boot = {
       enable = true;
       consoleMode = "max";
@@ -173,6 +174,9 @@
     #MY_VARIABLE = "my-value";
   };
 
+  systemd.services.modem-manager.enable = false;
+  systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
+
   users.users.das = {
     isNormalUser = true;
     description = "das";
@@ -189,6 +193,16 @@
   programs.gnupg.agent = {
      enable = true;
      enableSSHSupport = true;
+  };
+
+  # Enable LACT GPU Control Daemon
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
+  services.lact = {
+    enable = true;
+    # Optional: Add custom settings here if needed
+    # settings = {
+    #   # Example settings
+    # };
   };
 
   # # https://nixos.wiki/wiki/Virt-manager

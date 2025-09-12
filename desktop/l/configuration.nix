@@ -51,10 +51,12 @@
     ];
 
   boot = {
+
     loader.systemd-boot = {
       enable = true;
       consoleMode = "max";
       memtest86.enable = true;
+      configurationLimit = 20;
     };
 
     loader.efi.canTouchEfiVariables = true;
@@ -64,6 +66,14 @@
     #kernelPackages = pkgs.linuxPackages;
     kernelPackages = pkgs.linuxPackages_latest;
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
+
+    # kernelPackages = pkgs.linuxPackages // {
+    #   kernel = pkgs.linuxPackages.kernel.override {
+    #     extraStructuredConfig = with lib.kernel; {
+    #       CONFIG_DRM_NOUVEAU = no;
+    #     };
+    #   };
+    # };
 
     # # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
     # kernelParams = [
@@ -77,6 +87,13 @@
 
     initrd.kernelModules = [
       "amdgpu"
+    ];
+
+    kernelModules = [
+      "bnxt_en"      # Ethernet
+      "bnxt_re"      # RoCEv2 RDMA provider
+      "ib_uverbs"    # RDMA verbs
+      "rdma_ucm"
     ];
 
     blacklistedKernelModules = [
@@ -94,8 +111,9 @@
 
     extraModprobeConfig = ''
       options kvm_intel nested=1
-      options v4l2loopback devices=1 video_nr=1 card_label="OBS Cam" exclusive_caps=1
+      options v4l2loopback devices=1 video_nr=1 card_label="v4l2loopback" exclusive_caps=1
     '';
+    # https://github.com/v4l2loopback/v4l2loopback#options
   };
 
   # https://fzakaria.com/2025/02/26/nix-pragmatism-nix-ld-and-envfs
@@ -107,7 +125,9 @@
       stdenv.cc.cc.lib
       zlib
       libxml2
+      pciutils # for broadcom niccli
       # Add more libraries as needed
+      #libpciaccess
     ];
   };
 
@@ -263,7 +283,16 @@
   systemd.tmpfiles.rules = [
     "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
   ];
-  systemd.services.lactd.wantedBy = [ "multi-user.target" ];
+
+  # Enable LACT GPU Control Daemon
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
+  services.lact = {
+    enable = true;
+    # Optional: Add custom settings here if needed
+    # settings = {
+    #   # Example settings
+    # };
+  };
 
   xdg.portal = {
     enable = true;
@@ -329,3 +358,5 @@
   };
 
 }
+
+# end

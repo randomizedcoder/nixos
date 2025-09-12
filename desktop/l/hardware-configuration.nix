@@ -43,4 +43,7 @@
 
   hardware.i2c.enable = true;
   #hardware.sensor.hddtemp.enable = true;
+
+  # hardware.decklink.enable = true;
+  #https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/hardware/decklink.nix
 }

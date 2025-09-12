@@ -54,5 +54,9 @@
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/fancontrol.nix
     lm_sensors
     liquidctl
+
+    rdma-core # ibv_devinfo, rdma
+    pciutils
+    libpciaccess
   ];
 }

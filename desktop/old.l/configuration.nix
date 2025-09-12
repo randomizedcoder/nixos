@@ -235,7 +235,8 @@
   systemd.tmpfiles.rules = [
     "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
   ];
-  systemd.services.lactd.wantedBy = [ "multi-user.target" ];
+  systemd.services.lact.wantedBy = [ "multi-user.target" ];
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
 
   # Configure keymap in X11
   services.xserver.xkb = {

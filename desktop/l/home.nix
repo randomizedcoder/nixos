@@ -439,6 +439,7 @@
     kdePackages.kdenlive
 
     flightgear
+    linuxConsoleTools #jscal https://wiki.flightgear.org/Input_device
 
     i2c-tools # sudo i2cdetect -l
     #liquidctl # moved to systemPackages.nix
@@ -538,7 +539,7 @@
       obs-noise
       obs-teleport
       obs-markdown
-      obs-webkitgtk
+      #obs-webkitgtk # seems to be removed
       obs-gstreamer
       input-overlay
       obs-rgb-levels

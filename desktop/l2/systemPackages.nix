@@ -53,6 +53,9 @@
     perf-tools
     linuxPackages_latest.perf
 
+    clinfo
+    lact
+
     rdma-core # ibv_devinfo, rdma
     pciutils
     libpciaccess

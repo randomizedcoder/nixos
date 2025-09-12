@@ -14,6 +14,13 @@ let
 
 in {
 
+  services.open-webui = {
+    enable = true;
+    port = 8086; # default 8080
+  };
+  # https://github.com/open-webui/open-webui
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/open-webui.nix
+
   services.ollama = {
 
     enable = true;

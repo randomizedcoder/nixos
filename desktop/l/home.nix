@@ -130,8 +130,7 @@
 
     # Scripting/Utils
     perl
-    #3.12.8 on 12th of Feb 2025
-    python3Full
+    python314
     gawk
     jq
     git
@@ -157,6 +156,8 @@
     # File Transfer/Management
     rsync
     tree
+
+    nixpkgs-fmt
 
     # Terminals
     alacritty
@@ -218,7 +219,7 @@
     #grpcurl
     # https://github.com/go-gorm/gen
     # https://github.com/infobloxopen/protoc-gen-gorm/blob/main/example/postgres_arrays/buf.gen.yaml
-    gorm-gentool
+    #gorm-gentool
     # removed 24.11
     #buf-language-server
     # https://tinygo.org/
@@ -261,8 +262,9 @@
     #clang_multi
 
     # Mobile Development
-    #flutter
-    flutter329
+    flutter #3.35.2
+    #flutter329
+    # https://search.nixos.org/packages?channel=unstable&query=flutter
     firebase-tools
     android-studio
     android-tools
@@ -383,7 +385,7 @@
     hyperfine
 
     # App Launchers
-    rofi-wayland
+    rofi
     wofi
 
     # Raspberry Pi
@@ -446,6 +448,9 @@
 
     # Screenshot tool with Wayland support
     (flameshot.override { enableWlrSupport = true; })
+
+    # Custom onnxruntime package
+    onnxruntime
   ];
 
   # vscode
@@ -565,7 +570,7 @@
       #obs-dir-watch-media
       obs-transition-table
       obs-recursion-effect
-      obs-backgroundremoval
+      obs-backgroundremoval # https://github.com/royshil/obs-backgroundremoval
       obs-stroke-glow-shadow
       obs-scene-as-transition
       obs-browser-transition

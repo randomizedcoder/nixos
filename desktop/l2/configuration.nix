@@ -24,7 +24,7 @@
       ./locale.nix
       ./hosts.nix
       ./firewall.nix
-      ./crowdsec.nix
+      #./crowdsec.nix
       #./systemdSystem.nix
       ./systemPackages.nix
       # home manager is imported in the flake
@@ -43,7 +43,7 @@
       ./hostapd-multi.nix
       ./network-optimization.nix
       # CPU and IRQ optimization modules
-      ./irq-affinity.nix
+      #./irq-affinity.nix
       ./systemd-slices.nix
       ./kernel-params.nix
       #./monitoring.nix

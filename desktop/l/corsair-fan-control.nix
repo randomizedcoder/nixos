@@ -12,7 +12,7 @@
 let
   # Configuration - modify these values for your setup
   fanNumber = "fan1";      # Change this to control different fans (fan1, fan2, fan3, etc.)
-  fanSpeed = 50;          # Change this to desired fan speed (0-100)
+  fanSpeed = 80;           # Change this to desired fan speed (0-100)
 
   # Script to set fan speed using liquidctl
   corsairFanControlScript = pkgs.writeShellScript "corsair-fan-control" ''

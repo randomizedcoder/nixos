@@ -35,6 +35,11 @@
             "android-studio-stable"
             ];
         };
+        overlays = [
+          (final: prev: {
+            onnxruntime = final.callPackage /home/das/Downloads/nixpkgs/pkgs/by-name/on/onnxruntime/package.nix { };
+          })
+        ];
       };
       lib = nixpkgs.lib;
     in {

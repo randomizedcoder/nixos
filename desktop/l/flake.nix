@@ -37,7 +37,20 @@
         };
         overlays = [
           (final: prev: {
-            onnxruntime = final.callPackage /home/das/Downloads/nixpkgs/pkgs/by-name/on/onnxruntime/package.nix { };
+            onnxruntime = final.callPackage /home/das/Downloads/nixpkgs/pkgs/by-name/on/onnxruntime/package.nix {
+              rocmSupport = true;
+              rcclSupport = true;
+            };
+            python313Packages = prev.python313Packages.override (old: {
+              overrides = prev.lib.composeManyExtensions [
+                (final: prev: {
+                  onnxruntime = final.callPackage /home/das/Downloads/nixpkgs/pkgs/development/python-modules/onnxruntime/default.nix {
+                    onnxruntime = final.onnxruntime;  # Use the overlay version
+                  };
+                })
+                old.overrides or (final: prev: { })
+              ];
+            });
           })
         ];
       };

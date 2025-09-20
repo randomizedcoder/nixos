@@ -58,6 +58,9 @@
     #CHROME_EXECUTABLE = "/etc/profiles/per-user/das/bin/google-chrome-stable";
     CHROME_EXECUTABLE = "${pkgs.google-chrome}/bin/google-chrome-stable";
     GOOGLE_APPLICATION_CREDENTIALS="~/Downloads/dashboard-dev-3da32-83d127a0f9ba.json";
+
+    # Python path for onnxruntime
+    PYTHONPATH = "${pkgs.python313Packages.onnxruntime}/lib/python3.13/site-packages";
   };
 
   home.packages = with pkgs; [
@@ -130,7 +133,7 @@
 
     # Scripting/Utils
     perl
-    python314
+    python313
     gawk
     jq
     git
@@ -451,6 +454,9 @@
 
     # Custom onnxruntime package
     onnxruntime
+
+    # Custom Python onnxruntime module
+    python313Packages.onnxruntime
   ];
 
   # vscode
@@ -505,6 +511,7 @@
       k = "kubectl";
     };
   };
+
 
   programs.vim = {
     enable = true;

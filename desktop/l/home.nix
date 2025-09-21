@@ -449,10 +449,10 @@
     # Screenshot tool with Wayland support
     (flameshot.override { enableWlrSupport = true; })
 
-    # Custom onnxruntime package
+    # Custom onnxruntime package with ROCm support
     onnxruntime
 
-    # Custom Python onnxruntime module
+    # Standard Python onnxruntime module (should work with custom C++ library)
     python313Packages.onnxruntime
   ];
 

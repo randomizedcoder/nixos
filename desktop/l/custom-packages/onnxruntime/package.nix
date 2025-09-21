@@ -2,11 +2,11 @@
 , stdenv
 , lib
 , fetchFromGitHub
-, abseil-cpp_202508
+, abseil-cpp_202407
 , cmake
 , cpuinfo
 , eigen
-, flatbuffers
+, flatbuffers_23
 , glibcLocales
 , gtest
 , howard-hinnant-date
@@ -49,21 +49,21 @@ let
     owner = "boostorg";
     repo = "mp11";
     tag = "boost-1.89.0";
-    hash = "sha256-6dbfae01358be88ebefcdfb7707a2a68ba914c39dc83fdd85f556761fe0fafb4";
+    hash = "sha256-HcQJ/PXBQdWVjGZy28X2LxVRfjV2nkeLTusNjT9ssXI=";
   };
 
   safeint = fetchFromGitHub {
     owner = "dcleblanc";
     repo = "safeint";
     tag = "3.0.28a";
-    hash = "sha256-9e652d065a3cef80623287d5dc61edcf6a95ddab38a9dfeb34f155261fc9cef7";
+    hash = "sha256-MT2nba15DDApNQZxOBkf0DPvc759rEhpwfcD6ERphl0=";
   };
 
   onnx = fetchFromGitHub {
     owner = "onnx";
     repo = "onnx";
-    tag = "v1.19.0";
-    hash = "sha256-2c2ac5a078b0350a0723fac606be8cd9e9e8cbd4c99bab1bffe2623b188fd236";
+    tag = "v1.17.0";
+    hash = "sha256-9oORW0YlQ6SphqfbjcYb0dTlHc+1gzy9quH/Lj6By8Q=";
   };
 
   cutlass = fetchFromGitHub {
@@ -77,7 +77,7 @@ let
     owner = "dmlc";
     repo = "dlpack";
     tag = "v1.1";
-    hash = "sha256-2e3b94b55825c240cc58e6721e15b449978cbae21a2a4caa23058b0157ee2fb3";
+    hash = "sha256-RoJxvlrt1QcGvB8m/kycziTbO367diOpsnro49hDl24=";
   };
 
   isCudaJetson = cudaSupport && cudaPackages.flags.isJetsonBuild;
@@ -118,6 +118,8 @@ effectiveStdenv.mkDerivation rec {
   ++ lib.optionals rocmSupport [
     rocmPackages.rocm-cmake
     rocmPackages.hipcc
+    rocmPackages.llvm.clang
+    rocmPackages.rocm-device-libs
   ];
 
   buildInputs = [
@@ -205,9 +207,9 @@ effectiveStdenv.mkDerivation rec {
     (lib.cmakeBool "ABSL_ENABLE_INSTALL" true)
     (lib.cmakeBool "FETCHCONTENT_FULLY_DISCONNECTED" true)
     (lib.cmakeBool "FETCHCONTENT_QUIET" false)
-    (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_ABSEIL_CPP" "${abseil-cpp_202508.src}")
+    (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_ABSEIL_CPP" "${abseil-cpp_202407.src}")
     (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_DLPACK" "${dlpack}")
-    (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_FLATBUFFERS" "${flatbuffers.src}")
+           (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_FLATBUFFERS" "${flatbuffers_23.src}")
     (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_MP11" "${mp11}")
     (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_ONNX" "${onnx}")
     (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_RE2" "${re2.src}")
@@ -245,6 +247,17 @@ effectiveStdenv.mkDerivation rec {
 
   env = lib.optionalAttrs effectiveStdenv.cc.isClang {
     NIX_CFLAGS_COMPILE = "-Wno-error";
+  } // lib.optionalAttrs rocmSupport {
+    # ROCm environment variables for HIP compiler
+    ROCM_PATH = "${rocmPackages.rocm-core}";
+    HIP_PATH = "${rocmPackages.hipcc}";
+    HIP_CLANG_PATH = "${rocmPackages.llvm.clang}/bin";
+    HSA_PATH = "${rocmPackages.rocm-core}";
+    HIP_PLATFORM = "amd";
+    HIP_COMPILER = "clang";
+    HIP_RUNTIME = "rocclr";
+    # ROCm device library path
+    ROCM_DEVICE_LIB_PATH = "${rocmPackages.rocm-device-libs}/lib";
   };
 
   doCheck =
@@ -278,6 +291,16 @@ effectiveStdenv.mkDerivation rec {
   + lib.optionalString (effectiveStdenv.hostPlatform.system == "aarch64-linux") ''
     # https://github.com/NixOS/nixpkgs/pull/226734#issuecomment-1663028691
     rm -v onnxruntime/test/optimizer/nhwc_transformer_test.cc
+  '';
+
+  preConfigure = lib.optionalString rocmSupport ''
+    # Create symlinks for ROCm tools that HIP compiler expects
+    mkdir -p /tmp/rocm/bin /tmp/rocm/lib/llvm/bin
+    ln -sf ${rocmPackages.rocm-core}/bin/rocm_agent_enumerator /tmp/rocm/bin/rocm_agent_enumerator
+    ln -sf ${rocmPackages.llvm.clang}/bin/clang++ /tmp/rocm/lib/llvm/bin/clang++
+    ln -sf ${rocmPackages.llvm.clang}/bin/clang /tmp/rocm/lib/llvm/bin/clang
+    export ROCM_PATH=/tmp/rocm
+    export ROCM_DEVICE_LIB_PATH=${rocmPackages.rocm-device-libs}/lib
   '';
 
   postBuild = lib.optionalString pythonSupport ''

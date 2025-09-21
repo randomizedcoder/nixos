@@ -53,20 +53,11 @@
             # Apply the overlay to NixOS
             nixpkgs.overlays = [
               (final: prev: {
+                # Custom onnxruntime with ROCm support (temporarily disabled)
                 onnxruntime = final.callPackage ./custom-packages/onnxruntime/package.nix {
-                  rocmSupport = true;
-                  rcclSupport = true;
+                  rocmSupport = false;
+                  rcclSupport = false;
                 };
-                python313Packages = prev.python313Packages.override (old: {
-                  overrides = prev.lib.composeManyExtensions [
-                    (final: prev: {
-                      onnxruntime = final.callPackage ./custom-packages/python-onnxruntime/default.nix {
-                        onnxruntime = final.onnxruntime;
-                      };
-                    })
-                    old.overrides or (final: prev: { })
-                  ];
-                });
               })
             ];
 

@@ -59,7 +59,9 @@ buildPythonPackage {
     # Same applies to ROCm support - the Python package inherits ROCm support from the core package.
     onnxruntime
   ]
-  ++ lib.optionals onnxruntime.passthru.cudaSupport (
+  # Note: CUDA and ROCm support dependencies are handled by the core onnxruntime package
+  # The Python package inherits the same capabilities through the shared libraries
+  ++ lib.optionals (onnxruntime ? passthru && onnxruntime.passthru ? cudaSupport && onnxruntime.passthru.cudaSupport) (
     with onnxruntime.passthru.cudaPackages;
     [
       libcublas # libcublasLt.so.XX libcublas.so.XX
@@ -70,7 +72,7 @@ buildPythonPackage {
       nccl # libnccl.so.XX
     ]
   )
-  ++ lib.optionals onnxruntime.passthru.rocmSupport (
+  ++ lib.optionals (onnxruntime ? passthru && onnxruntime.passthru ? rocmSupport && onnxruntime.passthru.rocmSupport) (
     with onnxruntime.passthru.rocmPackages;
     [
       rocm-core # ROCm core libraries

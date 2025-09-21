@@ -58,9 +58,6 @@
     #CHROME_EXECUTABLE = "/etc/profiles/per-user/das/bin/google-chrome-stable";
     CHROME_EXECUTABLE = "${pkgs.google-chrome}/bin/google-chrome-stable";
     GOOGLE_APPLICATION_CREDENTIALS="~/Downloads/dashboard-dev-3da32-83d127a0f9ba.json";
-
-    # Python path for onnxruntime
-    PYTHONPATH = "${pkgs.python313Packages.onnxruntime}/lib/python3.13/site-packages";
   };
 
   home.packages = with pkgs; [
@@ -678,8 +675,7 @@
   };
   # https://github.com/colemickens/nixcfg/blob/1915d408ea28a5b7279f94df7a982dbf2cf692ef/mixins/ghostty.nix#L19
 
-  # set at flake.nix level
-  nixpkgs.config.allowUnfree = true;
+  # nixpkgs.config.allowUnfree is set at flake.nix level
 
   home.stateVersion = "24.11";
 }

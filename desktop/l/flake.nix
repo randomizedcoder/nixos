@@ -33,26 +33,9 @@
             "google-chrome"
             "android-studio"
             "android-studio-stable"
+            "vscode"
             ];
         };
-        overlays = [
-          (final: prev: {
-            onnxruntime = final.callPackage /home/das/Downloads/nixpkgs/pkgs/by-name/on/onnxruntime/package.nix {
-              rocmSupport = true;
-              rcclSupport = true;
-            };
-            python313Packages = prev.python313Packages.override (old: {
-              overrides = prev.lib.composeManyExtensions [
-                (final: prev: {
-                  onnxruntime = final.callPackage /home/das/Downloads/nixpkgs/pkgs/development/python-modules/onnxruntime/default.nix {
-                    onnxruntime = final.onnxruntime;  # Use the overlay version
-                  };
-                })
-                old.overrides or (final: prev: { })
-              ];
-            });
-          })
-        ];
       };
       lib = nixpkgs.lib;
     in {
@@ -67,8 +50,37 @@
           #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
+            # Apply the overlay to NixOS
+            nixpkgs.overlays = [
+              (final: prev: {
+                onnxruntime = final.callPackage ./custom-packages/onnxruntime/package.nix {
+                  rocmSupport = true;
+                  rcclSupport = true;
+                };
+                python313Packages = prev.python313Packages.override (old: {
+                  overrides = prev.lib.composeManyExtensions [
+                    (final: prev: {
+                      onnxruntime = final.callPackage ./custom-packages/python-onnxruntime/default.nix {
+                        onnxruntime = final.onnxruntime;
+                      };
+                    })
+                    old.overrides or (final: prev: { })
+                  ];
+                });
+              })
+            ];
+
+            # Allow unfree packages
+            nixpkgs.config.allowUnfree = true;
+            nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+              "google-chrome"
+              "android-studio"
+              "android-studio-stable"
+              "vscode"
+            ];
+
             # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
-            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
+            home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
             home-manager.useUserPackages = true;
             home-manager.users.das = { config, pkgs, ... }: {
               imports = [

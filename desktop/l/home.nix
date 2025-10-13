@@ -184,16 +184,16 @@
     # Filesystem/Monitoring
     inotify-tools
 
-    # SDR
-    gnuradio
-    hackrf
-    gqrx
-    cubicsdr
+    # SDR #cmake errors
+    # gnuradio
+    # hackrf
+    # gqrx
+    # cubicsdr
 
     # Media
     vlc
     # ffmpeg moved to system package
-    ffmpeg_7-full
+    ffmpeg_8-full
 
     # Go Development
     # https://nixos.wiki/wiki/Go

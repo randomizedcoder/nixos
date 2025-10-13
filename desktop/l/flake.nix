@@ -50,16 +50,28 @@
           #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
-            # Apply the overlay to NixOS
-            nixpkgs.overlays = [
-              (final: prev: {
-                # Custom onnxruntime with ROCm support (temporarily disabled)
-                onnxruntime = final.callPackage ./custom-packages/onnxruntime/package.nix {
-                  rocmSupport = false;
-                  rcclSupport = false;
-                };
-              })
-            ];
+            # # Apply the overlay to NixOS
+            # nixpkgs.overlays = [
+            #   (final: prev: {
+            #     # Custom onnxruntime with ROCm support
+            #     # Note: CUDA and ROCm are mutually exclusive - only one can be enabled
+            #     onnxruntime = final.callPackage ./custom-packages/onnxruntime/package.nix {
+            #       cudaSupport = false;    # Disable CUDA when using ROCm
+            #       ncclSupport = false;    # NCCL requires CUDA, so disable with ROCm
+            #       rocmSupport = true;     # Enable ROCm support for AMD GPUs
+            #       rcclSupport = true;     # Enable RCCL for ROCm multi-GPU support
+            #     };
+
+            #     # Custom Python onnxruntime module that uses our custom onnxruntime
+            #     python313Packages = prev.python313Packages.override (old: {
+            #       overrides = prev.lib.composeExtensions (old.overrides or (_: _: {})) (pyfinal: pyprev: {
+            #         onnxruntime = pyfinal.callPackage ./custom-packages/python-onnxruntime/default.nix {
+            #           onnxruntime = final.onnxruntime;
+            #         };
+            #       });
+            #     });
+            #   })
+            # ];
 
             # Allow unfree packages
             nixpkgs.config.allowUnfree = true;

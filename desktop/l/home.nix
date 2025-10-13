@@ -125,6 +125,7 @@
     gnumake
     #cmake
     pkg-config
+    shellcheck
 
     gdb
 
@@ -248,6 +249,9 @@
 
     # Diffing
     meld
+
+    # tcl/expect
+    expect
 
     # Editors
     helix
@@ -541,7 +545,7 @@
       obs-3d-effect
       wlrobs
       #obs-vnc
-      obs-ndi
+      #obs-ndi
       waveform
       pixel-art
       obs-vaapi

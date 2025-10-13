@@ -19,6 +19,7 @@
 , protobuf
 , microsoft-gsl
 , darwinMinVersionHook
+, git
 , pythonSupport ? true
 , cudaSupport ? config.cudaSupport
 , ncclSupport ? config.cudaSupport
@@ -32,6 +33,13 @@
 let
   version = "1.22.2";
 
+  # IMPORTANT: CUDA and ROCm support are mutually exclusive in onnxruntime
+  # - cudaSupport: Enable CUDA support for NVIDIA GPUs
+  # - ncclSupport: Enable NCCL for CUDA multi-GPU support (requires cudaSupport)
+  # - rocmSupport: Enable ROCm support for AMD GPUs
+  # - rcclSupport: Enable RCCL for ROCm multi-GPU support (requires rocmSupport)
+  # Only one of (cudaSupport, rocmSupport) can be true at a time
+
   src = fetchFromGitHub {
     owner = "microsoft";
     repo = "onnxruntime";
@@ -39,6 +47,7 @@ let
     fetchSubmodules = true;
     hash = "sha256-X8Pdtc0eR0iU+Xi2A1HrNo1xqCnoaxNjj4QFm/E3kSE=";
   };
+
 
   stdenv = throw "Use effectiveStdenv instead";
   effectiveStdenv = if cudaSupport then cudaPackages.backendStdenv else inputs.stdenv;
@@ -80,9 +89,35 @@ let
     hash = "sha256-RoJxvlrt1QcGvB8m/kycziTbO367diOpsnro49hDl24=";
   };
 
-  isCudaJetson = cudaSupport && cudaPackages.flags.isJetsonBuild;
-in
-effectiveStdenv.mkDerivation rec {
+  composable_kernel = fetchFromGitHub {
+    owner = "ROCm";
+    repo = "composable_kernel";
+    tag = "rocm-6.3.3";
+    hash = "sha256-XIzoiFkUyQ8VsqsQFg8HVbDRdP8vZF527OpBGbBU2j0=";
+  };
+
+         isCudaJetson = cudaSupport && cudaPackages.flags.isJetsonBuild;
+
+         # Validate that CUDA and ROCm are not both enabled
+         _ = if cudaSupport && rocmSupport then
+           throw ''
+             onnxruntime: CUDA and ROCm support cannot be enabled simultaneously.
+
+             Current configuration:
+               - cudaSupport = ${toString cudaSupport}
+               - rocmSupport = ${toString rocmSupport}
+
+             Please choose either:
+               - For NVIDIA GPUs: cudaSupport = true, rocmSupport = false
+               - For AMD GPUs: cudaSupport = false, rocmSupport = true
+           ''
+         else if cudaSupport && rcclSupport then
+           throw "onnxruntime: RCCL support requires ROCm support, but CUDA is enabled. Please disable CUDA or enable ROCm."
+         else if rocmSupport && ncclSupport then
+           throw "onnxruntime: NCCL support requires CUDA support, but ROCm is enabled. Please disable ROCm or enable CUDA."
+         else null;
+       in
+       effectiveStdenv.mkDerivation rec {
   pname = "onnxruntime";
   inherit src version;
 
@@ -97,6 +132,7 @@ effectiveStdenv.mkDerivation rec {
     pkg-config
     python3Packages.python
     protobuf
+    git
   ]
   ++ lib.optionals pythonSupport (
     with python3Packages;
@@ -117,6 +153,12 @@ effectiveStdenv.mkDerivation rec {
   ]
   ++ lib.optionals rocmSupport [
     rocmPackages.rocm-cmake
+    rocmPackages.rocm-core
+    rocmPackages.rocmPath
+    rocmPackages.rocminfo
+    rocmPackages.clr
+    rocmPackages.rocm-comgr
+    rocmPackages.hip-common
     rocmPackages.hipcc
     rocmPackages.llvm.clang
     rocmPackages.rocm-device-libs
@@ -165,11 +207,20 @@ effectiveStdenv.mkDerivation rec {
     [
       rocm-core
       rocm-runtime
+      clr
+      rocm-comgr
+      hip-common
+      hipcub
+      rocprim
       hipblas
       rocblas
       miopen
       rocfft
       rocsparse
+      hiprand
+      rocrand
+      hipfft
+      roctracer
     ]
     ++ lib.optionals (rocmSupport && rcclSupport) [
       rccl
@@ -235,30 +286,49 @@ effectiveStdenv.mkDerivation rec {
     (lib.cmakeFeature "CMAKE_CUDA_ARCHITECTURES" cudaArchitecturesString)
     (lib.cmakeFeature "onnxruntime_NVCC_THREADS" "1")
   ]
-  ++ lib.optionals rocmSupport [
-    (lib.cmakeFeature "ROCM_PATH" "${rocmPackages.rocm-core}")
-    # Comprehensive AMD GPU architecture support:
-    # MI Cards: gfx900 (MI25/Vega 10), gfx906 (MI50/MI60/Vega 20), gfx908 (MI100/CDNA), gfx90a (MI200/CDNA2), gfx942 (MI300/CDNA3)
-    # RDNA Cards: gfx1010 (RX 5700/Navi 10), gfx1011 (Pro 5600M/Navi 12), gfx1012 (RX 5500/Navi 14), gfx1020 (Navi 21 early), gfx1030 (RX 6800/6900/Navi 21/22), gfx1100 (RX 7900/Navi 31)
-    (lib.cmakeFeature "CMAKE_HIP_ARCHITECTURES" "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1010;gfx1011;gfx1012;gfx1020;gfx1030;gfx1100")
-    (lib.cmakeFeature "HIP_COMPILER" "${rocmPackages.hipcc}/bin/hipcc")
-    (lib.cmakeFeature "CMAKE_CXX_COMPILER" "${rocmPackages.hipcc}/bin/hipcc")
-  ];
+         ++ lib.optionals rocmSupport [
+           # ROCm version information for CMake
+           (lib.cmakeFeature "ROCM_VERSION" "6.3.3")
+           (lib.cmakeFeature "ROCM_VERSION_MAJOR" "6")
+           (lib.cmakeFeature "ROCM_VERSION_MINOR" "3")
+           (lib.cmakeFeature "ROCM_VERSION_PATCH" "3")
+           # Point onnxruntime to our custom ROCm build directory using absolute path
+           (lib.cmakeFeature "onnxruntime_ROCM_HOME" "/build/source/rocm-6.3.3")
+           # Comprehensive AMD GPU architecture support:
+           # MI Cards: gfx900 (MI25/Vega 10), gfx906 (MI50/MI60/Vega 20), gfx908 (MI100/CDNA), gfx90a (MI200/CDNA2), gfx942 (MI300/CDNA3)
+           # RDNA Cards: gfx1010 (RX 5700/Navi 10), gfx1011 (Pro 5600M/Navi 12), gfx1012 (RX 5500/Navi 14), gfx1020 (Navi 21 early), gfx1030 (RX 6800/6900/Navi 21/22), gfx1100 (RX 7900/Navi 31)
+           (lib.cmakeFeature "CMAKE_HIP_ARCHITECTURES" "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1010;gfx1011;gfx1012;gfx1020;gfx1030;gfx1100")
+           (lib.cmakeFeature "HIP_COMPILER" "${rocmPackages.hipcc}/bin/hipcc")
+           (lib.cmakeFeature "CMAKE_CXX_COMPILER" "${rocmPackages.hipcc}/bin/hipcc")
+           (lib.cmakeFeature "CMAKE_HIP_COMPILER" "${rocmPackages.llvm.clang}/bin/clang++")
+             # External dependencies for ROCm
+             (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_COMPOSABLE_KERNEL" "${composable_kernel}")
+             # Fix composable_kernel path for generate.py script
+             (lib.cmakeFeature "CK_TILE_FMHA_GENERATE_PY" "${composable_kernel}/example/ck_tile/01_fmha/generate.py")
+         ];
 
-  env = lib.optionalAttrs effectiveStdenv.cc.isClang {
-    NIX_CFLAGS_COMPILE = "-Wno-error";
-  } // lib.optionalAttrs rocmSupport {
-    # ROCm environment variables for HIP compiler
-    ROCM_PATH = "${rocmPackages.rocm-core}";
-    HIP_PATH = "${rocmPackages.hipcc}";
-    HIP_CLANG_PATH = "${rocmPackages.llvm.clang}/bin";
-    HSA_PATH = "${rocmPackages.rocm-core}";
-    HIP_PLATFORM = "amd";
-    HIP_COMPILER = "clang";
-    HIP_RUNTIME = "rocclr";
-    # ROCm device library path
-    ROCM_DEVICE_LIB_PATH = "${rocmPackages.rocm-device-libs}/lib";
-  };
+         env = lib.optionalAttrs effectiveStdenv.cc.isClang {
+           NIX_CFLAGS_COMPILE = "-Wno-error";
+         } // lib.optionalAttrs rocmSupport {
+           # ROCm environment variables for HIP compiler - using Nix store paths
+           ROCM_PATH = "${rocmPackages.rocm-core}";
+           ROCM_HOME = "${rocmPackages.rocm-core}";
+           HIP_PATH = "${rocmPackages.hipcc}";
+           HIP_CLANG_PATH = "${rocmPackages.llvm.clang}/bin";
+           HSA_PATH = "${rocmPackages.rocm-core}";
+           HIP_PLATFORM = "amd";
+           HIP_COMPILER = "clang";
+           HIP_RUNTIME = "rocclr";
+           # ROCm device library path
+           ROCM_DEVICE_LIB_PATH = "${rocmPackages.rocm-device-libs}/lib";
+           # ROCm version information for CMake detection
+           ROCM_VERSION = "6.3.3";
+           ROCM_VERSION_MAJOR = "6";
+           ROCM_VERSION_MINOR = "3";
+           ROCM_VERSION_PATCH = "3";
+           # Additional paths for HIP compiler - using Nix store paths
+           PATH = "${rocmPackages.rocmPath}/bin:${rocmPackages.rocm-core}/bin:${rocmPackages.llvm.clang}/bin:$PATH";
+         };
 
   doCheck =
     !(
@@ -293,15 +363,152 @@ effectiveStdenv.mkDerivation rec {
     rm -v onnxruntime/test/optimizer/nhwc_transformer_test.cc
   '';
 
-  preConfigure = lib.optionalString rocmSupport ''
-    # Create symlinks for ROCm tools that HIP compiler expects
-    mkdir -p /tmp/rocm/bin /tmp/rocm/lib/llvm/bin
-    ln -sf ${rocmPackages.rocm-core}/bin/rocm_agent_enumerator /tmp/rocm/bin/rocm_agent_enumerator
-    ln -sf ${rocmPackages.llvm.clang}/bin/clang++ /tmp/rocm/lib/llvm/bin/clang++
-    ln -sf ${rocmPackages.llvm.clang}/bin/clang /tmp/rocm/lib/llvm/bin/clang
-    export ROCM_PATH=/tmp/rocm
-    export ROCM_DEVICE_LIB_PATH=${rocmPackages.rocm-device-libs}/lib
-  '';
+         preConfigure = lib.optionalString rocmSupport ''
+           # Debug: Show ROCm environment variables (set via env attribute)
+           echo "ROCm environment variables:"
+           echo "ROCM_PATH=$ROCM_PATH"
+           echo "ROCM_DEVICE_LIB_PATH=$ROCM_DEVICE_LIB_PATH"
+           echo "HIP_PATH=$HIP_PATH"
+           echo "HIP_CLANG_PATH=$HIP_CLANG_PATH"
+           echo "HSA_PATH=$HSA_PATH"
+           echo "PATH=$PATH"
+
+           # Create a custom ROCm directory structure in the build directory
+           # since we can't write to the Nix store
+           ROCM_BUILD_DIR=$PWD/rocm-6.3.3
+           mkdir -p $ROCM_BUILD_DIR/share/rocm/.info
+           mkdir -p $ROCM_BUILD_DIR/.info
+           mkdir -p $ROCM_BUILD_DIR/lib/cmake/rocm
+           mkdir -p $ROCM_BUILD_DIR/include/rocm
+           mkdir -p $ROCM_BUILD_DIR/include/rocm-core
+
+           # Create version files in the build directory (onnxruntime looks for these specific files)
+           echo "6.3.3" > $ROCM_BUILD_DIR/version
+           echo "6.3.3-0" > $ROCM_BUILD_DIR/.info/version
+           echo "6.3.3" > $ROCM_BUILD_DIR/share/rocm/version
+           echo "6.3.3" > $ROCM_BUILD_DIR/share/rocm/.info/version
+
+           # Create CMake version file
+           cat > $ROCM_BUILD_DIR/lib/cmake/rocm/rocm-config-version.cmake << 'EOF'
+           set(PACKAGE_VERSION "6.3.3")
+           set(PACKAGE_VERSION_MAJOR "6")
+           set(PACKAGE_VERSION_MINOR "3")
+           set(PACKAGE_VERSION_PATCH "3")
+           EOF
+
+             # Create rocm-config.cmake file
+             cat > $ROCM_BUILD_DIR/lib/cmake/rocm/rocm-config.cmake << 'EOF'
+             set(ROCM_VERSION "6.3.3")
+             set(ROCM_VERSION_MAJOR "6")
+             set(ROCM_VERSION_MINOR "3")
+             set(ROCM_VERSION_PATCH "3")
+             EOF
+
+             # Create symlinks to ROCm CMake modules
+             mkdir -p $ROCM_BUILD_DIR/share/rocm/cmake
+             ln -sf "${rocmPackages.rocm-cmake}/share/rocm/cmake"/* $ROCM_BUILD_DIR/share/rocm/cmake/ 2>/dev/null || true
+
+             # Debug: Show ROCm CMake modules
+             echo "Debug: ROCm CMake modules from rocm-cmake package:"
+             ls -la "${rocmPackages.rocm-cmake}/share/rocm/cmake/" || echo "No ROCm CMake modules found"
+             echo "Debug: ROCm CMake modules in our build directory:"
+             ls -la $ROCM_BUILD_DIR/share/rocm/cmake/ || echo "No ROCm CMake modules in build directory"
+
+             # Debug: Show composable_kernel structure
+             echo "Debug: Composable kernel source structure:"
+             find "${composable_kernel}" -name "generate.py" -type f || echo "No generate.py found"
+             find "${composable_kernel}" -path "*/example/ck_tile/01_fmha/*" -type f || echo "No 01_fmha files found"
+
+             # Fix composable_kernel path issue - create symlink to expected location
+             echo "Debug: Creating symlink for composable_kernel generate.py in preConfigure"
+             mkdir -p $PWD/cmake/example/ck_tile/01_fmha
+             ln -sf "${composable_kernel}/example/ck_tile/01_fmha/generate.py" $PWD/cmake/example/ck_tile/01_fmha/generate.py
+             echo "Debug: Symlink created in preConfigure:"
+             ls -la $PWD/cmake/example/ck_tile/01_fmha/generate.py || echo "Symlink creation failed in preConfigure"
+
+           # Create rocm_version.h header files (onnxruntime looks for these)
+           cat > $ROCM_BUILD_DIR/include/rocm_version.h << 'EOF'
+#ifndef ROCM_VERSION_H
+#define ROCM_VERSION_H
+#define ROCM_VERSION_MAJOR 6
+#define ROCM_VERSION_MINOR 3
+#define ROCM_VERSION_PATCH 3
+#define ROCM_VERSION_STRING "6.3.3"
+#endif
+EOF
+
+             # Also create the rocm-core version
+             cat > $ROCM_BUILD_DIR/include/rocm-core/rocm_version.h << 'EOF'
+#ifndef ROCM_VERSION_H
+#define ROCM_VERSION_H
+#define ROCM_VERSION_MAJOR 6
+#define ROCM_VERSION_MINOR 3
+#define ROCM_VERSION_PATCH 3
+#define ROCM_VERSION_STRING "6.3.3"
+#endif
+EOF
+
+             # Create MIOPEN version.h file (onnxruntime looks for this)
+             mkdir -p $ROCM_BUILD_DIR/include/miopen
+             cat > $ROCM_BUILD_DIR/include/miopen/version.h << 'EOF'
+#ifndef MIOPEN_VERSION_H
+#define MIOPEN_VERSION_H
+#define MIOPEN_VERSION_MAJOR 6
+#define MIOPEN_VERSION_MINOR 3
+#define MIOPEN_VERSION_PATCH 3
+#define MIOPEN_VERSION_STRING "6.3.3"
+#endif
+EOF
+
+           # Debug: Show what's in our include directory
+           echo "Debug: Contents of include directory:"
+           ls -la $ROCM_BUILD_DIR/include/ || echo "include directory not found"
+           echo "Debug: Contents of include/rocm-core directory:"
+           ls -la $ROCM_BUILD_DIR/include/rocm-core/ || echo "include/rocm-core directory not found"
+           echo "Debug: Contents of include/miopen directory:"
+           ls -la $ROCM_BUILD_DIR/include/miopen/ || echo "miopen directory not found"
+
+           # Create symlinks to the actual ROCm tools in the Nix store
+           mkdir -p $ROCM_BUILD_DIR/bin
+           mkdir -p $ROCM_BUILD_DIR/llvm/bin
+           ln -sf "${rocmPackages.hipcc}/bin/hipcc" $ROCM_BUILD_DIR/bin/hipcc
+           ln -sf "${rocmPackages.llvm.clang}/bin/clang++" $ROCM_BUILD_DIR/llvm/bin/clang++
+           ln -sf "${rocmPackages.llvm.clang}/bin/clang" $ROCM_BUILD_DIR/llvm/bin/clang
+           ln -sf "${rocmPackages.rocmPath}/bin/rocm_agent_enumerator" $ROCM_BUILD_DIR/bin/rocm_agent_enumerator
+
+           # Update environment variables to point to our build directory
+           export ROCM_PATH=$ROCM_BUILD_DIR
+           export CMAKE_PREFIX_PATH=$ROCM_BUILD_DIR:$CMAKE_PREFIX_PATH
+
+           # Set the ROCM_HOME environment variable for CMake to use
+           export ROCM_HOME=$ROCM_BUILD_DIR
+
+           echo "Created ROCm build directory at: $ROCM_BUILD_DIR"
+           echo "Updated ROCM_PATH to: $ROCM_PATH"
+           echo "Set ROCM_HOME to: $ROCM_HOME"
+
+           # Debug: Show the files we created
+           echo "Debug: ROCm version files created:"
+           ls -la $ROCM_BUILD_DIR/version || echo "version file not found"
+           ls -la $ROCM_BUILD_DIR/.info/version || echo ".info/version file not found"
+           ls -la $ROCM_BUILD_DIR/include/rocm-core/rocm_version.h || echo "rocm_version.h not found"
+
+           # Debug: Show the symlinks we created
+           echo "Debug: ROCm tool symlinks created:"
+           ls -la $ROCM_BUILD_DIR/bin/hipcc || echo "hipcc symlink not found"
+           ls -la $ROCM_BUILD_DIR/llvm/bin/clang++ || echo "clang++ symlink not found"
+           ls -la $ROCM_BUILD_DIR/bin/rocm_agent_enumerator || echo "rocm_agent_enumerator symlink not found"
+
+           # Debug: Show what onnxruntime will look for
+           echo "Debug: onnxruntime_ROCM_HOME will be set to: /build/source/rocm-6.3.3"
+           echo "Debug: This should point to our ROCm directory with version files"
+
+           # Verify ROCm tools are accessible
+           echo "Checking ROCm tools:"
+           command -v rocm_agent_enumerator || echo "rocm_agent_enumerator not found"
+           command -v hipcc || echo "hipcc not found"
+           command -v clang++ || echo "clang++ not found"
+         '';
 
   postBuild = lib.optionalString pythonSupport ''
     ${python3Packages.python.interpreter} ../setup.py bdist_wheel

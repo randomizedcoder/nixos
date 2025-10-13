@@ -1,0 +1,10 @@
+--- a/external/composable_kernel.cmake
++++ b/external/composable_kernel.cmake
+@@ -12,6 +12,7 @@ FetchContent_Declare(
+   GIT_REPOSITORY https://github.com/ROCm/composable_kernel.git
+   GIT_TAG rocm-6.3.3
+   SOURCE_DIR ${FETCHCONTENT_SOURCE_DIR_COMPOSABLE_KERNEL}
++  PATCH_COMMAND ${CMAKE_COMMAND} -E echo "Using composable_kernel from: ${FETCHCONTENT_SOURCE_DIR_COMPOSABLE_KERNEL}"
+ )
+
+ FetchContent_Populate(composable_kernel)

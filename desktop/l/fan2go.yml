@@ -1,0 +1,61 @@
+# fan2go configuration for controlling a Corsair case fan based on the
+# temperature of the Radeon Pro VII / Instinct MI50 GPU, which has no fan.
+
+fans:
+  # Define the fan to be controlled. This is Fan 1 on the Corsair Commander Core XT.
+  - id: corsair_fan1
+    # Use liquidctl to set the fan speed.
+    # The fan type for external commands is `cmd`.
+    # Assumes the Corsair Commander Core XT is the first device liquidctl finds.
+    cmd:
+      # The `setPwm` command is required. It receives a value from 0-255.
+      # We use a shell command to convert the 0-255 PWM value from fan2go
+      # into a 0-100 percentage for liquidctl.
+      setPwm:
+        exec: "/run/current-system/sw/bin/bash"
+        args: ["-c", "percent=$((%pwm% * 100 / 255)); /run/current-system/sw/bin/liquidctl set fan1 speed $percent"]
+      # The `getPwm` command is optional but good practice.
+      # It should return a value from 0-255.
+      getPwm:
+        exec: "/run/current-system/sw/bin/bash"
+        args: ["-c", "percent=$(/run/current-system/sw/bin/liquidctl status --json | ${pkgs.jq}/bin/jq '.[0].status[] | select(.key == \"Fan speed 1\").value | tonumber'); echo $((percent * 255 / 100))"]
+    # Fan speed is a percentage for liquidctl
+    min: 20
+    max: 100
+    # Ensures the fan never fully stops, maintaining minimum airflow.
+    neverStop: true
+    # The curve ID that should be used to determine the speed of this fan.
+    curve: gpu_cooling_curve
+
+sensors:
+  # Define the temperature sensor to monitor. This is the Radeon Pro VII/MI50.
+  # From `fan2go detect`, this is platform `amdgpu-pci-04400`.
+  # The sensor type is `hwmon`.
+  - id: gpu_mi50_temp
+    hwmon:
+      platform: amdgpu-pci-04400
+      # Use the junction temperature (temp2_input) as it's a good indicator of core heat.
+      index: 2
+
+curves:
+  # Link the GPU temperature to the case fan speed.
+  - id: gpu_cooling_curve
+    # Use a linear interpolation curve based on the defined points.
+    linear:
+      # The sensor ID to use as a temperature input for this curve.
+      sensor: gpu_mi50_temp
+      # Define the temperature-to-fan-speed mapping.
+      # Temps are in Celsius, fan speed is in percent.
+      points:
+        - [40, 20]  # At 40°C, run fan at 20%
+        - [50, 40]  # At 50°C, run fan at 40%
+        - [60, 60]  # At 60°C, run fan at 60%
+        - [70, 80]  # At 70°C, run fan at 80%
+        - [80, 100] # At 80°C and above, run fan at 100%
+
+statistics:
+  # Whether to enable the prometheus exporter or not
+  enabled: true
+  # The port to expose the exporter on
+  port: 9900
+

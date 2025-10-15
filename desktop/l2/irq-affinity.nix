@@ -27,28 +27,43 @@ let
     # Distribute Ethernet IRQs across ethernet cores
     echo "Distributing Ethernet IRQs across cores: ${ethernetCores}"
     irq_index=0
+
+    # Get Ethernet interface PCI devices dynamically
     for interface in $(${pkgs.iproute2}/bin/ip link show | ${pkgs.gnugrep}/bin/grep -E "enp|eth" | ${pkgs.gawk}/bin/awk -F: '{print $2}' | ${pkgs.gnused}/bin/sed 's/ //g'); do
-      for irq in $(${pkgs.gnugrep}/bin/grep "$interface" /proc/interrupts | ${pkgs.gawk}/bin/awk '{print $1}' | ${pkgs.gnused}/bin/sed 's/://'); do
-        cpu_index=$((irq_index % 8))
-        # Convert index to actual CPU number
-        case $cpu_index in
-          0) cpu=0 ;;
-          1) cpu=12 ;;
-          2) cpu=1 ;;
-          3) cpu=13 ;;
-          4) cpu=2 ;;
-          5) cpu=14 ;;
-          6) cpu=3 ;;
-          7) cpu=15 ;;
-        esac
-        if [[ -e "/proc/irq/$irq/smp_affinity_list" ]]; then
-          echo "$cpu" > "/proc/irq/$irq/smp_affinity_list"
-          echo "Ethernet IRQ $irq ($interface) -> CPU $cpu"
+      # Get PCI device for this interface using /sys/class/net/
+      pci_device_path="/sys/class/net/$interface/device"
+      if [ -L "$pci_device_path" ]; then
+        pci_device=$(basename $(readlink "$pci_device_path"))
+        if [ -n "$pci_device" ]; then
+          echo "Processing Ethernet interface $interface (PCI: $pci_device)"
+          # Get IRQs for this PCI device
+          for irq in $(cat /proc/interrupts | ${pkgs.gnugrep}/bin/grep "$pci_device" | ${pkgs.gawk}/bin/awk '{print $1}' | ${pkgs.gnused}/bin/sed 's/://'); do
+            cpu_index=$((irq_index % 8))
+            # Convert index to actual CPU number
+            case $cpu_index in
+              0) cpu=0 ;;
+              1) cpu=12 ;;
+              2) cpu=1 ;;
+              3) cpu=13 ;;
+              4) cpu=2 ;;
+              5) cpu=14 ;;
+              6) cpu=3 ;;
+              7) cpu=15 ;;
+            esac
+            if [[ -e "/proc/irq/$irq/smp_affinity_list" ]]; then
+              echo "$cpu" > "/proc/irq/$irq/smp_affinity_list"
+              echo "Ethernet IRQ $irq ($interface) -> CPU $cpu"
+            else
+              echo "Warning: Ethernet IRQ $irq not found"
+            fi
+            irq_index=$((irq_index + 1))
+          done
         else
-          echo "Warning: Ethernet IRQ $irq not found"
+          echo "Warning: Could not determine PCI device for interface $interface"
         fi
-        irq_index=$((irq_index + 1))
-      done
+      else
+        echo "Warning: Could not find device path for interface $interface"
+      fi
     done
 
     # Optimize WiFi default queues across dedicated L cores
@@ -111,6 +126,17 @@ in {
       RemainAfterExit = true;
       StandardOutput = "journal";
       StandardError = "journal";
+      # Add capabilities needed for IRQ affinity
+      CapabilityBoundingSet = [ "SYS_RAWIO" "SYS_ADMIN" ];
+      AmbientCapabilities = [ "SYS_RAWIO" "SYS_ADMIN" ];
+      # Run as root with proper permissions
+      User = "root";
+      Group = "root";
+      # Allow new privileges (needed for IRQ affinity)
+      NoNewPrivileges = false;
+      # Add security options
+      ProtectProc = "no";
+      ReadWritePaths = [ "/proc/irq" ];
     };
   };
 }

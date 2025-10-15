@@ -7,15 +7,26 @@
   # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    #nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
 
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # https://github.com/nix-community/disko/
+    disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs";
+
+    # CrowdSec NixOS services
+    crowdsec = {
+      url = "git+https://codeberg.org/kampka/nix-flake-crowdsec.git";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, ... }:
+  outputs = { self, nixpkgs, disko, home-manager, crowdsec, ... }:
     let
       system = "x86_64-linux";
 
@@ -53,6 +64,9 @@
           inherit system;
 
           modules = [
+            disko.nixosModules.disko
+            crowdsec.nixosModules.crowdsec
+            crowdsec.nixosModules.crowdsec-firewall-bouncer
             ./configuration.nix
             {
               nixpkgs.pkgs = pkgs;

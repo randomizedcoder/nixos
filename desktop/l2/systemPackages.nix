@@ -29,7 +29,6 @@
     net-snmp
     neofetch
 
-
     hostapd
     bridge-utils
     wireless-regdb
@@ -42,6 +41,7 @@
     ethtool
     sysstat
     htop
+    below
     iftop
     nethogs
     nload
@@ -52,6 +52,13 @@
     tshark
     perf-tools
     linuxPackages_latest.perf
+
+    clinfo
+    lact
+
+    rdma-core # ibv_devinfo, rdma
+    pciutils
+    libpciaccess
   ];
 }
 

@@ -42,11 +42,10 @@
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
-      ./x.nix
+      #./x.nix
     ];
 
   boot = {
-
     loader.systemd-boot = {
       enable = true;
       consoleMode = "max";
@@ -69,10 +68,10 @@
       #"nomodeset"
     ];
 
-    #blacklistedKernelModules = [
-    #  "nouveau"
-    #  #"i915"
-    #];
+    blacklistedKernelModules = [
+      "nouveau"
+      #"i915"
+    ];
 
     # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
     # https://nixos.org/manual/nixos/stable/options#opt-boot.binfmt.emulatedSystems
@@ -107,20 +106,25 @@
     # ];
   };
 
+  # Enable envfs for better compatibility with FHS expectations
+  services.envfs = {
+    enable = true;
+  };
+
   # For OBS
   security.polkit.enable = true;
 
   nix = {
-    gc = {
-      automatic = true;                  # Enable automatic execution of the task
-      dates = "weekly";                  # Schedule the task to run weekly
-      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
-      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
-    };
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
+    };
+    gc = {
+      automatic = true;                  # Enable automatic execution of the task
+      dates = "daily";                   # Schedule the task to run daily
+      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
+      randomizedDelaySec = "14m";        # Introduce a randomized delay of up to 14 minutes before executing the task
     };
   };
 
@@ -133,21 +137,39 @@
   # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
   # https://nixos.wiki/wiki/NixOS_Wiki:Audio
-  hardware.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
+  # hardware.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
 
   security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
 
   services.pipewire = {
     enable = true;
+    audio.enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # Uncomment the following line if you want to use JACK applications
-    # jack.enable = true;
+    jack.enable = true;
+    wireplumber.enable = true;
   };
 
-  services.lldpd.enable = true;
+  # Enable PipeWire screen capture
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    # PipeWire screen capture
+    PIPEWIRE_SCREEN_CAPTURE = "1";
+    # Force Flameshot to use Wayland
+    QT_QPA_PLATFORM = "wayland";
+    #MY_VARIABLE = "my-value";
+  };
+
   services.openssh.enable = true;
+  programs.ssh.extraConfig = ''
+  Host hp4.home
+    PubkeyAcceptedKeyTypes ssh-ed25519
+    ServerAliveInterval 60
+    IPQoS throughput
+  '';
+
+  services.lldpd.enable = true;
   services.timesyncd.enable = true;
   services.fstrim.enable = true;
   services.avahi = {
@@ -160,7 +182,7 @@
 
   services.bpftune.enable = true;
   # Enable touchpad support (enabled default in most desktopManager).
-  services.libinput.enable = true;
+  # services.libinput.enable = true;
 
   # https://nixos.wiki/wiki/Printing
   services.printing.enable = true;
@@ -177,24 +199,17 @@
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
-  services.clickhouse.enable = false;
+  # services.clickhouse.enable = false;
   # https://nixos.wiki/wiki/PostgreSQL
-  services.postgresql.enable = true;
+  # services.postgresql.enable = true;
   # https://nixos.wiki/wiki/Mysql
-  services.mysql.package = pkgs.mariadb;
-  services.mysql.enable = true;
-
-  # environment.variables defined in hardware-graphics.nix
-  environment.sessionVariables = {
-    TERM = "xterm-256color";
-    #MY_VARIABLE = "my-value";
-    #ANOTHER_VARIABLE = "another-value";
-  };
+  # services.mysql.package = pkgs.mariadb;
+  # services.mysql.enable = true;
 
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -215,13 +230,55 @@
      enableSSHSupport = true;
   };
 
-  # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
-  programs.hyprland = {
-    enable = true;
-    # Nvidia patches are no longer needed
-    #nvidiaPatches = true;
-    xwayland.enable = true;
+  hardware.graphics = {
+    enable = true; # auto includes mesa
+    package = pkgs.mesa;
+    extraPackages = with pkgs; [
+      libglvnd
+      libva-vdpau-driver
+      libvdpau-va-gl
+      rocmPackages.clr.icd
+    ];
   };
+  services.xserver = {
+    enable = true;
+    videoDrivers = [ "amdgpu" ];
+    xkb = {
+      layout = "us";
+      variant = "";
+    };
+  };
+
+  services.desktopManager.gnome.enable = true;
+  services.displayManager.gdm.enable = true;
+
+  # https://nixos.wiki/wiki/AMD_GPU
+  systemd.tmpfiles.rules = [
+    "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
+  ];
+  systemd.services.lactd.wantedBy = [ "multi-user.target" ];
+
+  xdg.portal = {
+    enable = true;
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-gnome
+    ];
+    config.common.default = "gnome";
+    config.gnome.default = "gnome";
+  };
+
+  services.dbus.packages = with pkgs; [
+    xdg-desktop-portal
+    xdg-desktop-portal-gtk
+  ];
+
+  # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
+  #programs.hyprland = {
+  #  enable = true;
+  #  # Nvidia patches are no longer needed
+  #  #nvidiaPatches = true;
+  #  xwayland.enable = true;
+  #};
   # programs.hyprland = {
   #   enable = true;
   #   # set the flake package

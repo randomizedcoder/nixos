@@ -3,6 +3,11 @@
 {
   # https://www.kernel.org/doc/html/latest/networking/ip-sysctl.html
   boot.kernel.sysctl = {
+    # IPv6 preference settings for localhost
+    "net.ipv6.conf.all.prefer_ipv6" = true;
+    "net.ipv6.conf.default.prefer_ipv6" = true;
+    "net.ipv6.conf.lo.prefer_ipv6" = true;
+
     # detect dead connections more quickly
     "net.ipv4.tcp_keepalive_intvl" = 30;
     #net.ipv4.tcp_keepalive_intvl = 75

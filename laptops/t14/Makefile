@@ -18,6 +18,9 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
+rebuild_t14:
+	sudo nixos-rebuild switch --flake .#t14
+
 impure:
 	sudo nixos-rebuild switch --impure --flake .
 
@@ -47,5 +50,8 @@ update_oldm.:
 	sudo nix-channel --update
 	sudo nixos-rebuild switch
 	#nix-shell -p vim
+
+restart_display_manager:
+	sudo systemctl restart display-manager.service
 
 # end

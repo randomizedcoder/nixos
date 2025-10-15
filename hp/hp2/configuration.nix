@@ -35,10 +35,10 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
-      ./docker-daemon.nix
+      #./docker-daemon.nix
       #./k8s_node.nix
       #./k3s_master.nix
-      ./k3s_node.nix
+      #./k3s_node.nix
       ./systemd.services.ethtool-enp3s0f0.nix
       ./systemd.services.ethtool-enp3s0f1.nix
     ];

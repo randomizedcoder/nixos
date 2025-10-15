@@ -53,6 +53,18 @@ in {
         Slice = "network-services.slice";
       };
     };
+    crowdsec = {
+      description = "CrowdSec threat detection engine slice";
+      sliceConfig = {
+        Slice = "network-services.slice";
+      };
+    };
+    crowdsec-firewall-bouncer = {
+      description = "CrowdSec firewall bouncer slice";
+      sliceConfig = {
+        Slice = "network-services.slice";
+      };
+    };
   };
 
   # CPU Affinity for Network Services
@@ -76,8 +88,8 @@ in {
         Slice = "kea.slice";
         Nice = -5;
         LimitNOFILE = 65536;
-        Restart = "always";
-        RestartSec = "10s";
+        #Restart = lib.mkForce "always";
+        #RestartSec = "10s";
       };
     };
     pdns-recursor = {

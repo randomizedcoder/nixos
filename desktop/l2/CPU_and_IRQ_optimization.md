@@ -26,6 +26,7 @@ On this architecture, each physical core is split into two logical processors (S
 - **8 MSI-X vectors** distributed across cores 16-23
 - **Current distribution**: Interrupts are clustered on cores 14, 15, 16, 17, 18, 20, 22, 23
 - **Issue**: Competing with storage I/O and userland processes
+- **Note**: LRO and GRO features are disabled due to compatibility issues with the Atlantic driver
 
 #### WiFi Interfaces (4x Intel iwlwifi)
 - **wlp35s0**: 16 MSI-X vectors, mostly on CPU 21
@@ -56,6 +57,11 @@ On this architecture, each physical core is split into two logical processors (S
 - Heavy network processing concentrated on cores 14, 15, 21, 23
 - No dedicated cores for network processing
 
+### 4. **Network Hardware Offload Limitations**
+- **Atlantic NIC LRO/GRO Issues**: The Atlantic driver has compatibility issues with Large Receive Offload (LRO) and Generic Receive Offload (GRO) features
+- **Impact**: Reduced CPU efficiency for packet processing, requiring software-based packet handling
+- **Mitigation**: Optimized interrupt coalescing and ring buffer settings to compensate for disabled hardware offloads
+
 ## Proposed Optimization Strategy
 
 ### Phase 1: Core Isolation and Dedication
@@ -79,7 +85,7 @@ On this architecture, each physical core is split into two logical processors (S
 #### Userland Processing Cores (8-23)
 **Remaining cores for system services and userland:**
 - **Cores 8,20,9,21,10,22,11,23**: Userland processes, system services
-- **Services**: hostapd, DHCP (Kea), DNS (PowerDNS), IPv6 RA (radvd)
+- **Services**: hostapd, DHCP (Kea), DNS (PowerDNS), IPv6 RA (radvd), CrowdSec
 - **Slice**: system.slice and network-services.slice
 - **Benefits**:
   - Isolated from network interrupt processing
@@ -152,7 +158,7 @@ done
 ```nix
 systemd.slices = {
   network-services = {
-    description = "Network services (DHCP, DNS, RA, hostapd)";
+    description = "Network services (DHCP, DNS, RA, hostapd, CrowdSec)";
     sliceConfig = {
       CPUAffinity = "8,20,9,21,10,22,11,23";  # Userland cores only
       Nice = -5;
@@ -205,6 +211,18 @@ systemd.slices = {
       Slice = "network-services.slice";
     };
   };
+  crowdsec = {
+    description = "CrowdSec threat detection engine slice";
+    sliceConfig = {
+      Slice = "network-services.slice";
+    };
+  };
+  crowdsec-firewall-bouncer = {
+    description = "CrowdSec firewall bouncer slice";
+    sliceConfig = {
+      Slice = "network-services.slice";
+    };
+  };
 };
 ```
 
@@ -247,7 +265,157 @@ boot.kernel.sysctl = {
 };
 ```
 
-### Phase 5: NUMA Optimization
+### Phase 5: Network Hardware Optimization
+
+#### Atlantic NIC Optimizations
+Due to compatibility issues with the Atlantic driver, certain hardware offload features are disabled:
+
+```bash
+# Disabled features (causing issues with Atlantic driver)
+# - LRO (Large Receive Offload): Causes packet corruption/drops
+# - GRO (Generic Receive Offload): Causes stability issues
+
+# Enabled optimizations
+ethtool -G enp1s0 rx 8184 tx 8184  # Maximum ring buffers
+ethtool -K enp1s0 tx-checksum-ipv4 on  # IPv4 checksum offload
+ethtool -K enp1s0 tx-tcp-ecn-segmentation on  # TCP ECN segmentation
+
+# Interrupt coalescing optimization
+ethtool -C enp1s0 rx-usecs 512 rx-frames 32
+ethtool -C enp1s0 tx-usecs 1024 tx-frames 32
+```
+
+**Impact and Mitigation:**
+- **Performance Impact**: Disabled LRO/GRO reduces CPU efficiency for packet processing
+- **Mitigation Strategy**:
+  - Optimized interrupt coalescing to reduce CPU overhead
+  - Maximum ring buffer sizes to handle burst traffic
+  - Dedicated network cores to compensate for software processing
+  - Enhanced interrupt distribution across isolated cores
+
+### Phase 6: CrowdSec Integration
+
+#### Dynamic Threat Detection
+CrowdSec provides real-time threat detection and automatic blocking using nftables:
+
+```nix
+# CrowdSec engine configuration
+services.crowdsec = {
+  enable = true;
+  settings = {
+    api = {
+      server = {
+        listen_uri = "[::1]:8080";  # IPv6 localhost
+        trusted_ips = [ "127.0.0.1" "::1" ];  # No API key needed
+      };
+    };
+    db_config = {
+      type = "sqlite";
+      db_path = "/var/lib/crowdsec/data/crowdsec.db";
+    };
+  };
+};
+
+# Firewall bouncer for nftables integration
+services.crowdsec-firewall-bouncer = {
+  enable = true;
+  settings = {
+    api_url = "http://[::1]:8080/";
+    nftables = {
+      enabled = true;
+      table = "filter";
+      chain = "input";
+      set = "blacklist";
+      ipv4 = true;
+      ipv6 = true;
+    };
+  };
+};
+```
+
+#### Resource Management for CrowdSec
+Both CrowdSec services are assigned to the network-services slice with memory limits:
+
+```nix
+systemd.services = {
+  # Network services (network-services slice, via per-daemon slices)
+  hostapd = {
+    serviceConfig = {
+      Slice = "hostapd.slice";
+      Nice = -10;
+      IOSchedulingClass = 1; # Real-time I/O
+      IOSchedulingPriority = 4;
+      LimitNOFILE = 65536;
+      Restart = "always";
+      RestartSec = "5s";
+    };
+  };
+
+  kea-dhcp4-server = {
+    serviceConfig = {
+      Slice = "kea.slice";
+      Nice = -5;
+      LimitNOFILE = 65536;
+      Restart = "always";
+      RestartSec = "10s";
+    };
+  };
+
+  pdns-recursor = {
+    serviceConfig = {
+      Slice = "pdns.slice";
+      Nice = -5;
+      LimitNOFILE = 65536;
+      Restart = "always";
+      RestartSec = "10s";
+    };
+  };
+
+  radvd = {
+    serviceConfig = {
+      Slice = "radvd.slice";
+      Nice = -5;
+      Restart = "always";
+      RestartSec = "10s";
+    };
+  };
+
+  # CrowdSec threat detection services
+  crowdsec = {
+    serviceConfig = {
+      Slice = "crowdsec.slice";
+      Nice = -5;
+      LimitNOFILE = 65536;
+      MemoryHigh = "512M";
+      MemoryMax = "1G";
+      Environment = [ "GOMEMLIMIT=460M" ];
+      Restart = "always";
+      RestartSec = "5s";
+    };
+  };
+
+  crowdsec-firewall-bouncer = {
+    serviceConfig = {
+      Slice = "crowdsec-firewall-bouncer.slice";
+      Nice = -5;
+      LimitNOFILE = 65536;
+      MemoryHigh = "256M";
+      MemoryMax = "512M";
+      Environment = [ "GOMEMLIMIT=230M" ];
+      Restart = "always";
+      RestartSec = "5s";
+    };
+  };
+};
+```
+
+**Benefits:**
+- **Real-time Protection**: Automatic blocking of malicious IPs
+- **Community Intelligence**: Leverages global threat intelligence
+- **Resource Efficiency**: Memory limits prevent resource exhaustion
+- **Integration**: Seamless nftables integration with dynamic blacklist sets
+
+### Phase 7: NUMA Optimization
 
 #### Memory Allocation
 ```bash
@@ -328,6 +496,33 @@ systemd.services = {
       Nice = -5;
       Restart = "always";
       RestartSec = "10s";
+    };
+  };
+
+  # CrowdSec threat detection services
+  crowdsec = {
+    serviceConfig = {
+      Slice = "crowdsec.slice";
+      Nice = -5;
+      LimitNOFILE = 65536;
+      MemoryHigh = "512M";
+      MemoryMax = "1G";
+      Environment = [ "GOMEMLIMIT=460M" ];
+      Restart = "always";
+      RestartSec = "5s";
+    };
+  };
+
+  crowdsec-firewall-bouncer = {
+    serviceConfig = {
+      Slice = "crowdsec-firewall-bouncer.slice";
+      Nice = -5;
+      LimitNOFILE = 65536;
+      MemoryHigh = "256M";
+      MemoryMax = "512M";
+      Environment = [ "GOMEMLIMIT=230M" ];
+      Restart = "always";
+      RestartSec = "5s";
     };
   };
 };
@@ -463,6 +658,8 @@ Core Allocation:
 | Kea          | DHCP server            | kea.slice (child of network-services.slice) | 8,20,9,21,10,22,11,23 | -5       |
 | PowerDNS     | DNS resolver           | pdns.slice (child of network-services.slice)| 8,20,9,21,10,22,11,23 | -5       |
 | radvd        | IPv6 RA                | radvd.slice (child of network-services.slice)| 8,20,9,21,10,22,11,23 | -5       |
+| CrowdSec     | Threat detection       | crowdsec.slice (child of network-services.slice) | 8,20,9,21,10,22,11,23 | -5       |
+| CrowdSec FW  | Firewall bouncer       | crowdsec-firewall-bouncer.slice (child of network-services.slice) | 8,20,9,21,10,22,11,23 | -5       |
 
 **Note:** All services inherit CPU affinity and resource limits from their assigned slice. Only the two main parent slices (network-services and system) need explicit CPU affinity settings. **Network cores (0,12,1,13,2,14,3,15,4,5,6,7) are isolated by `isolcpus` and can only be used for IRQ affinity, not for systemd slice CPU affinity.** Kernel-level components like nftables and CAKE (QoS) are not managed by systemd slices; their performance is influenced by CPU isolation, IRQ affinity, and kernel boot parameters, not by systemd.
 

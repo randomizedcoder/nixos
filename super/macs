@@ -1,0 +1,51 @@
+  devices           ac:1f:6b:15:cf:1e Learn          0 ge-0/0/2.0
+  devices           ac:1f:6b:15:d0:29 Learn          0 ge-0/0/3.0
+  devices           ac:1f:6b:15:d0:a4 Learn          0 ge-0/0/1.0
+  devices           ac:1f:6b:15:d0:b7 Learn       1:23 ge-0/0/0.0
+  devices           ac:1f:6b:15:d5:4e Learn       3:52 ge-0/0/10.0
+  devices           ac:1f:6b:15:d5:4f Learn       3:41 ge-0/0/6.0
+  devices           ac:1f:6b:15:d7:64 Learn          0 ge-0/0/11.0
+  devices           ac:1f:6b:15:d7:65 Learn          0 ge-0/0/7.0
+  devices           ac:1f:6b:15:d8:80 Learn          0 ge-0/0/8.0
+  devices           ac:1f:6b:15:d8:81 Learn          0 ge-0/0/4.0
+  devices           ac:1f:6b:15:d8:5b Learn          0 ge-0/0/5.0
+  devices           ac:1f:6b:15:d8:5a Learn          0 ge-0/0/9.0
+  
+ge-0/0/0 ac:1f:6b:15:d0:b7 nodeA IPMI 172.16.40.155 good buffered
+ge-0/0/1 ac:1f:6b:15:d0:a4 nodeB IPMI 172.16.40.136 good buffered
+ge-0/0/2 ac:1f:6b:15:cf:1e nodeC IPMI 172.16.40.235 good buffered
+ge-0/0/3 ac:1f:6b:15:d0:29 nodeD IPMI 172.16.40.224 good
+  
+ge-0/0/4 ac:1f:6b:15:d8:81 nodeA NIC0 172.16.40.135
+ge-0/0/5 ac:1f:6b:15:d8:5b nodeB NIC0 172.16.40.97
+ge-0/0/6 ac:1f:6b:15:d5:4f nodeC NIC0 172.16.40.151
+ge-0/0/7 ac:1f:6b:15:d7:65 nodeD NIC0 172.16.40.129
+  
+ge-0/0/8 ac:1f:6b:15:d8:80 nodeA NIC1 172.16.40.137
+ge-0/0/9 ac:1f:6b:15:d8:5a nodeB NIC1 172.16.40.98
+ge-0/0/10 ac:1f:6b:15:d5:4f nodeC NIC1 172.16.40.152
+ge-0/0/11 ac:1f:6b:15:d7:64 nodeD NIC1 172.16.40.130
+
+[das@nodeA:~]$ lsblk
+NAME    MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+sda       8:0    0   1.7T  0 disk
+├─sda1    8:1    0     1G  0 part /boot
+├─sda2    8:2    0   1.6T  0 part /nix/store
+│                                 /
+└─sda3    8:3    0 138.3G  0 part [SWAP]
+sdb       8:16   0   1.8T  0 disk
+nvme0n1 259:0    0 931.5G  0 disk
+
+[das@nodeA:~]$
+
+[das@nodeB:~]$ lsblk
+NAME    MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+sda       8:0    0   1.7T  0 disk
+├─sda1    8:1    0     1G  0 part /boot
+├─sda2    8:2    0   1.6T  0 part /nix/store
+│                                 /
+└─sda3    8:3    0 138.3G  0 part [SWAP]
+sdb       8:16   0 953.3G  0 disk
+nvme0n1 259:0    0 931.5G  0 disk
+
+[das@nodeB:~]$

@@ -17,6 +17,8 @@
     "net.ipv4.tcp_wmem" = "4096	1000000	16000000";
     #net.ipv4.tcp_rmem = 4096       131072  6291456
     #net.ipv4.tcp_wmem = 4096       16384   4194304
+    "net.ipv6.tcp_rmem" = "4096	1000000	16000000";
+    "net.ipv6.tcp_wmem" = "4096	1000000	16000000";
     # https://github.com/torvalds/linux/blob/master/Documentation/networking/ip-sysctl.rst?plain=1#L1042
     # https://lwn.net/Articles/560082/
     "net.ipv4.tcp_notsent_lowat" = "131072";
@@ -38,7 +40,7 @@
     #net.core.rmem_max = 212992
     #net.core.wmem_default = 212992
     #net.core.wmem_max = 212992
-    "net.ipv4.ip_local_port_range" = "1025 65535";
+    "net.ipv4.ip_local_port_range" = "1026 65535";
     #net.ipv4.ip_local_port_range ="32768 60999"
     #
     #net.ipv4.inet_peer_maxttl = 600
@@ -51,5 +53,14 @@
     #net.ipv4.tcp_reflect_tos = 0
     "net.ipv4.tcp_rto_min_us" = 50000; #50ms
     #net.ipv4.tcp_rto_min_us = 200000 #200ms
+
+    # TCP optimizations for high performance
+    "net.ipv4.tcp_slow_start_after_idle" = 0;      # Disable slow start after idle
+    "net.ipv4.tcp_fastopen" = 3;                   # Enable TCP Fast Open
+
+    "net.ipv4.tcp_window_scaling" = 1;
+    "net.ipv4.tcp_sack" = 1;
+    "net.ipv4.tcp_fack" = 1;
+    "net.ipv4.tcp_fin_timeout" = 30;
   };
 }

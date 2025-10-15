@@ -10,7 +10,7 @@
 
   boot.initrd.availableKernelModules = [ "xhci_pci" "ahci" "nvme" "usbhid" "usb_storage" "sd_mod" ];
   boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ "kvm-amd" ];
+  boot.kernelModules = [ "kvm-amd" "nct6775" "it87" "acpi_ec_sensors" ];
   boot.extraModulePackages = [ ];
 
   fileSystems."/" =
@@ -38,5 +38,16 @@
   # networking.interfaces.enp1s0.useDHCP = lib.mkDefault true;
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+
+  hardware.i2c.enable = true;
+  #hardware.sensor.hddtemp.enable = true;
+
+  # hardware.decklink.enable = true;
+  #https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/hardware/decklink.nix
+
+  # see also fan2go.nix
+  #hardware.fan2go.enable = true;
+
 }

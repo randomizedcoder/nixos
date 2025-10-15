@@ -36,18 +36,28 @@
       ./prometheus.nix
       ./grafana.nix
       # clickhouse
+      ./clickhouse-service.nix
+      # GPU fan control
+      #./gpu-fan-control.nix
+      # Corsair fan control
+      ./corsair-fan-control.nix
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
-      ./distributed-builds.nix
-      ./hyprland.nix
+      #./distributed-builds.nix
+      #./hyprland.nix
+      ./nginx.nix
+      ./ollama-service.nix
+      #/fan2go.nix
     ];
 
   boot = {
+
     loader.systemd-boot = {
       enable = true;
       consoleMode = "max";
       memtest86.enable = true;
+      configurationLimit = 20;
     };
 
     loader.efi.canTouchEfiVariables = true;
@@ -58,6 +68,14 @@
     kernelPackages = pkgs.linuxPackages_latest;
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
+    # kernelPackages = pkgs.linuxPackages // {
+    #   kernel = pkgs.linuxPackages.kernel.override {
+    #     extraStructuredConfig = with lib.kernel; {
+    #       CONFIG_DRM_NOUVEAU = no;
+    #     };
+    #   };
+    # };
+
     # # https://github.com/tolgaerok/nixos-2405-gnome/blob/main/core/boot/efi/efi.nix#L56C5-L56C21
     # kernelParams = [
     #   "nvidia-drm.modeset=1"
@@ -66,8 +84,17 @@
     #   #"nomodeset"
     # ];
 
+    kernelParams = [ "acpi_enforce_resources=lax" ];
+
     initrd.kernelModules = [
       "amdgpu"
+    ];
+
+    kernelModules = [
+      "bnxt_en"      # Ethernet
+      "bnxt_re"      # RoCEv2 RDMA provider
+      "ib_uverbs"    # RDMA verbs
+      "rdma_ucm"
     ];
 
     blacklistedKernelModules = [
@@ -85,8 +112,9 @@
 
     extraModprobeConfig = ''
       options kvm_intel nested=1
-      options v4l2loopback devices=1 video_nr=1 card_label="OBS Cam" exclusive_caps=1
+      options v4l2loopback devices=1 video_nr=1 card_label="v4l2loopback" exclusive_caps=1
     '';
+    # https://github.com/v4l2loopback/v4l2loopback#options
   };
 
   # https://fzakaria.com/2025/02/26/nix-pragmatism-nix-ld-and-envfs
@@ -98,7 +126,9 @@
       stdenv.cc.cc.lib
       zlib
       libxml2
+      pciutils # for broadcom niccli
       # Add more libraries as needed
+      #libpciaccess
     ];
   };
 
@@ -139,11 +169,22 @@
 
   services.pipewire = {
     enable = true;
+    audio.enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # Uncomment the following line if you want to use JACK applications
-    # jack.enable = true;
+    jack.enable = true;
+    wireplumber.enable = true;
+  };
+
+  # Enable PipeWire screen capture
+  environment.sessionVariables = {
+    TERM = "xterm-256color";
+    # PipeWire screen capture
+    PIPEWIRE_SCREEN_CAPTURE = "1";
+    # Force Flameshot to use Wayland
+    QT_QPA_PLATFORM = "wayland";
+    #MY_VARIABLE = "my-value";
   };
 
   services.openssh.enable = true;
@@ -172,6 +213,7 @@
   # https://nixos.wiki/wiki/Printing
   services.printing.enable = true;
 
+  # flameshot now in home.nix
   # https://wiki.nixos.org/wiki/Flameshot
   # services.flameshot = {
   #   enable = true;
@@ -184,18 +226,18 @@
   systemd.services.modem-manager.enable = false;
   systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
 
-  services.clickhouse.enable = false;
+  # ClickHouse enabled in clickhouse-service.nix
 
   # environment.variables defined in hardware-graphics.nix
-  environment.sessionVariables = {
-    TERM = "xterm-256color";
-    #MY_VARIABLE = "my-value";
-  };
+  # environment.sessionVariables = {
+  #   TERM = "xterm-256color";
+  #   #MY_VARIABLE = "my-value";
+  # };
 
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -242,13 +284,30 @@
   systemd.tmpfiles.rules = [
     "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
   ];
-  systemd.services.lactd.wantedBy = [ "multi-user.target" ];
+
+  # Enable LACT GPU Control Daemon
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
+  services.lact = {
+    enable = true;
+    # Optional: Add custom settings here if needed
+    # settings = {
+    #   # Example settings
+    # };
+  };
 
   xdg.portal = {
     enable = true;
-    extraPortals = with pkgs; [ xdg-desktop-portal-gtk ];
-    config.common.default = "gtk";
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-gnome
+    ];
+    config.common.default = "gnome";
+    config.gnome.default = "gnome";
   };
+
+  services.dbus.packages = with pkgs; [
+    xdg-desktop-portal
+    xdg-desktop-portal-gtk
+  ];
 
   # # https://wiki.hyprland.org/Nix/Hyprland-on-NixOS/
   # programs.hyprland = {
@@ -295,8 +354,6 @@
 
   system.stateVersion = "24.11";
 
-  nixpkgs.config = {
-    allowUnfree = true;
-  };
-
 }
+
+# end

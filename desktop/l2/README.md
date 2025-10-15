@@ -331,3 +331,31 @@ Internet (enp1s0)
 - `sysctl.nix` - Kernel network parameters
 - `configuration.nix` - Main system configuration
 - `CPU_and_IRQ_optimization.md` - Detailed optimization documentation
+
+
+## Netlink monitoring
+
+Hostapd communicates with the kernel via Netlink.  To monitor the Netlink traffic, follow these instructions:
+
+```
+modprobe nlmon
+sudo modprobe nlmon
+lsmod | grep nlmon
+sudo ip link add nlmon0 type nlmon
+sudo ip link set dev nlmon0 up
+sudo tcpdump -i nlmon0 -w netlink.pcap
+sudo chown das:das *.pcap
+```
+
+See also: https://jvns.ca/blog/2017/09/03/debugging-netlink-requests/
+
+
+## ipv6 debugging notes
+
+```
+sudo tcpdump -i enp1s0 -n 'icmp6 and (icmp6[0] == 133 or icmp6[0] == 134)'
+# triggger router solicitation (nix-shell -p ndisc6)
+sudo rdisc6 enp1s0
+# another way
+sudo ip -6 route flush dev enp1s0
+```

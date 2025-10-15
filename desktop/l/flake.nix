@@ -10,15 +10,16 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hyprland.url = "github:hyprwm/Hyprland";
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      inputs.hyprland.follows = "hyprland";
-    };
+    # hyprland.url = "github:hyprwm/Hyprland";
+    # hyprland-plugins = {
+    #   url = "github:hyprwm/hyprland-plugins";
+    #   inputs.hyprland.follows = "hyprland";
+    # };
   };
 
   #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, home-manager, hyprland, ... }:
+  #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
+  outputs = { self, nixpkgs, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -32,6 +33,7 @@
             "google-chrome"
             "android-studio"
             "android-studio-stable"
+            "vscode"
             ];
         };
       };
@@ -41,16 +43,47 @@
       l = lib.nixosSystem rec {
         inherit system;
         specialArgs = {
-          inherit hyprland;
           unstable = pkgs;
         };
         modules = [
           ./configuration.nix
-          hyprland.nixosModules.default
+          #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
+            # # Apply the overlay to NixOS
+            # nixpkgs.overlays = [
+            #   (final: prev: {
+            #     # Custom onnxruntime with ROCm support
+            #     # Note: CUDA and ROCm are mutually exclusive - only one can be enabled
+            #     onnxruntime = final.callPackage ./custom-packages/onnxruntime/package.nix {
+            #       cudaSupport = false;    # Disable CUDA when using ROCm
+            #       ncclSupport = false;    # NCCL requires CUDA, so disable with ROCm
+            #       rocmSupport = true;     # Enable ROCm support for AMD GPUs
+            #       rcclSupport = true;     # Enable RCCL for ROCm multi-GPU support
+            #     };
+
+            #     # Custom Python onnxruntime module that uses our custom onnxruntime
+            #     python313Packages = prev.python313Packages.override (old: {
+            #       overrides = prev.lib.composeExtensions (old.overrides or (_: _: {})) (pyfinal: pyprev: {
+            #         onnxruntime = pyfinal.callPackage ./custom-packages/python-onnxruntime/default.nix {
+            #           onnxruntime = final.onnxruntime;
+            #         };
+            #       });
+            #     });
+            #   })
+            # ];
+
+            # Allow unfree packages
+            nixpkgs.config.allowUnfree = true;
+            nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+              "google-chrome"
+              "android-studio"
+              "android-studio-stable"
+              "vscode"
+            ];
+
             # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
-            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
+            home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
             home-manager.useUserPackages = true;
             home-manager.users.das = { config, pkgs, ... }: {
               imports = [

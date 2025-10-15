@@ -32,10 +32,12 @@ let
     ${pkgs.ethtool}/bin/ethtool -G enp1s0 rx 8184 tx 8184
 
     # Feature optimizations
-    ${pkgs.ethtool}/bin/ethtool -K enp1s0 lro on
+    # lro seems to cause issues on the Atlantic
+    #${pkgs.ethtool}/bin/ethtool -K enp1s0 lro on
     ${pkgs.ethtool}/bin/ethtool -K enp1s0 tx-checksum-ipv4 on
     ${pkgs.ethtool}/bin/ethtool -K enp1s0 tx-tcp-ecn-segmentation on
-    ${pkgs.ethtool}/bin/ethtool -K enp1s0 rx-gro-list on
+    # gro seems to cause issues on the Atlantic
+    #${pkgs.ethtool}/bin/ethtool -K enp1s0 rx-gro-list on
 
     # Interrupt coalescing optimizations
     # Defaults: rx-usecs=256 rx-frames=0 tx-usecs=1022 tx-frames=0

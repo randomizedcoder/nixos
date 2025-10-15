@@ -1,5 +1,5 @@
 #
-# nixos/laptops/l/Makefile
+# nixos/laptops/l2/Makefile
 #
 EXPECTED_HOSTNAME := l2
 
@@ -18,8 +18,14 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
-rebuild_t:
+rebuild_l2:
 	sudo nixos-rebuild switch --flake .#l2
+
+anywhere:
+	nix run github:nix-community/nixos-anywhere -- \
+		--generate-hardware-config nixos-generate-config ./hardware-configuration.nix \
+		--target-host root@172.16.40.51 \
+		--flake '.#l2'
 
 #https://nixos.org/manual/nixos/unstable/index.html#sec-nix-network-issues
 #nixos-rebuild switch --option binary-caches http://my-cache.example.org/
@@ -36,40 +42,10 @@ update:
 sync:
 	rsync -avz /home/das/nixos/ "${EXPECTED_HOSTNAME}":/home/das/nixos/
 
-rebuild_old:
-	# sudo cp ./flake.nix /etc/nixos/
-	# sudo cp ./flake.lock /etc/nixos/
-	# sudo cp ../../modules/* /etc/nixos/
-	# sudo cp ./configuration.nix /etc/nixos/
-	# #sudo cp ./home-manager.nix /etc/nixos/
-	# sudo cp ./home.nix /etc/nixos/
-	# sudo cp ./prometheus.nix /etc/nixos/
-	# sudo cp ./*.nix /etc/nixos/
-	# sudo nix-channel --update
-	# sudo nixos-rebuild switch
-	#sudo cp ./* /etc/nixos/
-	sudo nix flake update;
-	#sudo nix-channel --update;
-	sudo nixos-rebuild switch --flake .
+s:
+	rsync -avz /home/das/nixos/ 172.16.40.47:/home/das/nixos/
 
-update_oldm.:
-	sudo nix-channel --update
-	sudo nixos-rebuild switch
-	#nix-shell -p vim
-
-restart_display_manager:
-	sudo systemctl restart display-manager.service
-
-#ls -l /run/opengl-driver/lib/gbm/
-#readlink /run/opengl-driver/lib/gbm/dri_gbm.so
-#glxinfo | grep -i 'renderer'
-
-#journalctl -b | grep -Ei 'X.*fatal|gdm|wayland|mesa|amdgpu' --no-pager
-#less /var/log/Xorg.0.log
-
-#nix-shell -p mesa-demos
-#glxinfo | grep -i opengl
-
-# cat configuration.nix | grep -A 20 "hardware.graphics ="
+l2s:
+	rsync -avzd /home/das/nixos/ l2:/home/das/nixos/
 
 # end

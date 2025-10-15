@@ -29,14 +29,15 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
-      ./docker-daemon.nix
+      #./docker-daemon.nix
       #./k8s_master.nix
       #./k8s_node.nix
-      ./k3s_master.nix
+      #./k3s_master.nix
       #./k3s_node.nix
-      ./systemd.services.ethtool-enp3s0f0.nix
-      ./systemd.services.ethtool-enp3s0f1.nix
-      ./ffmpeg_systemd_service.nix
+      ./systemd.services.ethtool-enp4s0f0.nix
+      ./systemd.services.ethtool-enp4s0f1.nix
+      #./ffmpeg_systemd_service.nix
+      #./firewall-test-phase1.nix
     ];
 
 # https://nixos.wiki/wiki/Kubernetes#reset_to_a_clean_state
@@ -104,6 +105,10 @@
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "hp1";
+
+  # Disable DHCP on specific interfaces
+  networking.interfaces.enp4s0f0.useDHCP = false;
+  networking.interfaces.enp4s0f1.useDHCP = false;
 
   services.lldpd.enable = true;
 

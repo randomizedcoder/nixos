@@ -16,6 +16,7 @@
   # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
   imports =
     [
+      ./disko-l2.nix
       ./hardware-configuration.nix
       #./hardware-graphics.nix
       ./sysctl.nix
@@ -23,6 +24,7 @@
       ./locale.nix
       ./hosts.nix
       ./firewall.nix
+      #./crowdsec.nix
       #./systemdSystem.nix
       ./systemPackages.nix
       # home manager is imported in the flake
@@ -31,6 +33,7 @@
       ./prometheus.nix
       ./grafana.nix
       # clickhouse
+      ./clickhouse-service.nix
       #./docker-compose.nix
       #./docker-daemon.nix
       #./smokeping.nix
@@ -40,13 +43,14 @@
       ./hostapd-multi.nix
       ./network-optimization.nix
       # CPU and IRQ optimization modules
-      ./irq-affinity.nix
+      #./irq-affinity.nix
       ./systemd-slices.nix
       ./kernel-params.nix
       #./monitoring.nix
     ];
 
   boot = {
+
     loader.systemd-boot = {
       enable = true;
       consoleMode = "max";
@@ -62,6 +66,13 @@
 
     initrd.kernelModules = [
       "amdgpu"
+    ];
+
+    kernelModules = [
+      "bnxt_en"      # Ethernet
+      "bnxt_re"      # RoCEv2 RDMA provider
+      "ib_uverbs"    # RDMA verbs
+      "rdma_ucm"
     ];
 
     blacklistedKernelModules = [
@@ -93,6 +104,7 @@
       stdenv.cc.cc.lib
       zlib
       libxml2
+      pciutils # for broadcom niccli
     ];
   };
 
@@ -127,7 +139,16 @@
 
   systemd.services.systemd-udev-settle.enable = false;
 
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      PermitRootLogin = "yes"; # Change me to "no"!!
+      #AllowUsers = [ "das" ]
+    };
+  };
+
   programs.ssh.extraConfig = ''
   Host hp4.home
     PubkeyAcceptedKeyTypes ssh-ed25519
@@ -153,9 +174,13 @@
     #MY_VARIABLE = "my-value";
   };
 
+  systemd.services.modem-manager.enable = false;
+  systemd.services."dbus-org.freedesktop.ModemManager1".enable = false;
+
   users.users.das = {
     isNormalUser = true;
     description = "das";
+    password = "admin123"; # FIX ME!!
     extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" ];
     packages = with pkgs; [
     ];
@@ -170,6 +195,16 @@
      enableSSHSupport = true;
   };
 
+  # Enable LACT GPU Control Daemon
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
+  services.lact = {
+    enable = true;
+    # Optional: Add custom settings here if needed
+    # settings = {
+    #   # Example settings
+    # };
+  };
+
   # # https://nixos.wiki/wiki/Virt-manager
   # virtualisation.libvirtd.enable = true;
   # #programs.virt-manager.enable = true;
@@ -179,10 +214,18 @@
   #   ociSeccompBpfHook.enable = true;
   # };
 
-  system.stateVersion = "24.11";
+  #system.stateVersion = "24.11";
+  system.stateVersion = "25.05";
 
-  systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
-  systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
+  # systemd.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
+  # systemd.user.extraConfig = "CPUAffinity=8,20,9,21,10,22,11,23";
+
+  # systemd.settings.Manager = {
+  #   CPUAffinity = "8,20,9,21,10,22,11,23";
+  # };
+  # systemd.user.settings.Manager = {
+  #   CPUAffinity = "8,20,9,21,10,22,11,23";
+  # };
 
 }
 

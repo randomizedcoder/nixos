@@ -18,7 +18,7 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
-rebuild_t:
+rebuild_l:
 	sudo nixos-rebuild switch --flake .#t
 
 #https://nixos.org/manual/nixos/unstable/index.html#sec-nix-network-issues

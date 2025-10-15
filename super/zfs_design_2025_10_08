@@ -1,0 +1,289 @@
+{ config, lib, pkgs, ... }:
+
+{
+  ##############################################################################
+  # ZFS/ARC sizing note (128 GiB RAM):
+  # ZFS ARC should not starve ClickHouse/Redpanda. A good starting point is
+  # ~20–35% of RAM. For 128 GiB: 26–45 GiB. We’ll pin ARC ≈ 32 GiB here:
+  #
+  #   128 GiB * 0.25 ≈ 32 GiB  => zfs_arc_max = 32 * 1024^3 bytes
+  #
+  # Tune up/down after observing workload (CH memory usage, OS cache, etc.).
+  ##############################################################################
+  boot.extraModprobeConfig = ''
+    options zfs zfs_arc_max=$((32 * 1024 * 1024 * 1024))
+    # Optional: allow sequential prefetch into L2ARC if your analytics benefit:
+    # options zfs l2arc_noprefetch=0
+  '';
+
+  # Ensure ZFS modules/userspace:
+  boot.supportedFilesystems = [ "zfs" ];
+  services.zfs.trim.enable = true;
+  services.zfs.autoScrub.enable = true;
+
+  # Required for stable ZFS host identity (generate once; must be 8 hex chars).
+  # e.g. networking.hostId = "a1b2c3d4";
+  networking.hostId = lib.mkDefault "REPLACE8H";
+
+  disko.devices = {
+    ############################################################################
+    # Disks
+    ############################################################################
+    disk = {
+      # --- System disk → rpool
+      sda = {
+        type = "disk";
+        device = "/dev/disk/by-id/REPLACE-WITH-ID-of-sda";
+        content = {
+          type = "gpt";
+          partitions = {
+            ESP = {
+              name = "ESP";
+              size = "1G";
+              type = "EF00";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "umask=0077" ];
+              };
+            };
+            rpool = {
+              name = "rpool";
+              start = "1G";
+              end = "100%";
+              type = "BF01"; # ZFS
+              content = { type = "zfs"; pool = "rpool"; };
+            };
+          };
+        };
+      };
+
+      # --- Data disk → tank
+      sdb = {
+        type = "disk";
+        device = "/dev/disk/by-id/REPLACE-WITH-ID-of-sdb";
+        content = {
+          type = "gpt";
+          partitions = {
+            tank = {
+              name = "tank";
+              start = "1M";
+              end = "100%";
+              type = "BF01";
+              content = { type = "zfs"; pool = "tank"; };
+            };
+          };
+        };
+      };
+
+      # --- NVMe split across tank + rpool (cache/log/special vdevs)
+      nvme0n1 = {
+        type = "disk";
+        device = "/dev/disk/by-id/REPLACE-WITH-ID-of-nvme0n1";
+        content = {
+          type = "gpt";
+          partitions = {
+            nvme_cache_tank = {
+              name = "nvme_cache_tank";
+              start = "1M";
+              end   = "50%";
+              type = "BF01";
+              content = { type = "zfs"; pool = "tank"; vdev = "cache"; };   # L2ARC
+            };
+            nvme_slog_tank = {
+              name = "nvme_slog_tank";
+              start = "50%";
+              end   = "70%";
+              type = "BF01";
+              content = { type = "zfs"; pool = "tank"; vdev = "log"; };     # SLOG
+            };
+            nvme_special_tank = {
+              name = "nvme_special_tank";
+              start = "70%";
+              end   = "80%";
+              type = "BF01";
+              content = { type = "zfs"; pool = "tank"; vdev = "special"; }; # metadata/small blocks
+            };
+            nvme_special_rpool = {
+              name = "nvme_special_rpool";
+              start = "80%";
+              end   = "100%";
+              type = "BF01";
+              content = { type = "zfs"; pool = "rpool"; vdev = "special"; };# speed up OS pool
+            };
+          };
+        };
+      };
+    };
+
+    ############################################################################
+    # Pools
+    ############################################################################
+    zpool = {
+      # ---------------------- rpool (OS) --------------------------------------
+      rpool = {
+        type = "zpool";
+        options = {
+          ashift = "12";
+          autoreplace = "on";
+        };
+        rootFsOptions = {
+          mountpoint = "none";
+          compression = "zstd";
+          atime = "off";
+          xattr = "sa";
+          acltype = "posixacl";
+          redundant_metadata = "most";
+          # Place small blocks/metadata on NVMe special vdev:
+          special_small_blocks = "16K";  # 8K–16K good start
+        };
+        datasets = {
+          "root" = {
+            type = "zfs_fs";
+            mountpoint = "/";
+            options.mountpoint = "legacy";
+          };
+          "nix" = {
+            type = "zfs_fs";
+            mountpoint = "/nix";
+            options = {
+              mountpoint = "legacy";
+              atime = "off";
+              recordsize = "128K";
+            };
+          };
+          "var" = {
+            type = "zfs_fs";
+            mountpoint = "/var";
+            options.mountpoint = "legacy";
+          };
+          "home" = {
+            type = "zfs_fs";
+            mountpoint = "/home";
+            options.mountpoint = "legacy";
+          };
+
+          # zvol-backed swap (adjust size as desired; your prior swap ~138 GiB)
+          "swap" = {
+            type = "zfs_zvol";
+            size = "128G";
+            options = {
+              compression = "zle";
+              logbias = "throughput";
+              sync = "always";
+              primarycache = "metadata";
+            };
+            swap.enabled = true;  # auto-added to /etc/swaps
+          };
+        };
+      };
+
+      # ---------------------- tank (data) -------------------------------------
+      tank = {
+        type = "zpool";
+        options = {
+          ashift = "12";
+          autoreplace = "on";
+        };
+        rootFsOptions = {
+          mountpoint = "none";
+          compression = "zstd";
+          atime = "off";
+          xattr = "sa";
+          acltype = "posixacl";
+          redundant_metadata = "most";
+          # Default policy; specific datasets can override as needed:
+          special_small_blocks = "16K";
+          # If your workload is very sync-heavy and you value latency:
+          # logbias = "latency";
+        };
+        datasets = {
+          # General root for convenience
+          "zfs" = {
+            type = "zfs_fs";
+            mountpoint = "/zfs";
+            options.mountpoint = "legacy";
+          };
+
+          # ClickHouse primary data
+          "ch-data" = {
+            type = "zfs_fs";
+            mountpoint = "/zfs/clickhouse";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";
+              logbias = "throughput";
+              compression = "zstd";
+              primarycache = "all";
+              secondarycache = "all";      # allow L2ARC to help CH reads
+              special_small_blocks = "16K"; # push metadata/small blocks to NVMe special
+            };
+          };
+
+          # ClickHouse tmp/scratch (OK to lose on power loss)
+          "ch-tmp" = {
+            type = "zfs_fs";
+            mountpoint = "/zfs/clickhouse-tmp";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";
+              compression = "lz4";
+              sync = "disabled";            # tmp only
+              primarycache = "metadata";
+              secondarycache = "none";
+              special_small_blocks = "16K";
+            };
+          };
+
+          # Redpanda (Kafka) log store
+          "kafka" = {
+            type = "zfs_fs";
+            mountpoint = "/zfs/kafka";
+            options = {
+              mountpoint = "legacy";
+              recordsize = "1M";            # large sequential log segments
+              compression = "lz4";          # or "off" to reduce CPU
+              logbias = "throughput";
+              sync = "standard";            # let app/fsync decide durability
+              primarycache = "metadata";    # avoid polluting ARC with write-only data
+              secondarycache = "none";      # keep it out of L2ARC
+              special_small_blocks = "16K";
+            };
+          };
+        };
+      };
+    };
+  };
+
+  ##############################################################################
+  # Mounts for legacy mountpoints
+  ##############################################################################
+  fileSystems."/boot"                = { device = "/dev/disk/by-partlabel/ESP"; fsType = "vfat"; };
+  fileSystems."/"                    = { device = "rpool/root";               fsType = "zfs"; };
+  fileSystems."/nix"                 = { device = "rpool/nix";                fsType = "zfs"; };
+  fileSystems."/var"                 = { device = "rpool/var";                fsType = "zfs"; };
+  fileSystems."/home"                = { device = "rpool/home";               fsType = "zfs"; };
+
+  fileSystems."/zfs"                 = { device = "tank/zfs";                 fsType = "zfs"; };
+  fileSystems."/zfs/clickhouse"      = { device = "tank/ch-data";             fsType = "zfs"; };
+  fileSystems."/zfs/clickhouse-tmp"  = { device = "tank/ch-tmp";              fsType = "zfs"; };
+  fileSystems."/zfs/kafka"           = { device = "tank/kafka";               fsType = "zfs"; };
+
+  ##############################################################################
+  # Boot loader (example: systemd-boot; switch to GRUB if needed)
+  ##############################################################################
+  boot.loader.systemd-boot.enable = lib.mkDefault true;
+  boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
+
+  ##############################################################################
+  # Safety notes:
+  # - Special vdev is *critical*: if the NVMe fails, pools using it may be
+  #   unavailable (metadata resides there). For production, mirror the special
+  #   vdev (requires another NVMe).
+  # - SLOG sized at 20% of NVMe is very large. Typical SLOG sizes are 16–32 GiB
+  #   unless you sustain huge sync write rates. If you don’t need a massive SLOG,
+  #   consider reallocating some of that space to the special vdev(s).
+  ##############################################################################
+}
+

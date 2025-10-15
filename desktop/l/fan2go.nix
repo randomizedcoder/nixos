@@ -72,31 +72,22 @@ let
   debugLogger = ''
     # Set default debug level if not provided.
     : "''${DEBUG_LEVEL:=0}" # Use quoted expansion to satisfy shellcheck
-    : "''${DEBUG_LEVEL:=0}"
     LOG_FILE="/tmp/fan2go-debug-$(date +%Y%m%d%H).log"
     log_debug() {
       # Append message to the log file if debug level is 7 or higher.
       if [[ ''${DEBUG_LEVEL} -ge 7 ]]; then echo "[$(date +%T)] DEBUG: $*" >> "$LOG_FILE"; fi
-      if [[ ''${DEBUG_LEVEL} -ge 7 ]]; then echo "[$(date +%T)] [$$] DEBUG: $*" >> "$LOG_FILE"; fi
     }
   '';
 
   # Create the bash scripts for fan control
   setPwmScript = pkgs.writeShellApplication {
     name = "setPwm.bash";
-  # A single, unified script to wrap all liquidctl interactions,
-  # preventing race conditions by design.
-  liquidctlWrapperScript = pkgs.writeShellApplication {
-    name = "liquidctl-wrapper.bash";
     runtimeInputs = [ pkgs.liquidctl pkgs.util-linux pkgs.coreutils ];
     text = ''
     # Convert fan2go PWM (0-255) to liquidctl percentage (0-100)
     # PWM value is passed as the first argument
     ${debugLogger}
     log_debug "setPwm started with argument: $1"
-      ${debugLogger}
-      ACTION="$1"
-      log_debug "Wrapper called with action: $ACTION"
 
     # Check if the pwm_value argument was provided.
     : "''${1:?PWM value not provided as an argument}"
@@ -112,27 +103,6 @@ let
     done
     '';
   };
-      case "$ACTION" in
-        set-pwm)
-          PWM_VALUE="$2"
-          : "''${PWM_VALUE:?PWM value not provided for set-pwm action}"
-          percent=$((PWM_VALUE * 100 / 255))
-          log_debug "Calculated percent: $percent"
-          for i in {1..3}; do
-            ( flock 200; liquidctl --vendor ${liquidctlVendorId} set fan1 speed "$percent" 2>> "$LOG_FILE" ) 200>${liquidctlLockFile} && break
-            log_debug "Attempt #$i failed. Sleeping."
-            sleep ${toString retrySleepDuration}
-          done
-          ;;
-        get-pwm|get-rpm)
-          output=""
-          for i in {1..3}; do
-            output=$( ( flock -s 200; liquidctl --vendor ${liquidctlVendorId} status 2>> "$LOG_FILE" ) 200>${liquidctlLockFile} )
-            [ -n "$output" ] && break
-            log_debug "Attempt #$i failed (no output). Sleeping."
-            sleep ${toString retrySleepDuration}
-          done
-          log_debug "Raw liquidctl output: $output"
 
   getPwmScript = pkgs.writeShellApplication {
     name = "getPwm.bash";
@@ -160,22 +130,6 @@ let
       exit 0
     fi
     echo 0
-          if [[ $output =~ Fan\ speed\ 1[^0-9]+([0-9]+) ]]; then
-            rpm=''${BASH_REMATCH[1]}
-            if [[ "$ACTION" == "get-pwm" ]]; then
-              echo $((rpm * 255 / 2000))
-            else # get-rpm
-              echo "$rpm"
-            fi
-          else
-            echo 0
-          fi
-          ;;
-        *)
-          log_debug "Unknown action: $ACTION"
-          exit 1
-          ;;
-      esac
     '';
   };
 
@@ -218,15 +172,12 @@ let
 
     echo "Checking setPwm script..."
     shellcheck ${setPwmScript}/bin/setPwm.bash || exit 1
-    shellcheck ${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash || exit 1
 
     echo "Checking getPwm script..."
     shellcheck ${getPwmScript}/bin/getPwm.bash || exit 1
-    shellcheck ${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash || exit 1
 
     echo "Checking getRpm script..."
     shellcheck ${getRpmScript}/bin/getRpm.bash || exit 1
-    shellcheck ${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash || exit 1
 
     echo "All scripts passed shellcheck validation!"
     '';
@@ -251,24 +202,18 @@ let
           setPwm:
             exec: "${setPwmScript}/bin/setPwm.bash"
             args: ["%pwm%"]
-            exec: "${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash"
-            args: ["set-pwm", "%pwm%"]
             env:
               DEBUG_LEVEL: "${toString debugLevel}"
           # The `getPwm` command should return the current PWM value.
           # Since liquidctl doesn't provide PWM directly, we convert from the RPM value.
           getPwm:
             exec: "${getPwmScript}/bin/getPwm.bash"
-            exec: "${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash"
-            args: ["get-pwm"]
             env:
               DEBUG_LEVEL: "${toString debugLevel}"
           # The `getRpm` command gets the current RPM value from liquidctl.
           # This helps fan2go understand the fan's current state.
           getRpm:
             exec: "${getRpmScript}/bin/getRpm.bash"
-            exec: "${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash"
-            args: ["get-rpm"]
             env:
               DEBUG_LEVEL: "${toString debugLevel}"
         # Fan speed is a percentage for liquidctl

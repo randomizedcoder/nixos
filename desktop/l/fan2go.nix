@@ -17,6 +17,11 @@
 # 6. Uses bash parameter expansion: ${var#pattern} and ${var%%pattern}
 # 7. No temporary files or delays needed since fan2go is the only liquidctl user
 #
+# Nix string literals:
+# https://nix.dev/manual/nix/2.28/language/string-literals.html#string-literals
+# https://nix.dev/manual/nix/2.28/language/string-interpolation.html
+# https://github.com/NixOS/nix/blob/master/doc/manual/source/language/string-interpolation.md
+#
 # See also: https://github.com/arnarg/config/blob/8de65cf5f1649a4fe6893102120ede4363de9bfa/hosts/terra/fan2go.nix
 #
 #
@@ -30,6 +35,16 @@
 # ├── Fan speed 5       0  rpm
 # └── Fan speed 6       0  rpm
 #
+# [das@l:~/nixos/desktop/l]$ liquidctl list -v
+# Device #0: Corsair Commander Core XT (broken)
+# ├── Vendor ID: 0x1b1c
+# ├── Product ID: 0x0c2a
+# ├── Release number: 0x0100
+# ├── Serial number: 210430f00a0857baae689a262091005f
+# ├── Bus: hid
+# ├── Address: /dev/hidraw5
+# └── Driver: CommanderCore
+#
 {
   lib,
   config,
@@ -40,55 +55,182 @@ let
 
   cfg = config.hardware.fan2go;
 
+  # Path for the lock file to serialize access to liquidctl.
+  liquidctlLockFile = "/run/lock/fan2go-liquidctl.lock";
+
+  # Vendor ID for the Corsair device to speed up liquidctl commands.
+  liquidctlVendorId = "0x1b1c";
+
+  # Sleep duration between retries for liquidctl commands.
+  retrySleepDuration = 0.1;
+
+  # Debug level for the scripts (0=off, 7=max debug).
+  debugLevel = 7;
+
+  # A reusable bash helper function for logging.
+  # It checks the DEBUG_LEVEL and prints messages to stderr.
+  debugLogger = ''
+    # Set default debug level if not provided.
+    : "''${DEBUG_LEVEL:=0}" # Use quoted expansion to satisfy shellcheck
+    : "''${DEBUG_LEVEL:=0}"
+    LOG_FILE="/tmp/fan2go-debug-$(date +%Y%m%d%H).log"
+    log_debug() {
+      # Append message to the log file if debug level is 7 or higher.
+      if [[ ''${DEBUG_LEVEL} -ge 7 ]]; then echo "[$(date +%T)] DEBUG: $*" >> "$LOG_FILE"; fi
+      if [[ ''${DEBUG_LEVEL} -ge 7 ]]; then echo "[$(date +%T)] [$$] DEBUG: $*" >> "$LOG_FILE"; fi
+    }
+  '';
+
   # Create the bash scripts for fan control
-  setPwmScript = pkgs.writeText "setPwm.bash" ''
-    #!${pkgs.bash}/bin/bash
+  setPwmScript = pkgs.writeShellApplication {
+    name = "setPwm.bash";
+  # A single, unified script to wrap all liquidctl interactions,
+  # preventing race conditions by design.
+  liquidctlWrapperScript = pkgs.writeShellApplication {
+    name = "liquidctl-wrapper.bash";
+    runtimeInputs = [ pkgs.liquidctl pkgs.util-linux pkgs.coreutils ];
+    text = ''
     # Convert fan2go PWM (0-255) to liquidctl percentage (0-100)
-    percent=$((%pwm% * 100 / 255))
-    ${pkgs.liquidctl}/bin/liquidctl set fan1 speed $percent
-  '';
+    # PWM value is passed as the first argument
+    ${debugLogger}
+    log_debug "setPwm started with argument: $1"
+      ${debugLogger}
+      ACTION="$1"
+      log_debug "Wrapper called with action: $ACTION"
 
-  getPwmScript = pkgs.writeText "getPwm.bash" ''
-    #!${pkgs.bash}/bin/bash
+    # Check if the pwm_value argument was provided.
+    : "''${1:?PWM value not provided as an argument}"
+    percent=$(( $1 * 100 / 255 ))
+    log_debug "Calculated percent: $percent"
+    for i in {1..3}; do
+      (
+        log_debug "Attempt #$i: Acquiring lock and setting fan speed..."
+        liquidctl --vendor ${liquidctlVendorId} set fan1 speed "$percent" 2>> "$LOG_FILE"
+      ) 200>${liquidctlLockFile} && break
+      log_debug "Attempt #$i failed. Sleeping for ${toString retrySleepDuration}s."
+      sleep ${toString retrySleepDuration}
+    done
+    '';
+  };
+      case "$ACTION" in
+        set-pwm)
+          PWM_VALUE="$2"
+          : "''${PWM_VALUE:?PWM value not provided for set-pwm action}"
+          percent=$((PWM_VALUE * 100 / 255))
+          log_debug "Calculated percent: $percent"
+          for i in {1..3}; do
+            ( flock 200; liquidctl --vendor ${liquidctlVendorId} set fan1 speed "$percent" 2>> "$LOG_FILE" ) 200>${liquidctlLockFile} && break
+            log_debug "Attempt #$i failed. Sleeping."
+            sleep ${toString retrySleepDuration}
+          done
+          ;;
+        get-pwm|get-rpm)
+          output=""
+          for i in {1..3}; do
+            output=$( ( flock -s 200; liquidctl --vendor ${liquidctlVendorId} status 2>> "$LOG_FILE" ) 200>${liquidctlLockFile} )
+            [ -n "$output" ] && break
+            log_debug "Attempt #$i failed (no output). Sleeping."
+            sleep ${toString retrySleepDuration}
+          done
+          log_debug "Raw liquidctl output: $output"
+
+  getPwmScript = pkgs.writeShellApplication {
+    name = "getPwm.bash";
+    runtimeInputs = [ pkgs.liquidctl pkgs.util-linux pkgs.coreutils ];
+    text = ''
     # Get current fan RPM and convert to PWM value
-    output=$(${pkgs.liquidctl}/bin/liquidctl status 2>/dev/null)
-    if [[ $output =~ Fan\ speed\ 1[^0-9]+([0-9]+) ]]; then
-      rpm=${BASH_REMATCH[1]}
-      echo $((rpm * 255 / 2000))
-    else
-      echo 0
-    fi
-  '';
+    output=""
+    ${debugLogger}
+    log_debug "getPwm started."
 
-  getRpmScript = pkgs.writeText "getRpm.bash" ''
-    #!${pkgs.bash}/bin/bash
-    # Get current fan RPM value
-    output=$(${pkgs.liquidctl}/bin/liquidctl status 2>/dev/null)
-    if [[ $output =~ Fan\ speed\ 1[^0-9]+([0-9]+) ]]; then
-      rpm=${BASH_REMATCH[1]}
-      echo $rpm
-    else
-      echo 0
+    for i in {1..3}; do
+      output=$( (
+        log_debug "Attempt #$i: Acquiring lock and getting status..."
+        flock -s 200 # Use a shared lock for read-only operations
+        liquidctl --vendor ${liquidctlVendorId} status 2>> "$LOG_FILE"
+      ) 200>${liquidctlLockFile} )
+      [ -n "$output" ] && break
+      log_debug "Attempt #$i failed (no output). Sleeping for ${toString retrySleepDuration}s."
+      sleep ${toString retrySleepDuration}
+    done
+    log_debug "Raw liquidctl output: $output"
+    if [[ $output =~ Fan\ speed\ 1[^0-9]+([0-9]+)  ]]; then
+      rpm=''${BASH_REMATCH[1]}
+      echo $((rpm * 255 / 2000))
+      exit 0
     fi
-  '';
+    echo 0
+          if [[ $output =~ Fan\ speed\ 1[^0-9]+([0-9]+) ]]; then
+            rpm=''${BASH_REMATCH[1]}
+            if [[ "$ACTION" == "get-pwm" ]]; then
+              echo $((rpm * 255 / 2000))
+            else # get-rpm
+              echo "$rpm"
+            fi
+          else
+            echo 0
+          fi
+          ;;
+        *)
+          log_debug "Unknown action: $ACTION"
+          exit 1
+          ;;
+      esac
+    '';
+  };
+
+  getRpmScript = pkgs.writeShellApplication {
+    name = "getRpm.bash";
+    runtimeInputs = [ pkgs.liquidctl pkgs.util-linux pkgs.coreutils ];
+    text = ''
+    # Get current fan RPM value
+    output=""
+    ${debugLogger}
+    log_debug "getRpm started."
+
+    for i in {1..3}; do
+      output=$( (
+        log_debug "Attempt #$i: Acquiring lock and getting status..."
+        flock -s 200 # Use a shared lock for read-only operations
+        liquidctl --vendor ${liquidctlVendorId} status 2>> "$LOG_FILE"
+      ) 200>${liquidctlLockFile} )
+      [ -n "$output" ] && break
+      log_debug "Attempt #$i failed (no output). Sleeping for ${toString retrySleepDuration}s."
+      sleep ${toString retrySleepDuration}
+    done
+    log_debug "Raw liquidctl output: $output"
+    if [[ $output =~ Fan\ speed\ 1[^0-9]+([0-9]+)  ]]; then
+      rpm=''${BASH_REMATCH[1]}
+      echo "$rpm"
+      exit 0
+    fi
+    echo 0
+    '';
+  };
 
   # Create a shellcheck validation script
-  shellcheckScript = pkgs.writeText "check-fan-scripts.sh" ''
-    #!${pkgs.bash}/bin/bash
+  shellcheckScript = pkgs.writeShellApplication {
+    name = "check-fan-scripts.sh";
+    runtimeInputs = [ pkgs.shellcheck ];
+    text = ''
     # Shellcheck validation for fan control scripts
     echo "Running shellcheck on fan control scripts..."
 
     echo "Checking setPwm script..."
-    ${pkgs.shellcheck}/bin/shellcheck ${setPwmScript} || exit 1
+    shellcheck ${setPwmScript}/bin/setPwm.bash || exit 1
+    shellcheck ${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash || exit 1
 
     echo "Checking getPwm script..."
-    ${pkgs.shellcheck}/bin/shellcheck ${getPwmScript} || exit 1
+    shellcheck ${getPwmScript}/bin/getPwm.bash || exit 1
+    shellcheck ${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash || exit 1
 
     echo "Checking getRpm script..."
-    ${pkgs.shellcheck}/bin/shellcheck ${getRpmScript} || exit 1
+    shellcheck ${getRpmScript}/bin/getRpm.bash || exit 1
+    shellcheck ${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash || exit 1
 
     echo "All scripts passed shellcheck validation!"
-  '';
+    '';
+  };
 
   fan2goConfig = pkgs.writeText "fan2go.yaml" ''
     #
@@ -107,15 +249,28 @@ let
           # We use a shell command to convert the 0-255 PWM value from fan2go
           # into a 0-100 percentage for liquidctl.
           setPwm:
-            exec: "${setPwmScript}"
+            exec: "${setPwmScript}/bin/setPwm.bash"
+            args: ["%pwm%"]
+            exec: "${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash"
+            args: ["set-pwm", "%pwm%"]
+            env:
+              DEBUG_LEVEL: "${toString debugLevel}"
           # The `getPwm` command should return the current PWM value.
           # Since liquidctl doesn't provide PWM directly, we convert from the RPM value.
           getPwm:
-            exec: "${getPwmScript}"
+            exec: "${getPwmScript}/bin/getPwm.bash"
+            exec: "${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash"
+            args: ["get-pwm"]
+            env:
+              DEBUG_LEVEL: "${toString debugLevel}"
           # The `getRpm` command gets the current RPM value from liquidctl.
           # This helps fan2go understand the fan's current state.
           getRpm:
-            exec: "${getRpmScript}"
+            exec: "${getRpmScript}/bin/getRpm.bash"
+            exec: "${liquidctlWrapperScript}/bin/liquidctl-wrapper.bash"
+            args: ["get-rpm"]
+            env:
+              DEBUG_LEVEL: "${toString debugLevel}"
         # Fan speed is a percentage for liquidctl
         min: 10
         max: 100
@@ -211,7 +366,7 @@ in
       after = [ "lm_sensors.service" ];
 
       serviceConfig = {
-        ExecStartPre = "${shellcheckScript}";
+        ExecStartPre = "${shellcheckScript}/bin/check-fan-scripts.sh";
         ExecStart = lib.concatStringsSep " " [
           "${pkgs.fan2go}/bin/fan2go"
           "-c"
@@ -219,6 +374,7 @@ in
           "--no-style"
         ];
 
+        Environment = [ "GOMEMLIMIT=45MiB" ];
         MemoryHigh = "48M";
         MemoryMax = "64M";
         CPUQuota = "50%";

@@ -40,7 +40,7 @@
       # GPU fan control
       #./gpu-fan-control.nix
       # Corsair fan control
-      #./corsair-fan-control.nix
+      ./corsair-fan-control.nix
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
@@ -48,7 +48,7 @@
       #./hyprland.nix
       ./nginx.nix
       ./ollama-service.nix
-      ./fan2go.nix
+      #/fan2go.nix
     ];
 
   boot = {

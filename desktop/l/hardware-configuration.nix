@@ -48,6 +48,6 @@
   #https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/hardware/decklink.nix
 
   # see also fan2go.nix
-  hardware.fan2go.enable = true;
+  #hardware.fan2go.enable = true;
 
 }

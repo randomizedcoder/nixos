@@ -49,4 +49,5 @@
 
   # see also fan2go.nix
   hardware.fan2go.enable = true;
+
 }

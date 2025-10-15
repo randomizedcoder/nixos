@@ -26,6 +26,18 @@ fans:
     neverStop: true
     # The curve ID that should be used to determine the speed of this fan.
     curve: gpu_cooling_curve
+  # Define the fan for the Radeon Pro W5700 (amdgpu-pci-06300).
+  # This GPU has its own controllable fan via hwmon.
+  - id: gpu_w5700_fan
+    hwmon:
+      # From `fan2go detect`, this is the platform for the W5700.
+      platform: amdgpu-pci-06300
+      # The channel for the fan's RPM sensor.
+      rpmChannel: 1
+      # The PWM channel that controls this fan's speed.
+      pwmChannel: 1
+    neverStop: true
+    curve: gpu_w5700_curve
 
 sensors:
   # Define the temperature sensor to monitor. This is the Radeon Pro VII/MI50.
@@ -36,6 +48,14 @@ sensors:
       platform: amdgpu-pci-04400
       # Use the junction temperature (temp2_input) as it's a good indicator of core heat.
       index: 2
+  # Define the temperature sensor for the Radeon Pro W5700.
+  - id: gpu_w5700_temp
+    hwmon:
+      # From `fan2go detect`, this is the platform for the W5700.
+      platform: amdgpu-pci-06300
+      # Use the junction temperature (temp2_input).
+      index: 2
+
 
 curves:
   # Link the GPU temperature to the case fan speed.
@@ -52,10 +72,22 @@ curves:
         - [60, 60]  # At 60°C, run fan at 60%
         - [70, 80]  # At 70°C, run fan at 80%
         - [80, 100] # At 80°C and above, run fan at 100%
+  # Define the curve for the Radeon Pro W5700's own fan.
+  - id: gpu_w5700_curve
+    linear:
+      # The sensor ID to use as a temperature input for this curve.
+      sensor: gpu_w5700_temp
+      # Define the temperature-to-PWM-value mapping.
+      # Temps are in Celsius, output is a PWM value (0-255).
+      points:
+        - [45, 51]   # At 45°C, run fan at ~20% (51/255)
+        - [55, 102]  # At 55°C, run fan at 40%
+        - [65, 153]  # At 65°C, run fan at 60%
+        - [75, 204]  # At 75°C, run fan at 80%
+        - [85, 255]  # At 85°C and above, run fan at 100%
 
 statistics:
   # Whether to enable the prometheus exporter or not
   enabled: true
   # The port to expose the exporter on
   port: 9900
-

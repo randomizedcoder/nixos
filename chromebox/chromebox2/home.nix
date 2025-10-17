@@ -15,7 +15,7 @@
       #GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
       # disable wayland
       #NIXOS_OZONE_WL = "1";
-      #KUBECONFIG = "/home/das/k3s.yaml";
+      KUBECONFIG = "/home/das/k3s.yaml";
       TERM = "xterm-256color";
   };
 
@@ -28,7 +28,6 @@
     #
     tmux
     screen
-    #
     #
     gawk
     jq
@@ -45,6 +44,7 @@
     #
     # debug
     strace
+    #
     gnumake
   ];
 
@@ -79,6 +79,6 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  home.stateVersion = "25.05";
+  home.stateVersion = "24.11";
   programs.home-manager.enable = true;
 }

@@ -1,7 +1,7 @@
 #
-# nixos/chromebox/chromebox3/Makefile
+# nixos/chromebox/chromebox1/Makefile
 #
-EXPECTED_HOSTNAME := chromebox3
+EXPECTED_HOSTNAME := chromebox1
 
 ACTUAL_HOSTNAME := $(shell hostname)
 
@@ -21,20 +21,23 @@ rebuild:
 	#sudo nix-channel --update
 	#sudo nixos-rebuild switch
 	sudo nix flake update;
-	sudo nix-channel --update;
+	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 
 anywhere:
-	nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@172.16.40.62
+	nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox1' --target-host root@172.16.40.179
 #nix run github:nix-community/nixos-anywhere -- --flake '.#chromebox3' --target-host root@chromebox3
 
 gen_hardware:
-	nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --generate-hardware-config nixos-generate-config ./hardware-configuration.nix --target-host root@172.16.40.62
+	nix run github:numtide/nixos-anywhere -- -f '.#chromebox1' --generate-hardware-config nixos-generate-config ./hardware-configuration.nix --target-host root@172.16.40.179
 
 # minutes 10:58
 # https://www.youtube.com/watch?v=U_UwzMhixr8
 vmtest:
 	sudo nix flake update;
 	sudo nix flake lock;
-#nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --vm-test --generate-hardware-config nixos-generate-config ./hardware-configuration.nix
-	nix run github:numtide/nixos-anywhere -- -f '.#chromebox3' --vm-test
+#nix run github:numtide/nixos-anywhere -- -f '.#chromebox1' --vm-test --generate-hardware-config nixos-generate-config ./hardware-configuration.nix
+	nix run github:numtide/nixos-anywhere -- -f '.#chromebox1' --vm-test
+
+sync:
+	rsync -av /home/das/nixos/chromebox/chromebox1/ 172.16.40.179:/home/das/nixos/chromebox/chromebox1/

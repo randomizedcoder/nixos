@@ -17,7 +17,8 @@
   # https://nixos.wiki/wiki/NixOS_modules
   imports =
     [
-      ./disko-chromebox3.nix
+      ./disko-chromebox1.nix
+      #./hardware-configuration.nix
       ./sysctl.nix
       ./il8n.nix
       ./systemPackages.nix
@@ -61,7 +62,7 @@
 
   # https://nixos.wiki/wiki/Networking
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
-  networking.hostName = "chromebox3";
+  networking.hostName = "chromebox1";
 
   services.lldpd.enable = true;
 

@@ -1,0 +1,593 @@
+factory-reset
+
+connect ftd
+
+
+firepower /firmware # scope system
+firepower /system # activate version 2.6(1.133)
+                             ^
+% Invalid Command at '^' marker
+firepower /system #
+  acknowledge  Acknowledge
+  activate     Activate component with specified image version
+  create       Create managed objects
+  delete       Delete managed objects
+  enter        Enters a managed object
+  scope        Changes the current mode
+  set          Set property values
+  show         Show system information
+
+firepower /system # ac
+acknowledge  activate
+firepower /system # activate
+  firmware  Firmware
+  internal  Non-interactive in background
+
+firepower /system # activate firmware
+  WORD  Version (Max Size 512) (Min size 0, Max size 510)
+
+firepower /system # activate firmware 2.6(1.133)
+As part of activation, all cli sessions will be terminated.
+Continue with activation? (yes/no) yes
+
+
+
+
+admin@firepower:/$
+admin@firepower:/$ cd /ngfw/var/sf/
+admin@firepower:/ngfw/var/sf$ ls
+DetectorCommon.lua  fileCapture        nmap                 sidns_download
+PaxHeaders.30448    file_processing    peers                sifile_download
+SRU                 fingerprints       python_modules       siurl_download
+action_queue        fwcfg              reactd               snort
+appid               geodb              remediation_modules  snort-2.9.11-101
+archive             healthmon          remediations         sru
+backup              healthmon_modules  remote-backup        ssl
+bin                 htdocs             reports              time_series
+clam-default-sig    hw_state           rna                  top10cacher
+clamupd_download    idhttpsd           rna-detectors        updates
+cloud_download      iprep_download     rna-detectors-clear  user_enforcement
+collectl            lib                rule-docs            userappid.conf
+db_restore          lib64              rule-pack            userauth
+decoder-rule-pack   localendpoint      rules                useridentity
+detection_engines   ngfw_GeoDB         rules_update         vdb
+dynamic-preproc     ngfw_UserIdentity  run
+etc                 ngfw_vdb           sfhassd
+admin@firepower:/ngfw/var/sf$ reboot
+bash: /sbin/reboot: Permission denied
+admin@firepower:/ngfw/var/sf$ sudo su -
+
+We trust you have received the usual lecture from the local System
+Administrator. It usually boils down to these three things:
+
+    #1) Respect the privacy of others.
+    #2) Think before you type.
+    #3) With great power comes great responsibility.
+
+Password:
+root@firepower:~# ls
+root@firepower:~# df -H
+Filesystem      Size  Used Avail Use% Mounted on
+rootfs          8.1G  536M  7.6G   7% /
+devtmpfs        8.3G   15M  8.2G   1% /dev
+tmpfs           8.3G  521k  8.3G   1% /run
+tmpfs           8.3G   43M  8.3G   1% /var/volatile
+/dev/sda1       968M  7.3M  911M   1% /opt/cisco/config
+/dev/sda2       967M  4.6M  913M   1% /opt/cisco/platform/logs
+/dev/sda3        12G   30M   12G   1% /var/data/cores
+/dev/sda4        54G   11G   44G  19% /ngfw
+/dev/sdb1        64G  6.1G   58G  10% /mnt/usbslot1
+/dev/sdc1       7.9G  4.9G  3.0G  62% /mnt/boot
+cgroup_root     8.3G     0  8.3G   0% /dev/cgroups
+tmpfs           1.1M     0  1.1M   0% /var/data/cores/sysdebug/tftpd_logs
+root@firepower:~# ls /mnt/boot/
+application         equipped_ssd_firmware      pamConfig.log
+distributables      installables               signed_ssd_firmwares
+distributables_hdr  manufacturer_ssd_fw_image  ssd_firmwares
+root@firepower:~# ls /dev/sda1
+/dev/sda1
+root@firepower:~# ls /dev/sda1/
+ls: cannot access /dev/sda1/: Not a directory
+root@firepower:~# ls /dev/sda2
+/dev/sda2
+root@firepower:~# ls /
+asa  dev    home  lib    mnt   proc  sbin  usr       workspace
+bin  etc    init  lib64  ngfw  root  sys   var
+csp  fserr  isan  media  opt   run   tmp   volatile
+root@firepower:~# ls /home/
+admin  sfremediation  sfrna  sfsnort  snorty
+root@firepower:~# ls /home/admin/
+root@firepower:~# find / -name '*SPA'
+find: '/proc/11688': No such file or directory
+find: '/proc/11715': No such file or directory
+/mnt/usbslot1/cisco-asa-fp2k.9.18.4.SPA
+/mnt/usbslot1/cisco-asa-fp2k.9.20.4.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1.0.00.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.2.1.49.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.2.1.49.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.2.1.49.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1006.0104.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.3.1.84.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.3.1.84.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.3.1.84.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.3.1.115.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.3.1.115.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.3.1.115.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1009.0200.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.3.1.144.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.3.1.144.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.3.1.144.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.6.1.133.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.6.1.133.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.6.1.133.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.10.1.175.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.10.1.175.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.10.1.175.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1010.0200.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.8.1.165.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.8.1.165.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.8.1.165.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.131.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.131.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.131.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.11.1.154.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.11.1.154.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.11.1.154.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.135.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.135.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.135.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.140.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.140.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.140.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.160.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.160.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.160.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.12.0.519.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.12.0.519.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.12.0.519.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.12.0.530.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.12.0.530.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.12.0.530.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.14.3.106.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.14.3.106.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.14.3.106.SPA
+/mnt/boot/installables/switch/fxos-k9-mgmtext.2.14.0.35.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k8-fp2k-firmware.1.0.00.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k8-fp2k-lfbff.2.2.1.49.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k8-fp2k-npu.2.2.1.49.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k9-fp2k-manager.2.2.1.49.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k8-fp2k-firmware.1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k8-fp2k-lfbff.2.3.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k8-fp2k-npu.2.3.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k9-fp2k-manager.2.3.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-100^C
+root@firepower:~# find /mnt/boot -name '*SPA'
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1.0.00.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.2.1.49.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.2.1.49.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.2.1.49.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1006.0104.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.3.1.84.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.3.1.84.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.3.1.84.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.3.1.115.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.3.1.115.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.3.1.115.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1009.0200.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.3.1.144.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.3.1.144.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.3.1.144.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.6.1.133.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.6.1.133.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.6.1.133.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.10.1.175.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.10.1.175.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.10.1.175.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-firmware.1010.0200.0213.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.8.1.165.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.8.1.165.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.8.1.165.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.131.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.131.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.131.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.11.1.154.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.11.1.154.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.11.1.154.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.135.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.135.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.135.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.140.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.140.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.140.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.9.1.160.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.9.1.160.SPA
+/mnt/boot/installables/switch/fxos-k9-manager.2.9.1.160.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.12.0.519.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.12.0.519.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.12.0.519.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.12.0.530.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.12.0.530.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.12.0.530.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-lfbff.2.14.3.106.SPA
+/mnt/boot/installables/switch/fxos-k8-fp2k-npu.2.14.3.106.SPA
+/mnt/boot/installables/switch/fxos-k9-fp2k-manager.2.14.3.106.SPA
+/mnt/boot/installables/switch/fxos-k9-mgmtext.2.14.0.35.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k8-fp2k-firmware.1.0.00.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k8-fp2k-lfbff.2.2.1.49.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k8-fp2k-npu.2.2.1.49.SPA
+/mnt/boot/distributables/cisco-ftd-fp2k.6.2.1-341.SPA/fxos-k9-fp2k-manager.2.2.1.49.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k8-fp2k-firmware.1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k8-fp2k-lfbff.2.3.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k8-fp2k-npu.2.3.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA/fxos-k9-fp2k-manager.2.3.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA/fxos-k8-fp2k-firmware.1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA/fxos-k8-fp2k-lfbff.2.3.1.115.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA/fxos-k8-fp2k-npu.2.3.1.115.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA/fxos-k9-fp2k-manager.2.3.1.115.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.144a.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.144a.SPA/fxos-k8-fp2k-firmware.1009.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.144a.SPA/fxos-k8-fp2k-lfbff.2.3.1.144.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.144a.SPA/fxos-k8-fp2k-npu.2.3.1.144.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.3.1.144a.SPA/fxos-k9-fp2k-manager.2.3.1.144.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.6.1.133.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.6.1.133.SPA/fxos-k8-fp2k-firmware.1006.0104.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.6.1.133.SPA/fxos-k8-fp2k-lfbff.2.6.1.133.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.6.1.133.SPA/fxos-k8-fp2k-npu.2.6.1.133.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.2.6.1.133.SPA/fxos-k9-fp2k-manager.2.6.1.133.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.0.1.84.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.0.1.84.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.0.1.84.SPA/fxos-k8-fp2k-lfbff.2.10.1.175.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.0.1.84.SPA/fxos-k8-fp2k-npu.2.10.1.175.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.0.1.84.SPA/fxos-k9-fp2k-manager.2.10.1.175.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.6.5.81.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.6.5.81.SPA/fxos-k8-fp2k-firmware.1010.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.6.5.81.SPA/fxos-k8-fp2k-lfbff.2.8.1.165.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.6.5.81.SPA/fxos-k8-fp2k-npu.2.8.1.165.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.6.5.81.SPA/fxos-k9-manager.2.8.1.165.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.65.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.65.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.65.SPA/fxos-k8-fp2k-lfbff.2.9.1.131.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.65.SPA/fxos-k8-fp2k-npu.2.9.1.131.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.65.SPA/fxos-k9-manager.2.9.1.131.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.1.0.90.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.1.0.90.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.1.0.90.SPA/fxos-k8-fp2k-lfbff.2.11.1.154.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.1.0.90.SPA/fxos-k8-fp2k-npu.2.11.1.154.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.1.0.90.SPA/fxos-k9-fp2k-manager.2.11.1.154.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.1.13.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.1.13.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.1.13.SPA/fxos-k8-fp2k-lfbff.2.9.1.135.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.1.13.SPA/fxos-k8-fp2k-npu.2.9.1.135.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.1.13.SPA/fxos-k9-manager.2.9.1.135.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.2.24.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.2.24.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.2.24.SPA/fxos-k8-fp2k-lfbff.2.9.1.140.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.2.24.SPA/fxos-k8-fp2k-npu.2.9.1.140.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.2.24.SPA/fxos-k9-manager.2.9.1.140.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.3.105.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.3.105.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.3.105.SPA/fxos-k8-fp2k-lfbff.2.9.1.160.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.3.105.SPA/fxos-k8-fp2k-npu.2.9.1.160.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.6.7.0.3.105.SPA/fxos-k9-manager.2.9.1.160.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.208.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.208.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.208.SPA/fxos-k8-fp2k-lfbff.2.12.0.519.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.208.SPA/fxos-k8-fp2k-npu.2.12.0.519.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.208.SPA/fxos-k9-fp2k-manager.2.12.0.519.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.1.29.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.1.29.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.1.29.SPA/fxos-k8-fp2k-lfbff.2.12.0.530.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.1.29.SPA/fxos-k8-fp2k-npu.2.12.0.530.SPA
+/mnt/boot/distributables/fxos-k9-fp2k.7.2.5.1.29.SPA/fxos-k9-fp2k-manager.2.12.0.530.SPA
+/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA
+/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA/fxos-k8-fp2k-firmware.1012.0200.0213.SPA
+/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA/fxos-k8-fp2k-lfbff.2.14.3.106.SPA
+/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA/fxos-k8-fp2k-npu.2.14.3.106.SPA
+/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA/fxos-k9-fp2k-manager.2.14.3.106.SPA
+/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA/fxos-k9-mgmtext.2.14.0.35.SPA
+ables/irepower:~# cp /mnt/usbslot1/cisco-asa-fp2k.9.20.4.SPA /mnt/boot/distribut
+cp: cannot overwrite directory '/mnt/boot/distributables/cisco-asa-fp2k.9.20.4.SPA' with non-directory
+root@firepower:~# exit
+logout
+admin@firepower:/ngfw/var/sf$ exit
+logout
+> exit
+firepower# scope firmware
+firepower /firmware # show image
+Name                                          Type                 Version
+--------------------------------------------- -------------------- -------
+cisco-asa.9.20.4.csp                          CSP APP              9.20.4
+cisco-ftd.6.2.1.341.csp                       CSP APP              6.2.1.341
+fxos-k8-fp2k-firmware.1.0.00.SPA              Switch Firmware      1.0.00
+fxos-k8-fp2k-firmware.1006.0104.0213.SPA      Switch Firmware      1006.0104.021
+3
+fxos-k8-fp2k-firmware.1009.0200.0213.SPA      Switch Firmware      1009.0200.021
+3
+fxos-k8-fp2k-firmware.1010.0200.0213.SPA      Switch Firmware      1010.0200.021
+3
+fxos-k8-fp2k-firmware.1012.0200.0213.SPA      Switch Firmware      1012.0200.021
+3
+fxos-k8-fp2k-lfbff.2.10.1.175.SPA             System Image         2.10(1.175)
+fxos-k8-fp2k-lfbff.2.11.1.154.SPA             System Image         2.11(1.154)
+fxos-k8-fp2k-lfbff.2.12.0.519.SPA             System Image         2.12(0.519)
+fxos-k8-fp2k-lfbff.2.12.0.530.SPA             System Image         2.12(0.530)
+fxos-k8-fp2k-lfbff.2.14.3.106.SPA             System Image         2.14(3.106)
+fxos-k8-fp2k-lfbff.2.2.1.49.SPA               System Image         2.2(1.49)
+fxos-k8-fp2k-lfbff.2.3.1.115.SPA              System Image         2.3(1.115)
+fxos-k8-fp2k-lfbff.2.3.1.144.SPA              System Image         2.3(1.144)
+fxos-k8-fp2k-lfbff.2.3.1.84.SPA               System Image         2.3(1.84)
+fxos-k8-fp2k-lfbff.2.6.1.133.SPA              System Image         2.6(1.133)
+fxos-k8-fp2k-lfbff.2.8.1.165.SPA              System Image         2.8(1.165)
+fxos-k8-fp2k-lfbff.2.9.1.131.SPA              System Image         2.9(1.131)
+fxos-k8-fp2k-lfbff.2.9.1.135.SPA              System Image         2.9(1.135)
+fxos-k8-fp2k-lfbff.2.9.1.140.SPA              System Image         2.9(1.140)
+fxos-k8-fp2k-lfbff.2.9.1.160.SPA              System Image         2.9(1.160)
+fxos-k8-fp2k-npu.2.10.1.175.SPA               Npu Image            2.10(1.175)
+fxos-k8-fp2k-npu.2.11.1.154.SPA               Npu Image            2.11(1.154)
+fxos-k8-fp2k-npu.2.12.0.519.SPA               Npu Image            2.12(0.519)
+fxos-k8-fp2k-npu.2.12.0.530.SPA               Npu Image            2.12(0.530)
+fxos-k8-fp2k-npu.2.14.3.106.SPA               Npu Image            2.14(3.106)
+fxos-k8-fp2k-npu.2.2.1.49.SPA                 Npu Image            2.2(1.49)
+fxos-k8-fp2k-npu.2.3.1.115.SPA                Npu Image            2.3(1.115)
+fxos-k8-fp2k-npu.2.3.1.144.SPA                Npu Image            2.3(1.144)
+fxos-k8-fp2k-npu.2.3.1.84.SPA                 Npu Image            2.3(1.84)
+fxos-k8-fp2k-npu.2.6.1.133.SPA                Npu Image            2.6(1.133)
+fxos-k8-fp2k-npu.2.8.1.165.SPA                Npu Image            2.8(1.165)
+fxos-k8-fp2k-npu.2.9.1.131.SPA                Npu Image            2.9(1.131)
+fxos-k8-fp2k-npu.2.9.1.135.SPA                Npu Image            2.9(1.135)
+fxos-k8-fp2k-npu.2.9.1.140.SPA                Npu Image            2.9(1.140)
+fxos-k8-fp2k-npu.2.9.1.160.SPA                Npu Image            2.9(1.160)
+fxos-k9-fp2k-manager.2.10.1.175.SPA           Manager Image        2.10(1.175)
+fxos-k9-fp2k-manager.2.11.1.154.SPA           Manager Image        2.11(1.154)
+fxos-k9-fp2k-manager.2.12.0.519.SPA           Manager Image        2.12(0.519)
+fxos-k9-fp2k-manager.2.12.0.530.SPA           Manager Image        2.12(0.530)
+fxos-k9-fp2k-manager.2.14.3.106.SPA           Manager Image        2.14(3.106)
+fxos-k9-fp2k-manager.2.2.1.49.SPA             Manager Image        2.2(1.49)
+fxos-k9-fp2k-manager.2.3.1.115.SPA            Manager Image        2.3(1.115)
+fxos-k9-fp2k-manager.2.3.1.144.SPA            Manager Image        2.3(1.144)
+fxos-k9-fp2k-manager.2.3.1.84.SPA             Manager Image        2.3(1.84)
+fxos-k9-fp2k-manager.2.6.1.133.SPA            Manager Image        2.6(1.133)
+fxos-k9-manager.2.8.1.165.SPA                 Manager Image        2.8(1.165)
+fxos-k9-manager.2.9.1.131.SPA                 Manager Image        2.9(1.131)
+fxos-k9-manager.2.9.1.135.SPA                 Manager Image        2.9(1.135)
+fxos-k9-manager.2.9.1.140.SPA                 Manager Image        2.9(1.140)
+fxos-k9-manager.2.9.1.160.SPA                 Manager Image        2.9(1.160)
+fxos-k9-mgmtext.2.14.0.35.SPA                 Management Extension 2.14(0.35)
+firepower /firmware # scope system
+firepower /system # activate firmware 2.14(3.106)
+As part of activation, all cli sessions will be terminated.
+Continue with activation? (yes/no) yes
+
+Error: Monitor o
+Cisco FPR Series Security Appliance
+firepower login: admin
+Password:
+Last login: Sun Oct 26 19:52:32 UTC 2025 on ttyS0
+Successful login attempts for user 'admin' : 2
+
+Copyright 2004-2017, Cisco and/or its affiliates. All rights reserved.
+Cisco is a registered trademark of Cisco Systems, Inc.
+All other trademarks are property of their respective owners.
+
+Cisco Fire Linux OS v6.2.1 (build 6)
+Cisco Firepower 2110 Threat Defense v6.2.1 (build 341)
+
+Cisco Firepower Extensible Operating System (FX-OS) Software
+TAC support: http://www.cisco.com/tac
+Copyright (c) 2009-2019, Cisco Systems, Inc. All rights reserved.
+
+The copyrights to certain works contained in this software are
+owned by other third parties and used and distributed under
+license.
+
+Certain components of this software are licensed under the "GNU General Public
+License, version 3" provided with ABSOLUTELY NO WARRANTY under the terms of
+"GNU General Public License, Version 3", available here:
+http://www.gnu.org/licenses/gpl.html. See User Manual (''Licensing'') for
+details.
+
+Certain components of this software are licensed under the "GNU General Public
+License, version 2" provided with ABSOLUTELY NO WARRANTY under the terms of
+"GNU General Public License, version 2", available here:
+http://www.gnu.org/licenses/old-licenses/gpl-2.0.html. See User Manual
+(''Licensing'') for details.
+
+Certain components of this software are licensed under the "GNU LESSER GENERAL
+PUBLIC LICENSE, version 3" provided with ABSOLUTELY NO WARRANTY under the terms
+of "GNU LESSER GENERAL PUBLIC LICENSE" Version 3", available here:
+http://www.gnu.org/licenses/lgpl.html. See User Manual (''Licensing'') for
+details.
+
+Certain components of this software are licensed under the "GNU Lesser General
+Public License, version 2.1" provided with ABSOLUTELY NO WARRANTY under the
+terms of "GNU Lesser General Public License, version 2", available here:
+http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html. See User Manual
+(''Licensing'') for details.
+
+Certain components of this software are licensed under the "GNU Library General
+Public License, version 2" provided with ABSOLUTELY NO WARRANTY under the terms
+of "GNU Library General Public License, version 2", available here:
+http://www.gnu.org/licenses/old-licenses/lgpl-2.0.html. See User Manual
+(''Licensing'') for details.
+
+firepower# show version
+Boot Loader version: 1.0.12
+System version: 2.6(1.141)
+Service Manager version: 2.6(1.141)
+firepower# scope firmware
+firepower /firmware # show install state
+                           ^
+% Invalid Command at '^' marker
+firepower /firmware # show
+  download-task  Download task
+  event          Event Management
+  fault          Fault
+  fsm            Fsm
+  image          Image
+  package        Firmware Package
+  validate-task  Validate task
+  validation     Validation
+
+firepower /firmware # show package
+Name                                          Package-Vers
+--------------------------------------------- ------------
+cisco-asa-fp2k.9.20.4.SPA                     9.20.4
+cisco-ftd-fp2k.6.2.1-341.SPA                  6.2.1-341
+fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA
+                                              2.3.1.115_115_115-1006.0104.021
+fxos-k9-fp2k.2.3.1.144a.SPA                   2.3.1.144a
+fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA
+                                              2.3.1.84_84_84-1006.0104.0213
+fxos-k9-fp2k.2.6.1.133.SPA                    2.6.1.133
+fxos-k9-fp2k.6.6.5.81.SPA                     6.6.5.81
+fxos-k9-fp2k.6.7.0.1.13.SPA                   6.7.0.1.13
+fxos-k9-fp2k.6.7.0.2.24.SPA                   6.7.0.2.24
+fxos-k9-fp2k.6.7.0.3.105.SPA                  6.7.0.3.105
+fxos-k9-fp2k.6.7.0.65.SPA                     6.7.0.65
+fxos-k9-fp2k.7.0.1.84.SPA                     7.0.1.84
+fxos-k9-fp2k.7.1.0.90.SPA                     7.1.0.90
+fxos-k9-fp2k.7.2.5.1.29.SPA                   7.2.5.1.29
+fxos-k9-fp2k.7.2.5.208.SPA                    7.2.5.208
+firepower /firmware # show
+  download-task  Download task
+  event          Event Management
+  fault          Fault
+  fsm            Fsm
+  image          Image
+  package        Firmware Package
+  validate-task  Validate task
+  validation     Validation
+
+firepower /firmware # scope system
+firepower /system # activate firmware 7.2(5.208)
+As part of activation, all cli sessions will be terminated.
+Continue with activation? (yes/no) yes
+Error: Update failed: [Unable to find Manager image for version 7.2(5.208)]
+firepower /system # activate firmware 6.6(5.81)
+As part of activation, all cli sessions will be terminated.
+Continue with activation? (yes/no) yes
+Error: Update failed: [Unable to find Manager image for version 6.6(5.81)]
+firepower /system # activate firmware 2.10(1.175)
+As part of activation, all cli sessions will be terminated.
+Continue with activation? (yes/no) yes
+
+
+
+rommon 6 > dir disk0:/distributables/
+File System: FAT32
+drw-  251990           0  cisco-ftd-fp2k.6.2.1-341.SPA
+drw-  322429           0  fxos-k9-fp2k.2.3.1.84_84_84-1006.0104.0213.SPA
+drw-  382509           0  fxos-k9-fp2k.2.3.1.115_115_115-1006.0104.0213.SPA
+drw-  437517           0  fxos-k9-fp2k.2.3.1.144a.SPA
+drw-  507188           0  fxos-k9-fp2k.2.6.1.133.SPA
+drw-  576845           0  fxos-k9-fp2k.7.0.1.84.SPA
+drw-  642504           0  fxos-k9-fp2k.6.6.5.81.SPA
+drw-  714217           0  fxos-k9-fp2k.6.7.0.65.SPA
+drw-  790887           0  fxos-k9-fp2k.7.1.0.90.SPA
+drw-  862556           0  fxos-k9-fp2k.6.7.0.1.13.SPA
+drw-  933940           0  fxos-k9-fp2k.6.7.0.2.24.SPA
+drw-  1005533           0  fxos-k9-fp2k.6.7.0.3.105.SPA
+drw-  1077447           0  fxos-k9-fp2k.7.2.5.208.SPA
+drw-  1149356           0  fxos-k9-fp2k.7.2.5.1.29.SPA
+drw-  1286871           0  cisco-asa-fp2k.9.20.4.SPA
+
+rommon 7 > image disk0:/distributables/fxos-k9-fp2k.6.6.5.81.SPA
+rommon 8 > boot
+Located '.boot_string' @ cluster 1149383.
+
+
+Located 'installables/switch/fxos-k8-fp2k-lfbff.2.2.1.49.SPA' @ cluster 15580.
+
+
+
+firepower-failed /firmware # download image usbA:/cisco-asa-fp2k.9.20.4.SPA
+Please use the command 'show download-task' or 'show download-task detail' to check download progress.
+firepower-failed /firmware # show download-task detail
+
+Download task:
+    File Name: cisco-asa-fp2k.9.20.4.SPA
+    Protocol: Usb A
+    Server:
+    Port: 0
+    Userid:
+    Path:
+    Downloaded Image Size (KB): 0
+    Time stamp: 2025-10-26T22:26:43.116
+    State: Downloading
+    Status:
+    Transfer Rate (KB/s): 15729.225586
+    Current Task: downloading image cisco-asa-fp2k.9.20.4.SPA from (FSM-STAGE:sa
+m:dme:FirmwareDownloaderDownload:Local)
+% Download-task cisco-asa-fp2k.9.2
+
+
+firepower-failed /firmware # download image usbA:/cisco-asa-fp2k.9.20.4.SPA
+Please use the command 'show download-task' or 'show download-task detail' to check download progress.
+firepower-failed /firmware # show download-task detail
+
+Download task:
+    File Name: cisco-asa-fp2k.9.20.4.SPA
+    Protocol: Usb A
+    Server:
+    Port: 0
+    Userid:
+    Path:
+    Downloaded Image Size (KB): 0
+    Time stamp: 2025-10-26T22:26:43.116
+    State: Downloading
+    Status:
+    Transfer Rate (KB/s): 15729.225586
+    Current Task: downloading image cisco-asa-fp2k.9.20.4.SPA from (FSM-STAGE:sa
+m:dme:FirmwareDownloaderDownload:Local)
+% Download-task cisco-asa-fp2k.9.20.4.SPA : completed successfully.
+
+firepower-failed /firmware # show package
+Name                                          Package-Vers
+--------------------------------------------- ------------
+cisco-asa-fp2k.9.20.4.SPA                     9.20.4
+firepower-failed /firmware # scope auto-install
+firepower-failed /firmware/auto-install # install security-pack version 9.20.4
+
+The system is currently installed with security software package 6.2.1-341, which has:
+   - The platform version: not set
+If you proceed with the upgrade 9.20.4, it will do the following:
+   - upgrade to the new platform version 2.14.3.106
+   - install with CSP asa version 9.20.4
+During the upgrade, the system will be reboot
+
+Do you want to proceed ? (yes/no):yes
+
+This operation upgrades firmware and software on Security Platform Components
+Here is the checklist of things that are recommended before starting Auto-Install
+(1) Review current critical/major faults
+(2) Initiate a configuration backup
+
+Do you want to proceed? (yes/no):yes
+
+Triggered the install of software package version 9.20.4
+Install started. This will take several minutes.
+For monitoring the upgrade progress, please enter 'show' or 'show detail' command.
+firepower-failed /firmware/auto-install # show detail
+
+Firmware Auto-Install:
+    Package-Vers: 9.20.4
+    Oper State: Scheduled
+    Installation Time: 2025-10-26T22:29:08.426
+    Upgrade State: Ready
+    Upgrade Status:
+    Validation Software Pack Status:
+    Firmware Upgrade Status: Ok
+    Firmware Upgrade Message:
+    Current Task: Waiting for Deploy to begin(FSM-STAGE:sam:dme:FirmwareSystemDe
+ploy:WaitForDeploy)
+firepower-failed /firmware/auto-install #
+
+https://www.cisco.com/c/en/us/td/docs/security/asa/fxos/troubleshoot/asa-fxos-troubleshoot/system_recovery.html

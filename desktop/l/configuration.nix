@@ -48,7 +48,7 @@
       #./hyprland.nix
       ./nginx.nix
       ./ollama-service.nix
-      #/fan2go.nix
+      ./fan2go.nix
     ];
 
   boot = {
@@ -294,6 +294,9 @@
     #   # Example settings
     # };
   };
+
+  # Enable fan2go for Corsair Commander PRO fan control
+  hardware.fan2go.enable = true;
 
   xdg.portal = {
     enable = true;

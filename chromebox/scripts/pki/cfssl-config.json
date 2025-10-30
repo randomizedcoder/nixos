@@ -1,0 +1,17 @@
+{
+  "signing": {
+    "default": {
+      "expiry": "1460h"
+    },
+    "profiles": {
+      "intermediate_ca": {
+        "expiry": "1460h",
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "ca_constraint": {
+          "is_ca": true,
+          "max_pathlen": 0
+        }
+      }
+    }
+  }
+}

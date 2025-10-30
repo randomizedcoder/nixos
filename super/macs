@@ -10,17 +10,17 @@
   devices           ac:1f:6b:15:d8:81 Learn          0 ge-0/0/4.0
   devices           ac:1f:6b:15:d8:5b Learn          0 ge-0/0/5.0
   devices           ac:1f:6b:15:d8:5a Learn          0 ge-0/0/9.0
-  
-ge-0/0/0 ac:1f:6b:15:d0:b7 nodeA IPMI 172.16.40.155 good buffered
-ge-0/0/1 ac:1f:6b:15:d0:a4 nodeB IPMI 172.16.40.136 good buffered
-ge-0/0/2 ac:1f:6b:15:cf:1e nodeC IPMI 172.16.40.235 good buffered
+
+ge-0/0/0 ac:1f:6b:15:d0:b7 nodeA IPMI 172.16.40.155 good
+ge-0/0/1 ac:1f:6b:15:d0:a4 nodeB IPMI 172.16.40.136 disks? megaraid updated
+ge-0/0/2 ac:1f:6b:15:cf:1e nodeC IPMI 172.16.40.235 good
 ge-0/0/3 ac:1f:6b:15:d0:29 nodeD IPMI 172.16.40.224 good
-  
+
 ge-0/0/4 ac:1f:6b:15:d8:81 nodeA NIC0 172.16.40.135
 ge-0/0/5 ac:1f:6b:15:d8:5b nodeB NIC0 172.16.40.97
 ge-0/0/6 ac:1f:6b:15:d5:4f nodeC NIC0 172.16.40.151
 ge-0/0/7 ac:1f:6b:15:d7:65 nodeD NIC0 172.16.40.129
-  
+
 ge-0/0/8 ac:1f:6b:15:d8:80 nodeA NIC1 172.16.40.137
 ge-0/0/9 ac:1f:6b:15:d8:5a nodeB NIC1 172.16.40.98
 ge-0/0/10 ac:1f:6b:15:d5:4f nodeC NIC1 172.16.40.152

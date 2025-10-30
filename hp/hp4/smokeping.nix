@@ -252,14 +252,19 @@ in {
       + FPing
       binary = ${config.security.wrapperDir}/fping
 
+      # https://oss.oetiker.ch/smokeping/probe/Curl.en.html
       + Curl
       binary = ${pkgs.curl}/bin/curl
-      urlformat = http://%host%/
-      timeout = 10
+      urlformat = https://%host%/robots.txt
+      timeout = 9
       step = 300
-      extraargs = --silent
       follow_redirects = yes
       include_redirects = no
+      agent = User-Agent: smokeping-curl
+      extraargs = --silent --compressed --http2
+      #extraargs = --silent
+      #extraargs = --silent --show-error --fail --location --max-redirs 3 --connect-timeout 2 --max-time 8 --output /dev/null --compressed --http2 --user-agent=smokeping-curl
+      #extraargs = --silent --show-error --fail --location --max-redirs 3 --connect-timeout 2 --max-time 8 --output /dev/null --compressed --http2 --user-agent=smokeping-curl
 
       + DNS
       binary = ${pkgs.bind.dnsutils}/bin/dig

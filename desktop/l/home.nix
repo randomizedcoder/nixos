@@ -181,6 +181,8 @@
     netcat-gnu
     net-tools # for netstat
 
+    cfssl
+
     # Filesystem/Monitoring
     inotify-tools
 
@@ -265,16 +267,17 @@
     clippy
     #clang_multi
 
-    # Mobile Development
-    flutter #3.35.2
-    #flutter329
-    # https://search.nixos.org/packages?channel=unstable&query=flutter
-    firebase-tools
-    android-studio
-    android-tools
-    android-udev-rules
-    # Java for Android development
-    jdk17
+    # Commenting out flutter for now
+    # # Mobile Development
+    # flutter #3.35.2
+    # #flutter329
+    # # https://search.nixos.org/packages?channel=unstable&query=flutter
+    # firebase-tools
+    # android-studio
+    # android-tools
+    # android-udev-rules
+    # # Java for Android development
+    # jdk17
 
     nordic
     gnome-themes-extra
@@ -309,6 +312,10 @@
     gnomeExtensions.astra-monitor
     gnomeExtensions.obs-status
     libgtop
+
+    networkmanager-openconnect
+    networkmanager-openvpn
+    networkmanagerapplet
 
     # Office/Documents
     libreoffice-qt
@@ -428,7 +435,6 @@
     rocmPackages.rocminfo
     rocmPackages.rocm-smi
     rocmPackages.rocm-core
-    rocmPackages.rocmPath
     lact
     # https://github.com/aristocratos/btop
     btop-rocm
@@ -529,8 +535,12 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder";
+    settings = {
+      user = {
+        email = "dave.seddon.ca@gmail.com";
+        name = "randomizedcoder ";
+      };
+    };
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };
@@ -563,7 +573,7 @@
       obs-retro-effects
       obs-replay-source
       obs-freeze-filter
-      obs-color-monitor
+      #obs-color-monitor #not building correctly anymore
       #looking-glass-obs
       obs-vintage-filter
       obs-scale-to-sound

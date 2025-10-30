@@ -33,6 +33,7 @@
             "google-chrome"
             "android-studio"
             "android-studio-stable"
+            "vscode"
             ];
         };
       };
@@ -49,6 +50,15 @@
           #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
+            # Allow unfree packages
+            nixpkgs.config.allowUnfree = true;
+            nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+              "google-chrome"
+              "android-studio"
+              "android-studio-stable"
+              "vscode"
+            ];
+
             # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
             #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
             home-manager.useUserPackages = true;

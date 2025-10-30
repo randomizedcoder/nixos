@@ -1,0 +1,19 @@
+{
+  "CN": "Kubernetes Root CA",
+  "key": {
+    "algo": "ecdsa",
+    "size": 521
+  },
+  "names": [
+    {
+      "C": "US",
+      "L": "Los Angeles",
+      "O": "Kubernetes",
+      "OU": "CA",
+      "ST": "CA"
+    }
+  ],
+  "ca": {
+    "expiry": "350400h"
+  }
+}

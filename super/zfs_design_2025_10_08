@@ -12,6 +12,7 @@
   ##############################################################################
   boot.extraModprobeConfig = ''
     options zfs zfs_arc_max=$((32 * 1024 * 1024 * 1024))
+    options zfs zfs_arc_min=$((16 * 1024 * 1024 * 1024))
     # Optional: allow sequential prefetch into L2ARC if your analytics benefit:
     # options zfs l2arc_noprefetch=0
   '';

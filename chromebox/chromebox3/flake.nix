@@ -24,9 +24,12 @@
     # https://github.com/nix-community/disko/
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
+    # https://gitlab.com/luxzeitlos/k8nix - Kubernetes addon management
+    k8nix.url = "gitlab:luxzeitlos/k8nix";
+    k8nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ nixpkgs, disko, home-manager, ... }:
+  outputs = inputs@{ nixpkgs, disko, home-manager, k8nix, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {

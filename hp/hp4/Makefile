@@ -71,4 +71,7 @@ setup_nix_serve:
 copy_lock:
 	scp hp4:/home/das/nixos/hp/hp4/flake.lock ./
 
+sync:
+	rsync -av /home/das/nixos/hp/hp4/ hp4:/home/das/nixos/hp/hp4/
+
 # end

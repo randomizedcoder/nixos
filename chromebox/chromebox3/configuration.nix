@@ -27,6 +27,12 @@
       #./k8s_master.nix
       #./k3s_master.nix
       #./k3s_node.nix
+      # Modular Kubernetes configuration
+      ./kubernetes.nix
+      ./kubernetes_addonManager.nix
+      ./kubernetes_etcd.nix
+      ./kubernetes_networking.nix
+      ./kubernetes_runtime.nix
     ];
 
   # boot.loader.grub = {

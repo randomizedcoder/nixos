@@ -1,0 +1,150 @@
+# Cisco ASA RADIUS Configuration for Google Authenticator
+#
+# This configuration enables RADIUS authentication on a Cisco ASA firewall
+# to authenticate against FreeRADIUS server at 172.16.40.185 (nfbQotom)
+#
+# Prerequisites:
+# - FreeRADIUS server configured at 172.16.40.185
+# - ASA can reach the RADIUS server (verified: ping successful)
+# - Shared secret configured in FreeRADIUS clients.conf matches the secret below
+#
+# IMPORTANT: Change the shared secret to a strong, random value!
+# The secret below matches what is configured in services.freeradius.nix
+# Shared Secret: ASA-RADIUS-Secret-2025-Secure-Key-Please-Change-Me
+
+# ============================================
+# Configuration Steps:
+# ============================================
+
+# Step 0: Configure NTP (CRITICAL for TOTP to work correctly!)
+# TOTP codes are time-based, so both the ASA and RADIUS server must have
+# synchronized time. Configure the ASA to sync time from nfbQotom.
+ntp server 172.16.40.185 source management
+
+# Step 1: Configure AAA model (required for RADIUS)
+aaa-server nfbQotom protocol radius
+
+# Step 2: Configure RADIUS server group
+aaa-server nfbQotom (management) host 172.16.40.185
+ key ASA-RADIUS-Secret-2025-Secure-Key-Please-Change-Me
+ authentication-port 1812
+ accounting-port 1813
+ timeout 10
+ retry 3
+
+# Step 3: Configure AAA authentication for console/SSH/Telnet
+# This will authenticate all management logins via RADIUS
+aaa authentication ssh console nfbQotom LOCAL
+aaa authentication telnet console nfbQotom LOCAL
+aaa authentication serial console nfbQotom LOCAL
+
+# Step 4: Configure AAA authorization (optional but recommended)
+# This allows RADIUS to send authorization attributes (privilege level, etc.)
+aaa authorization exec console nfbQotom LOCAL
+
+# Step 5: Configure AAA accounting (optional but recommended for auditing)
+# This logs all commands executed on the ASA
+aaa accounting ssh console nfbQotom
+aaa accounting telnet console nfbQotom
+aaa accounting serial console nfbQotom
+
+# ============================================
+# Testing Commands:
+# ============================================
+
+# Test RADIUS connectivity:
+test aaa-server authentication nfbQotom username das password <password> code <totp-code>
+# Example:
+# test aaa-server authentication nfbQotom username das password MyPassword123 code 123456
+
+# Verify NTP synchronization (CRITICAL for TOTP):
+show ntp status
+show ntp associations
+# The ASA should show synchronization with nfbQotom (172.16.40.185)
+# If not synchronized, TOTP codes will fail!
+
+# View AAA server status:
+show aaa-server nfbQotom
+
+# View AAA server statistics:
+show aaa-server nfbQotom statistics
+
+# View current AAA configuration:
+show running-config aaa
+
+# View authentication sessions:
+show uauth
+
+# ============================================
+# Authentication Flow:
+# ============================================
+#
+# 1. User attempts to SSH/Telnet to ASA
+# 2. ASA prompts for username
+# 3. User enters username (e.g., "das")
+# 4. ASA prompts for password
+# 5. User enters: password:TOTPCODE (e.g., "MyPassword123:123456")
+#    OR just the password if the ASA supports separate prompts
+# 6. ASA sends RADIUS Access-Request to 172.16.40.185:1812
+# 7. FreeRADIUS validates via PAM (password + TOTP)
+# 8. FreeRADIUS returns Access-Accept or Access-Reject
+# 9. ASA grants or denies access
+#
+# Note: Some ASA versions may require the password and TOTP code to be
+# entered separately. Test both formats:
+# - Combined: password:TOTPCODE
+# - Separate prompts (if supported)
+
+# ============================================
+# Troubleshooting:
+# ============================================
+
+# Enable debug logging for AAA:
+debug aaa authentication 255
+debug aaa authorization 255
+debug aaa accounting 255
+debug radius 255
+
+# View debug output:
+# Look for RADIUS requests and responses in the ASA logs
+
+# Common issues:
+# 1. "Server not responding" - Check network connectivity and firewall rules
+# 2. "Authentication failed" - Verify shared secret matches on both sides
+# 3. "Invalid password" - Check password format (may need password:TOTPCODE)
+# 4. "User not found" - Ensure user exists in /etc/passwd on FreeRADIUS server
+# 5. "TOTP code invalid" - MOST COMMON: Verify time sync between ASA and RADIUS server
+#    - Run "show ntp status" on ASA to verify time sync
+#    - Ensure both systems are within ~30 seconds of each other
+#    - Check code validity window (usually 30-90 seconds)
+#    - Verify chronyd is running on nfbQotom and serving time correctly
+
+# ============================================
+# Security Notes:
+# ============================================
+#
+# - LOCAL fallback: The "LOCAL" keyword provides fallback to local users
+#   Remove "LOCAL" from commands above to require RADIUS-only authentication
+#   (but keep a local admin account for emergency access!)
+#
+# - Shared Secret: Use a strong, random secret (at least 16 characters)
+#   Change the default secret before deploying!
+#
+# - Timeout/Retry: Adjust timeout and retry values based on network latency
+#
+# - Accounting: Enables auditing of all commands executed on the ASA
+#   Review accounting logs regularly for security monitoring
+
+# ============================================
+# Example Session:
+# ============================================
+#
+# $ ssh admin@172.16.40.30
+# Username: das
+# Password: MyPassword123:123456
+# (If prompted separately)
+# Password: MyPassword123
+# Enter passcode: 123456
+#
+# ciscoasa>
+

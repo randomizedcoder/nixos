@@ -44,9 +44,18 @@
       KbdInteractiveAuthentication = true;
       PermitRootLogin = "prohibit-password";
       #PasswordAuthentication = false;
-      ChallengeResponseAuthentication = false;
+      ChallengeResponseAuthentication = true;  # Required for Google Authenticator TOTP
       #X11Forwarding = false;
       #GatewayPorts = "no";
+
+      # Performance optimizations - reduce delays and improve prompt responsiveness
+      UseDns = false;  # Disable DNS reverse lookups to speed up connections
+      GSSAPIAuthentication = false;  # Disable GSSAPI to prevent authentication delays
+      UseLogin = false;  # Use sshd's built-in login instead of /bin/login
+
+      # Terminal initialization
+      PrintMotd = false;  # Disable motd to speed up login (can be re-enabled if desired)
+      PrintLastLog = true;  # Keep last login message
     };
   };
 

@@ -22,7 +22,9 @@
     clipboard-write = allow
     window-subtitle = working-directory
     background-opacity = 0.91
-    background-blur = 20
+    # Reduced blur from 20 to 5 for better SSH/remote terminal performance
+    # GPU-accelerated blur can cause lag with rapid terminal output over SSH
+    background-blur = 5
   '';
 
   home = {
@@ -460,10 +462,10 @@
     (flameshot.override { enableWlrSupport = true; })
 
     # Custom onnxruntime package with ROCm support
-    onnxruntime
+    # onnxruntime
 
     # Standard Python onnxruntime module (should work with custom C++ library)
-    python313Packages.onnxruntime
+    # python313Packages.onnxruntime
   ];
 
   # vscode

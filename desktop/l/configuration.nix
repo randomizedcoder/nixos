@@ -49,6 +49,7 @@
       ./nginx.nix
       ./ollama-service.nix
       ./fan2go.nix
+      ./below.nix
     ];
 
   boot = {

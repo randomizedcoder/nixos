@@ -23,6 +23,8 @@
       ./nginx.nix
 
       ./services.ssh.nix
+      ./services.ssh-google-auth.nix
+      ./services.freeradius.nix
 
       ./smokeping.nix
       ./pdns-recursor.nix
@@ -31,6 +33,8 @@
 
       ./network.nix
       ./serial-tty.nix
+
+      ./chrony.nix
     ];
 
   boot = {
@@ -60,7 +64,7 @@
   # networking.networkmanager.enable = true;  # Disabled - using systemd-networkd instead
 
   services.lldpd.enable = true;
-  services.timesyncd.enable = true;
+  # timesyncd is disabled in chrony.nix to avoid conflicts
   services.fstrim.enable = true;
 
   time.timeZone = "America/Los_Angeles";

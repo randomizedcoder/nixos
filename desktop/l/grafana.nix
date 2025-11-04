@@ -7,9 +7,11 @@
   services.grafana = {
     enable = true;
     settings = {
+      security.admin_password = "admin"; # this is my local only instance
+      users.password_hint = "admin";
       server = {
         # Listening Address
-        http_addr = "0.0.0.0";
+        http_addr = "127.0.0.1";
         # and Port
         http_port = 3000;
         # Grafana needs to know on which domain and URL it's running

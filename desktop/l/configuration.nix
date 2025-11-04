@@ -49,6 +49,7 @@
       ./nginx.nix
       ./ollama-service.nix
       ./fan2go.nix
+      ./below.nix
     ];
 
   boot = {
@@ -188,12 +189,22 @@
   };
 
   services.openssh.enable = true;
-  programs.ssh.extraConfig = ''
-  Host hp4.home
-    PubkeyAcceptedKeyTypes ssh-ed25519
-    ServerAliveInterval 60
-    IPQoS throughput
-  '';
+  # programs.ssh.extraConfig = ''
+  # Host hp4.home
+  #   PubkeyAcceptedKeyTypes ssh-ed25519
+  #   ServerAliveInterval 60
+  #   #IPQoS throughput
+
+  # # Optimizations for nfbQotom SSH sessions
+  # # Reduce GPU rendering load in terminals with these settings
+  # Host nfbQotom 172.16.40.184 172.16.40.185
+  #   ControlMaster auto
+  #   ControlPath ~/.ssh/master-%r@%h:%p
+  #   ControlPersist 10m
+  #   ServerAliveInterval 30
+  #   ServerAliveCountMax 3
+  #   Compression no
+  # '';
 
   services.lldpd.enable = true;
   services.timesyncd.enable = true;

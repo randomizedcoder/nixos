@@ -1,0 +1,36 @@
+# Cisco ASA RADIUS Configuration - Quick Reference
+#
+# Copy and paste these commands into your ASA terminal
+
+# Configure NTP to sync time from nfbQotom (IMPORTANT for TOTP to work!)
+ntp server 172.16.40.185 source management
+
+# Configure AAA server
+aaa-server nfbQotom protocol radius
+aaa-server nfbQotom (management) host 172.16.40.185
+ key ASA-RADIUS-Secret-2025-Secure-Key-Please-Change-Me
+ authentication-port 1812
+ accounting-port 1813
+ timeout 10
+ retry 3
+
+# Enable RADIUS authentication
+aaa authentication ssh console nfbQotom LOCAL
+aaa authentication telnet console nfbQotom LOCAL
+aaa authentication serial console nfbQotom LOCAL
+
+# Optional: Enable accounting (for auditing)
+aaa accounting ssh console nfbQotom
+aaa accounting telnet console nfbQotom
+aaa accounting serial console nfbQotom
+
+# Test the configuration (replace username, password, and TOTP code):
+# test aaa-server authentication nfbQotom username das password MyPassword123 code 123456
+
+# Verify NTP sync status:
+# show ntp status
+# show ntp associations
+
+# Save configuration:
+write memory
+

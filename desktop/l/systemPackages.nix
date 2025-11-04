@@ -9,6 +9,7 @@
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     # Basic system tools
+    sysstat
     psmisc
     vim
     curl

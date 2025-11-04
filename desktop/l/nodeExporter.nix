@@ -10,7 +10,7 @@
     enable = true;
     port = 19000;
     # https://github.com/NixOS/nixpkgs/blob/nixos-24.05/nixos/modules/services/monitoring/prometheus/exporters.nix
-    enabledCollectors = [ "systemd" ];
+    enabledCollectors = [ "pressure" "diskstats" "filesystem" "meminfo" "vmstat" ];
     # /nix/store/zgsw0yx18v10xa58psanfabmg95nl2bb-node_exporter-1.8.1/bin/node_exporter  --help
     extraFlags = [
       "--collector.ethtool"
@@ -21,7 +21,9 @@
   };
 
   # https://search.nixos.org/options?channel=24.05&from=200&size=50&sort=relevance&type=packages&query=services.prometheus.exporters
-  services.prometheus.exporters.systemd.enable = true;
-  services.prometheus.exporters.smartctl.enable = true;
-  services.prometheus.exporters.process.enable = true;
+  services.prometheus.exporters = {
+    systemd.enable = true;
+    smartctl.enable = true;
+    process.enable = true;
+  };
 }

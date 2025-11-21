@@ -51,7 +51,7 @@
     nmap
     tshark
     perf-tools
-    perf
+    linuxPackages_latest.perf
 
     clinfo
     lact

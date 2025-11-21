@@ -91,7 +91,6 @@
     extraModprobeConfig = ''
       options cfg80211 ieee80211_regdom=US
       options iwlwifi lar_disable=1
-      options pcie_aspm=off
     '';
 
   };
@@ -106,7 +105,6 @@
       zlib
       libxml2
       pciutils # for broadcom niccli
-      libdrm  # Needed by rocm-smi for libdrm_amdgpu.so
     ];
   };
 
@@ -151,12 +149,12 @@
     };
   };
 
-  # programs.ssh.extraConfig = ''
-  # Host hp4.home
-  #   PubkeyAcceptedKeyTypes ssh-ed25519
-  #   ServerAliveInterval 60
-  #   IPQoS throughput
-  # '';
+  programs.ssh.extraConfig = ''
+  Host hp4.home
+    PubkeyAcceptedKeyTypes ssh-ed25519
+    ServerAliveInterval 60
+    IPQoS throughput
+  '';
 
   services.lldpd.enable = true;
   services.timesyncd.enable = true;
@@ -195,21 +193,6 @@
   programs.gnupg.agent = {
      enable = true;
      enableSSHSupport = true;
-  };
-
-  # GPU Graphics Configuration
-  # https://nixos.wiki/wiki/AMD_GPU
-  hardware.graphics = {
-    enable = true;
-    extraPackages = with pkgs; [
-      libdrm  # Provides libdrm_amdgpu.so needed by rocm-smi
-      libglvnd
-      libva-vdpau-driver
-      libvdpau-va-gl
-      libva
-      libva-utils  # Provides vainfo
-      rocmPackages.clr.icd
-    ];
   };
 
   # Enable LACT GPU Control Daemon

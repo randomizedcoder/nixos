@@ -34,6 +34,13 @@
       #./k8s_node.nix
       #./k3s_master.nix
       #./k3s_node.nix
+
+      # Realtek Semiconductor Co., Ltd. RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller
+      #./systemd.services.ethtool-eno1.nix # rings are not adjustable
+      # Intel Corporation Ethernet Controller 10-Gigabit X540-AT2
+      ./systemd.services.ethtool-enp1s0f0.nix
+      ./systemd.services.ethtool-enp1s0f1.nix
+      # Intel Corporation 82571EB/82571GB Gigabit Ethernet Controller D0/D1 (copper applications)
       ./systemd.services.ethtool-enp4s0f0.nix
       ./systemd.services.ethtool-enp4s0f1.nix
       #./ffmpeg_systemd_service.nix

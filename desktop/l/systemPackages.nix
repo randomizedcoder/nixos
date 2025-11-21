@@ -29,6 +29,8 @@
     neofetch
     libxml2  # Added for bazel/clang development
 
+    perf
+
     # Wayland support
     xwayland
     meson

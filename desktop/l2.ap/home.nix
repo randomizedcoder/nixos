@@ -60,8 +60,6 @@
     # cmake
     pkg-config
 
-    gdb
-
     # # Scripting/Utils
     # perl
     # #3.12.8 on 12th of Feb 2025
@@ -71,11 +69,10 @@
 
     git
     htop
-    # btop  # Removed - using btop-rocm instead (see below)
-    below
+    btop
     minicom
 
-    bc
+    # bc
 
     # # Compression
     bzip2
@@ -86,7 +83,7 @@
     xz
     zstd
 
-    gnutar
+    #gnutar
 
     # File Transfer/Management
     rsync
@@ -114,47 +111,6 @@
 
     # Filesystem/Monitoring
     inotify-tools
-
-    ffmpeg_7-full
-
-    # Go Development
-    # https://nixos.wiki/wiki/Go
-    # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
-    # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
-    libcap
-    #gcc_multi
-    #glibc_multi
-    #  thunderbird
-    #go_1_23
-    go
-    gopls
-    golint
-    golangci-lint
-    golangci-lint-langserver
-    # trunk is unfree, and i can't work out how to enable unfree
-    #trunk-io
-    # https://github.com/go-delve/delve
-    delve
-    # https://github.com/aarzilli/gdlv
-    gdlv
-    graphviz # for go profiler
-
-    #gpu monitoring
-    rocmPackages.rocminfo
-    rocmPackages.rocm-smi
-    rocmPackages.rocm-core
-    rocmPackages.rocm-bandwidth-test
-    lact
-    # https://github.com/aristocratos/btop
-    btop-rocm
-    # Video acceleration info
-    libva-utils  # Provides vainfo command
-
-    # https://github.com/ollama/ollama
-    ollama-rocm
-    rocmPackages.rccl
-    # https://jeffser.com/alpaca/
-    alpaca
 
     #silly
     cmatrix
@@ -185,12 +141,8 @@
 
   programs.git = {
     enable = true;
-    settings = {
-      user = {
-        email = "dave.seddon.ca@gmail.com";
-        name = "randomizedcoder";
-      };
-    };
+    userEmail = "dave.seddon.ca@gmail.com";
+    userName = "randomizedcoder";
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };

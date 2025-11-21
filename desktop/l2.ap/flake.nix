@@ -19,14 +19,14 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
-    # # CrowdSec NixOS services
-    # crowdsec = {
-    #   url = "git+https://codeberg.org/kampka/nix-flake-crowdsec.git";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    # CrowdSec NixOS services
+    crowdsec = {
+      url = "git+https://codeberg.org/kampka/nix-flake-crowdsec.git";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, disko, home-manager, ... }:
+  outputs = { self, nixpkgs, disko, home-manager, crowdsec, ... }:
     let
       system = "x86_64-linux";
 
@@ -65,8 +65,8 @@
 
           modules = [
             disko.nixosModules.disko
-            # crowdsec.nixosModules.crowdsec
-            # crowdsec.nixosModules.crowdsec-firewall-bouncer
+            crowdsec.nixosModules.crowdsec
+            crowdsec.nixosModules.crowdsec-firewall-bouncer
             ./configuration.nix
             {
               nixpkgs.pkgs = pkgs;

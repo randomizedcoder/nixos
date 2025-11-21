@@ -232,9 +232,6 @@ in {
         LLDP = true;
         EmitLLDP = true;
       };
-      # Note: Cake qdiscs may appear on enp1s0 due to kernel multi-queue defaults
-      # The simulate-packet-loss.sh script will remove them before setting up netem
-      # No explicit qdisc configuration needed here - script handles it
       # # Explicitly enable Router Advertisement acceptance
       # ipv6AcceptRAConfig = {
       #   AcceptRA = true;
@@ -271,17 +268,6 @@ in {
       matchConfig.Type = "wlan";
       linkConfig = {
         Unmanaged = true;
-      };
-    };
-
-    "enp4s0f0np0" = {
-      matchConfig.Name = "enp4s0f0np0";
-      networkConfig = {
-        # Static IP configuration
-        Address = [ "10.10.10.10/24" ];
-        # Disable DHCP and router advertisements
-        DHCP = "no";
-        IPv6AcceptRA = false;
       };
     };
   };

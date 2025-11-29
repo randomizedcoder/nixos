@@ -10,24 +10,23 @@
 
   boot.initrd.availableKernelModules = [ "xhci_pci" "ahci" "nvme" "usbhid" "usb_storage" "sd_mod" ];
   boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ "kvm-amd" "nct6775" "it87" "acpi_ec_sensors" ];
+  boot.kernelModules = [ "kvm-amd" "acpi_ec_sensors" ];
+  #boot.kernelModules = [ "kvm-amd" "nct6775" "it87" "acpi_ec_sensors" ];
   boot.extraModulePackages = [ ];
 
   fileSystems."/" =
-    { device = "/dev/disk/by-uuid/8722e7a6-a625-407f-9b1f-839bb52e7f8d";
+    { device = "/dev/disk/by-uuid/70d00272-1e7b-4898-80e9-eb4d32b75e91";
       fsType = "ext4";
     };
 
-  boot.initrd.luks.devices."luks-67cf4e90-444f-4056-91a8-446fd6c42b09".device = "/dev/disk/by-uuid/67cf4e90-444f-4056-91a8-446fd6c42b09";
-
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/F732-675E";
+    { device = "/dev/disk/by-uuid/E6F5-6B2B";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];
     };
 
   swapDevices =
-    [ { device = "/dev/disk/by-uuid/d762bfcb-e63b-47ad-ab8b-369c47e79833"; }
+    [ { device = "/dev/disk/by-uuid/188e9367-788f-4ed7-b2d5-e4ad3008669b"; }
     ];
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
@@ -49,5 +48,4 @@
 
   # see also fan2go.nix
   #hardware.fan2go.enable = true;
-
 }

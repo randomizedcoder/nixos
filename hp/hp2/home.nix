@@ -98,6 +98,8 @@
     dive
     # for pprof
     graphviz
+    #
+    ffmpeg-full
   ];
 
   programs.bash = {

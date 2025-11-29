@@ -33,5 +33,7 @@
     radeontop  # GPU monitoring tool
     # https://nixos.wiki/wiki/AMD_GPU#OpenCL
     clinfo
+    #
+    bridge-utils
   ];
 }

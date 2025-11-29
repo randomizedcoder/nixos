@@ -40,6 +40,9 @@ sync:
 	rsync -av /home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/
 	#rsync -av /home/das/nixos/modules/ hp1:/home/das/nixos/modules/
 
+updateFlake:
+	scp hp1:/home/das/nixos/hp/hp1/flake.lock ./
+
 # https://nixos.wiki/wiki/Kubernetes#reset_to_a_clean_state
 nuke_k8s: check_hostname delete_k8s
 

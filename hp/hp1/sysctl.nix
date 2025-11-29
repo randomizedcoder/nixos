@@ -39,5 +39,8 @@
     #net.core.wmem_max = 212992
     "net.ipv4.ip_local_port_range" = "1025 65535";
     #net.ipv4.ip_local_port_range ="32768 60999"
+    # Enable IP forwarding for bridge traffic
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
   };
 }

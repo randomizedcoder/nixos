@@ -85,6 +85,8 @@
     hwloc
     bpftools
     #
+    bc
+    #
     inotify-tools
     #
     libcap
@@ -105,6 +107,7 @@
     #
     #ffmpeg
     #ffmpeg-full
+    iftop
   ];
 
   programs.bash = {

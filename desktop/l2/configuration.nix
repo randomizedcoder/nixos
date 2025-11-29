@@ -91,6 +91,7 @@
     extraModprobeConfig = ''
       options cfg80211 ieee80211_regdom=US
       options iwlwifi lar_disable=1
+      options pcie_aspm=off
     '';
 
   };
@@ -149,12 +150,12 @@
     };
   };
 
-  programs.ssh.extraConfig = ''
-  Host hp4.home
-    PubkeyAcceptedKeyTypes ssh-ed25519
-    ServerAliveInterval 60
-    IPQoS throughput
-  '';
+  # programs.ssh.extraConfig = ''
+  # Host hp4.home
+  #   PubkeyAcceptedKeyTypes ssh-ed25519
+  #   ServerAliveInterval 60
+  #   IPQoS throughput
+  # '';
 
   services.lldpd.enable = true;
   services.timesyncd.enable = true;

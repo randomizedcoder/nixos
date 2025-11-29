@@ -270,6 +270,19 @@ in {
         Unmanaged = true;
       };
     };
+
+    "enp4s0f0np0" = {
+      matchConfig.Name = "enp4s0f0np0";
+      networkConfig = {
+        # IPv4 link-local only
+        LinkLocalAddressing = "ipv4";
+        # IPv6 link-local only
+        IPv6LinkLocalAddressing = "ipv6";
+        # Disable DHCP and router advertisements
+        DHCP = "no";
+        IPv6AcceptRA = false;
+      };
+    };
   };
 
   # Disable conflicting resolvers and provide local one

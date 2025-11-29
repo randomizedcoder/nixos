@@ -65,8 +65,9 @@
 
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
-    #kernelPackages = pkgs.linuxPackages;
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages;
+    #kernelPackages = pkgs.linuxPackages_latest;
+
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
     # kernelPackages = pkgs.linuxPackages // {
@@ -217,7 +218,7 @@
     openFirewall = true;
   };
 
-  services.bpftune.enable = true;
+  #services.bpftune.enable = true;
   # Enable touchpad support (enabled default in most desktopManager).
   # services.libinput.enable = true;
 

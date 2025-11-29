@@ -664,6 +664,7 @@ in
         ];
 
         Environment = [
+          "GOMAXPROCS=4"
           "GOMEMLIMIT=45MiB"
           "DEBUG_LEVEL=${toString debugLevel}"
         ];

@@ -60,6 +60,12 @@
     #CHROME_EXECUTABLE = "/etc/profiles/per-user/das/bin/google-chrome-stable";
     CHROME_EXECUTABLE = "${pkgs.google-chrome}/bin/google-chrome-stable";
     GOOGLE_APPLICATION_CREDENTIALS="~/Downloads/dashboard-dev-3da32-83d127a0f9ba.json";
+
+    # Go CGO environment variables - stdenv.cc (gcc-wrapper) is now in PATH via home.packages
+    # The gcc-wrapper automatically knows about Nix store paths for glibc startup files
+    # We can just reference gcc/g++ via PATH, but explicit paths ensure Go uses the wrapper
+    #CC = "gcc";
+    #CXX = "g++";
   };
 
   home.packages = with pkgs; [
@@ -208,9 +214,12 @@ SSH_CONFIG_EOF
     # Essential development libraries (minimal headers)
     glibc glibc.dev glibc.static
     libgcc libgcc.lib
-    gcc
-    gcc-unwrapped gcc-unwrapped.lib gcc-unwrapped.libgcc
+    # Use stdenv.cc (gcc-wrapper) instead of unwrapped gcc - the wrapper knows about Nix store paths
+    # This is what nix-shell uses and ensures CGO works correctly
+    stdenv.cc
+    #gcc-unwrapped gcc-unwrapped.lib gcc-unwrapped.libgcc
     stdenv.cc.cc.lib
+    zlib
     zlib.dev
     openssl openssl.dev openssl.out
     ncurses.dev

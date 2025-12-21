@@ -27,7 +27,7 @@ in {
     host = "[::]";
     #port = 11434; # default
 
-    acceleration = "rocm";
+    #acceleration = "rocm";
 
     environmentVariables = {
       HIP_VISIBLE_DEVICES = mi50euid;

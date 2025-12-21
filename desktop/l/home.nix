@@ -553,6 +553,15 @@ SSH_CONFIG_EOF
     rocmPackages.rccl
     # https://jeffser.com/alpaca/
     alpaca
+    # MESA_VK_DEVICE_SELECT=list vulkaninfo
+    # MESA_VK_DEVICE_SELECT=1002:66a1
+    # [nix-shell:~/Downloads/srt/gosrt]$ MESA_VK_DEVICE_SELECT=list vulkaninfo
+    # WARNING: [Loader Message] Code 0 : terminator_CreateInstance: Received return code -9 from call to vkCreateInstance in ICD /nix/store/ar4bcmfhns6gilp0jhnkyna4figqj2jy-mesa-25.3.1/lib/libvulkan_dzn.so. Skipping this driver.
+    # selectable devices:
+    # GPU 0: 1002:66a1 "AMD Radeon Graphics (RADV VEGA20)" discrete GPU 0000:43:00.0
+    # GPU 1: 1002:7312 "AMD Radeon Pro W5700 (RADV NAVI10)" discrete GPU 0000:63:00.0
+    # GPU 2: 10005:0 "llvmpipe (LLVM 21.1.2, 256 bits)" CPU 0000:00:00.0
+    vulkan-tools
 
     # virtual camera control
     # v4l2-ctl --list-devices

@@ -60,6 +60,8 @@
     # cmake
     pkg-config
 
+    gdb
+
     # # Scripting/Utils
     # perl
     # #3.12.8 on 12th of Feb 2025
@@ -70,6 +72,7 @@
     git
     htop
     btop
+    below
     minicom
 
     # bc
@@ -83,7 +86,7 @@
     xz
     zstd
 
-    #gnutar
+    gnutar
 
     # File Transfer/Management
     rsync
@@ -111,6 +114,43 @@
 
     # Filesystem/Monitoring
     inotify-tools
+
+    ffmpeg_7-full
+
+    # Go Development
+    # https://nixos.wiki/wiki/Go
+    # https://nixos.org/manual/nixpkgs/stable/#sec-language-go
+    # https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
+    libcap
+    #gcc_multi
+    #glibc_multi
+    #  thunderbird
+    #go_1_23
+    go
+    gopls
+    golint
+    golangci-lint
+    golangci-lint-langserver
+    # trunk is unfree, and i can't work out how to enable unfree
+    #trunk-io
+    # https://github.com/go-delve/delve
+    delve
+    # https://github.com/aarzilli/gdlv
+    gdlv
+
+    #gpu monitoring
+    rocmPackages.rocminfo
+    rocmPackages.rocm-smi
+    rocmPackages.rocm-core
+    lact
+    # https://github.com/aristocratos/btop
+    btop-rocm
+
+    # https://github.com/ollama/ollama
+    ollama-rocm
+    rocmPackages.rccl
+    # https://jeffser.com/alpaca/
+    alpaca
 
     #silly
     cmatrix

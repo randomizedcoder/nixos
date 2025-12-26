@@ -24,9 +24,25 @@ rebuild:
 	sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 
+upgrade:
+	nixos-rebuild boot --flake . --upgrade
+
+rebuild_trace:
+	sudo nixos-rebuild switch --show-trace --flake .
+
+update:
+	sudo nix flake update;
+
+update_flake:
+	sudo nix --extra-experimental-features nix-command --extra-experimental-features flakes flake update
+
 sync:
-	rsync -av /home/das/nixos/hp/hp2/ hp2:/home/das/nixos/hp2/
-	rsync -av /home/das/nixos/modules/ hp2:/home/das/nixos/modules/
+	rsync -av /home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/
+
+#scp hp2:/home/das/nixos/hp/hp2/flake.lock ./
+
+updateFlake:
+	scp hp2:/home/das/nixos/hp/hp2/flake.lock ./
 
 nuke_k3s: check_hostname delete_k3s
 

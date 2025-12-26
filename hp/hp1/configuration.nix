@@ -20,6 +20,7 @@
       ./sysctl.nix
       # ./wireless.nix
       ./hosts.nix
+      ./networkd.nix
       ./firewall.nix
       ./il8n.nix
       #./systemdSystem.nix
@@ -34,8 +35,17 @@
       #./k8s_node.nix
       #./k3s_master.nix
       #./k3s_node.nix
+
+      # Realtek Semiconductor Co., Ltd. RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller
+      #./systemd.services.ethtool-eno1.nix # rings are not adjustable
+      # Intel Corporation Ethernet Controller 10-Gigabit X540-AT2
+      ./systemd.services.ethtool-enp1s0f0.nix
+      ./systemd.services.ethtool-enp1s0f1.nix
+      # Intel Corporation 82571EB/82571GB Gigabit Ethernet Controller D0/D1 (copper applications)
       ./systemd.services.ethtool-enp4s0f0.nix
       ./systemd.services.ethtool-enp4s0f1.nix
+      # Bridge enp1s0f0 and enp1s0f1 together
+      ./systemd.services.bridge.nix
       #./ffmpeg_systemd_service.nix
       #./firewall-test-phase1.nix
     ];
@@ -70,16 +80,16 @@
       download-buffer-size = "100000000";
       builders-use-substitutes = true;
     };
-    # https://nix.dev/tutorials/nixos/distributed-builds-setup.html#set-up-distributed-builds
-    distributedBuilds = true;
-    buildMachines = [{
-      hostName = "hp4";
-      sshUser = "remotebuild";
-      #sshKey = "/root/.ssh/remotebuild";
-      sshKey = "/home/das/.ssh/remotebuild";
-      system = pkgs.stdenv.hostPlatform.system;
-      supportedFeatures = [ "nixos-test" "big-parallel" "kvm" ];
-    }];
+    # # https://nix.dev/tutorials/nixos/distributed-builds-setup.html#set-up-distributed-builds
+    # distributedBuilds = true;
+    # buildMachines = [{
+    #   hostName = "hp4";
+    #   sshUser = "remotebuild";
+    #   #sshKey = "/root/.ssh/remotebuild";
+    #   sshKey = "/home/das/.ssh/remotebuild";
+    #   system = pkgs.stdenv.hostPlatform.system;
+    #   supportedFeatures = [ "nixos-test" "big-parallel" "kvm" ];
+    # }];
     gc = {
       automatic = true;                  # Enable automatic execution of the task
       dates = "weekly";                  # Schedule the task to run weekly
@@ -88,17 +98,17 @@
     };
   };
 
-  # find /run/opengl-driver -name "libamfrt64.so.1"
-  hardware.graphics = {
-    enable = true;
-    extraPackages = with pkgs; [
-      amdvlk  # AMD Vulkan driver, includes AMF runtime
-      #rocm-opencl-runtime  # Optional: ROCm OpenCL support
-      #rocm-smi  # AMD System Management Interface (for monitoring GPU)
-      # https://nixos.wiki/wiki/AMD_GPU#OpenCL
-      rocmPackages.clr.icd
-    ];
-  };
+  # # find /run/opengl-driver -name "libamfrt64.so.1"
+  # hardware.graphics = {
+  #   enable = true;
+  #   extraPackages = with pkgs; [
+  #     amdvlk  # AMD Vulkan driver, includes AMF runtime
+  #     #rocm-opencl-runtime  # Optional: ROCm OpenCL support
+  #     #rocm-smi  # AMD System Management Interface (for monitoring GPU)
+  #     # https://nixos.wiki/wiki/AMD_GPU#OpenCL
+  #     rocmPackages.clr.icd
+  #   ];
+  # };
 
   services.xserver.videoDrivers = [ "amdgpu" ];
 
@@ -106,9 +116,8 @@
   # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "hp1";
 
-  # Disable DHCP on specific interfaces
-  networking.interfaces.enp4s0f0.useDHCP = false;
-  networking.interfaces.enp4s0f1.useDHCP = false;
+  # Network configuration is now handled by systemd-networkd (see networkd.nix)
+  # Legacy interface configuration removed - use systemd-networkd instead
 
   services.lldpd.enable = true;
 
@@ -116,6 +125,7 @@
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
+  # NetworkManager disabled - using systemd-networkd instead
   networking.networkmanager.enable = false;
 
   # Set your time zone.

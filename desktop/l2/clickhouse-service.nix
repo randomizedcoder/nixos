@@ -12,7 +12,7 @@ let
 
 in {
   # Enable ClickHouse service
-  services.clickhouse.enable = true;
+  services.clickhouse.enable = false;
 
   # Override the default ClickHouse service with enhanced security
   systemd.services.clickhouse = {

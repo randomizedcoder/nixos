@@ -6,10 +6,16 @@
 # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/ollama.nix
 #
 
+#sudo rocm-smi --showmeminfo vram 2>&1 && echo && journalctl -u ollama --since "5 minutes ago" 2>&1 | grep -iE "(gpu|rocm|hip|memory|gfx|found|detect|vram)" | head -20
+
 { config, lib, pkgs, ... }:
 
 let
   mi50euid = "GPU-0e54792172da5eeb";
+  # Context length determines how much text the model can "see" at once
+  # KV cache memory scales linearly with context: 128k ≈ 14GB, 192k ≈ 21GB, 256k ≈ 28GB
+  # With 32GB VRAM: 128k works for most models, but 32b+ models (19GB) barely fit
+  # Native limits: llama3.2=128k, codellama=16-100k, qwen2.5-coder=32-128k
   ctxLength = toString 131072; # 128k
 
 in {
@@ -27,7 +33,9 @@ in {
     host = "[::]";
     #port = 11434; # default
 
-    acceleration = "rocm";
+    # acceleration option was removed - use package instead
+    # See: https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/ollama.nix
+    package = pkgs.ollama-rocm;
 
     environmentVariables = {
       HIP_VISIBLE_DEVICES = mi50euid;
@@ -45,18 +53,22 @@ in {
     # ollama list
 
     loadModels = [
+      #https://ollama.com/library/nemotron-3-nano
+      "nemotron-3-nano:latest"
       "nomic-embed-text:latest"
       "codellama:34b"
-      "codellama:13b"
-      "codellama:7b"
-      "llama3.2:latest"
-      "llama3.2:3b"                     # https://ollama.com/library/llama3.2
+      #"codellama:13b"
+      #"codellama:7b"
+      #"llama3.2:latest"
+      #"llama3.2:3b"                     # https://ollama.com/library/llama3.2
       #"llama4:latest" # too big!
-      "gpt-oss:20b"
-      "deepseek-r1:32b"
+      #"gpt-oss:20b"
+      #"deepseek-r1:32b"
       #"deepseek-r1:1.5b"
       "llama3-groq-tool-use:70b-q2_K"
       "qwen2.5-coder:32b"
+      "gpt-oss:20b" # https://ollama.com/library/gpt-oss
+      #"gemini-3-flash-preview:latest" # https://ollama.com/library/gemini-3-flash-preview
     ];
 
     # https://github.com/ollama/ollama/tree/main?tab=readme-ov-file#model-library

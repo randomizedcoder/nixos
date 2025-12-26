@@ -67,6 +67,7 @@
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
     #kernelPackages = pkgs.linuxPackages;
     kernelPackages = pkgs.linuxPackages_latest;
+
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
     # kernelPackages = pkgs.linuxPackages // {
@@ -128,6 +129,9 @@
       zlib
       libxml2
       pciutils # for broadcom niccli
+      libdrm
+      numactl
+      rocmPackages.clr.icd
       # Add more libraries as needed
       #libpciaccess
     ];
@@ -188,6 +192,17 @@
     #MY_VARIABLE = "my-value";
   };
 
+  # System-wide LD_LIBRARY_PATH for ROCm tools (rocm-smi needs libdrm_amdgpu.so)
+  # Use lib.mkForce to override pipewire's setting, combining both paths
+  environment.variables = {
+    LD_LIBRARY_PATH = lib.mkForce "${pkgs.libdrm}/lib:${pkgs.pipewire.jack}/lib";
+  };
+
+  # Allow sudo to preserve LD_LIBRARY_PATH for ROCm tools
+  security.sudo.extraConfig = ''
+    Defaults env_keep += "LD_LIBRARY_PATH"
+  '';
+
   services.openssh.enable = true;
   # programs.ssh.extraConfig = ''
   # Host hp4.home
@@ -217,7 +232,7 @@
     openFirewall = true;
   };
 
-  services.bpftune.enable = true;
+  #services.bpftune.enable = true;
   # Enable touchpad support (enabled default in most desktopManager).
   # services.libinput.enable = true;
 
@@ -269,16 +284,21 @@
      enableSSHSupport = true;
   };
 
-  hardware.graphics = {
-    enable = true; # auto includes mesa
-    package = pkgs.mesa;
-    extraPackages = with pkgs; [
-      libglvnd
-      libva-vdpau-driver
-      libvdpau-va-gl
-      rocmPackages.clr.icd
-    ];
-  };
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/amdgpu.nix
+  hardware.amdgpu.opencl.enable = true;
+
+  # hardware.graphics = {
+  #   enable = true; # auto includes mesa
+  #   package = pkgs.mesa;
+  #   extraPackages = with pkgs; [
+  #     libglvnd
+  #     #libva-vdpau-driver
+  #     #libvdpau-va-gl
+  #     rocmPackages.clr.icd
+  #     amdvlk
+  #   ];
+  # };
+
   services.xserver = {
     enable = true;
     videoDrivers = [ "amdgpu" ];
@@ -300,10 +320,6 @@
   # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
   services.lact = {
     enable = true;
-    # Optional: Add custom settings here if needed
-    # settings = {
-    #   # Example settings
-    # };
   };
 
   # Enable fan2go for Corsair Commander PRO fan control

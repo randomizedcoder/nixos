@@ -43,7 +43,9 @@ let
   cfg = config.hardware.fan2go;
 
   # Path to the Corsair Commander PRO hwmon device
-  corsairHwmonPath = "/sys/class/hwmon/hwmon7";
+  # Note: hwmon device numbers can change after kernel updates
+  # Check with: ls -la /sys/class/hwmon/ and find the one named "corsaircpro"
+  corsairHwmonPath = "/sys/class/hwmon/hwmon5";
 
   # Debug level for the scripts (0=off, 7=max debug).
   debugLevel = 7;
@@ -580,11 +582,12 @@ let
 
     sensors:
       # Define the temperature sensor to monitor. This is the MI50 GPU (GPU0 in btop).
-      # From `fan2go detect`, this is platform `amdgpu-pci-04400`.
+      # From `fan2go detect`, this is platform `amdgpu-pci-04300`.
       # The sensor type is `hwmon`.
+      # Note: PCI address can change after kernel updates - check with: lspci | grep MI50
       - id: gpu_mi50_temp
         hwmon:
-          platform: amdgpu-pci-04400
+          platform: amdgpu-pci-04300
           # Use the memory temperature (temp3_input) as it's the hottest part at 62°C
           index: 3
 
@@ -664,6 +667,7 @@ in
         ];
 
         Environment = [
+          "GOMAXPROCS=4"
           "GOMEMLIMIT=45MiB"
           "DEBUG_LEVEL=${toString debugLevel}"
         ];
@@ -673,7 +677,22 @@ in
         #RestrictAddressFamilies = [ "AF_INET" "AF_INET6" ];
         #Delegate = false;
 
-        LimitNOFILE = 8192;
+        LimitNOFILE = 128;
+        #LimitNOFILE = 8192;
+
+        # Create and manage the state directory
+        StateDirectory = "fan2go";
+
+        # Allow access to hwmon devices for fan control
+        # The service needs to read/write to /sys/class/hwmon/hwmon5/pwm1
+        # Note: sysfs requires special handling - we need full access to /sys
+        PrivateDevices = false;
+        ProtectKernelTunables = false;
+        # Don't restrict /sys - we need full read/write access for hwmon control
+        # ReadWritePaths with /sys/class/hwmon should work, but we may need the parent /sys too
+        ReadWritePaths = [
+          "/sys"
+        ];
 
       };
     };

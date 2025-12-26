@@ -66,10 +66,24 @@
     # We can just reference gcc/g++ via PATH, but explicit paths ensure Go uses the wrapper
     #CC = "gcc";
     #CXX = "g++";
+
+    # ROCm tools (rocm-smi, etc.) need libdrm_amdgpu.so in LD_LIBRARY_PATH
+    # This allows Python ctypes to find the library for dynamic loading
+    LD_LIBRARY_PATH = "${pkgs.libdrm}/lib";
   };
 
   home.packages = with pkgs; [
     # These writeShellApplication scripts end up in /etc/profiles/per-user/das/bin/
+    # Wrapper for rocm-smi that sets LD_LIBRARY_PATH for libdrm_amdgpu.so
+    # Use: sudo rocm-smi-wrapped --alldevices --showallinfo
+    (writeShellApplication {
+      name = "rocm-smi-wrapped";
+      runtimeInputs = [ rocmPackages.rocm-smi libdrm ];
+      text = ''
+        export LD_LIBRARY_PATH="${libdrm}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+        exec rocm-smi "$@"
+      '';
+    })
     # Script to create SSH control socket directory in tmpfs
     (writeShellApplication {
       name = "ensure-ssh-runtime-dir";
@@ -364,6 +378,10 @@ SSH_CONFIG_EOF
     # tcl/expect
     expect
 
+    # Common Lisp 2.5.10
+    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/compilers/sbcl/default.nix#L319
+    sbcl
+
     # Editors
     helix
 
@@ -544,9 +562,12 @@ SSH_CONFIG_EOF
     rocmPackages.rocminfo
     rocmPackages.rocm-smi
     rocmPackages.rocm-core
+    # libdrm is needed by rocm-smi to find libdrm_amdgpu.so
+    libdrm
     lact
     # https://github.com/aristocratos/btop
     btop-rocm
+    amdgpu_top
 
     # https://github.com/ollama/ollama
     ollama-rocm
@@ -621,6 +642,7 @@ SSH_CONFIG_EOF
       #continue.continue # stopped working 2025/11/04
       rooveterinaryinc.roo-cline
       waderyan.gitblame
+      mattn.lisp
     ];
   };
 

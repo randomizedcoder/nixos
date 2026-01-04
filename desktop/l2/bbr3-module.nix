@@ -31,14 +31,16 @@ let
 
     hardeningDisable = [ "pic" "format" ];
 
-    makeFlags = kernel.makeFlags ++ [
-      "KDIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
-      "M=$(PWD)"
-    ];
+    postUnpack = ''
+      # Create a clean build directory
+      mkdir -p $TMPDIR/build
+      cd $TMPDIR/build
+      sourceRoot=$TMPDIR/build
+    '';
 
-    preBuild = ''
+    configurePhase = ''
       # Copy BBRv3 source to build directory
-      cp ${src}/net/ipv4/tcp_bbr.c tcp_bbr3.c
+      cp $src/net/ipv4/tcp_bbr.c tcp_bbr3.c
 
       # Rename the module to avoid conflict with in-kernel tcp_bbr
       sed -i 's/tcp_bbr_cong_ops/tcp_bbr3_cong_ops/g' tcp_bbr3.c
@@ -47,24 +49,40 @@ let
       sed -i 's/MODULE_DESCRIPTION("TCP BBR/MODULE_DESCRIPTION("TCP BBRv3/g' tcp_bbr3.c
 
       # Change the registered name to "bbr3"
-      sed -i 's/\.name.*=.*"bbr"/.name = "bbr3"/g' tcp_bbr3.c
+      sed -i 's/\.name[[:space:]]*=[[:space:]]*"bbr"/.name = "bbr3"/g' tcp_bbr3.c
 
-      # Create Makefile for out-of-tree build
-      cat > Makefile <<EOF
-      obj-m := tcp_bbr3.o
+      # === Kernel API compatibility fixes for 6.18+ ===
 
-      all:
-      	\$(MAKE) -C \$(KDIR) M=\$(PWD) modules
+      # Fix 1: prandom_u32_max was renamed to get_random_u32_below in kernel 6.2+
+      sed -i 's/prandom_u32_max/get_random_u32_below/g' tcp_bbr3.c
 
-      clean:
-      	\$(MAKE) -C \$(KDIR) M=\$(PWD) clean
-      EOF
+      # Fix 2: tso_segs was removed/renamed - the function signature changed
+      # Just remove the line since it's optional
+      sed -i '/\.tso_segs[[:space:]]*=/d' tcp_bbr3.c
+
+      # Fix 3: cong_control signature changed - need to adapt bbr_main
+      # Old: void (*cong_control)(struct sock *sk, const struct rate_sample *rs)
+      # New: void (*cong_control)(struct sock *sk, u32 ack, int flag, const struct rate_sample *rs)
+      # We create a wrapper function
+      sed -i '/^static void bbr_main/,/^{/c\
+static void bbr_main_inner(struct sock *sk, const struct rate_sample *rs)\
+{' tcp_bbr3.c
+
+      # Add wrapper at end before module registration
+      sed -i '/static struct tcp_congestion_ops tcp_bbr3_cong_ops/i\
+/* Wrapper for new kernel API */\
+static void bbr_main(struct sock *sk, u32 ack, int flag, const struct rate_sample *rs)\
+{\
+	bbr_main_inner(sk, rs);\
+}\
+' tcp_bbr3.c
+
+      # Create Kbuild file for out-of-tree build
+      echo "obj-m := tcp_bbr3.o" > Kbuild
     '';
 
     buildPhase = ''
-      runHook preBuild
-      make KDIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build M=$(pwd) modules
-      runHook postBuild
+      make -C ${kernel.dev}/lib/modules/${kernel.modDirVersion}/build M=$(pwd) modules
     '';
 
     installPhase = ''

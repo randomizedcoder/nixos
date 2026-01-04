@@ -50,6 +50,8 @@
       ./ollama-service.nix
       ./fan2go.nix
       ./below.nix
+      # BBRv3 congestion control from L4S team
+      ./bbr3-module.nix
     ];
 
   boot = {
@@ -381,6 +383,9 @@
   # services.spice-vdagentd.enable = true;
 
   # https://wiki.nixos.org/wiki/Laptop
+
+  # BBRv3 congestion control from L4S team (out-of-tree module)
+  services.bbr3.enable = true;
 
   system.stateVersion = "24.11";
 

@@ -51,6 +51,32 @@ let
       # Change the registered name to "bbr3"
       sed -i 's/\.name[[:space:]]*=[[:space:]]*"bbr"/.name = "bbr3"/g' tcp_bbr3.c
 
+      # === Kernel API compatibility fixes for 6.18+ ===
+
+      # Fix 1: prandom_u32_max was renamed to get_random_u32_below in kernel 6.2+
+      sed -i 's/prandom_u32_max/get_random_u32_below/g' tcp_bbr3.c
+
+      # Fix 2: tso_segs was removed/renamed - the function signature changed
+      # Just remove the line since it's optional
+      sed -i '/\.tso_segs[[:space:]]*=/d' tcp_bbr3.c
+
+      # Fix 3: cong_control signature changed - need to adapt bbr_main
+      # Old: void (*cong_control)(struct sock *sk, const struct rate_sample *rs)
+      # New: void (*cong_control)(struct sock *sk, u32 ack, int flag, const struct rate_sample *rs)
+      # We create a wrapper function
+      sed -i '/^static void bbr_main/,/^{/c\
+static void bbr_main_inner(struct sock *sk, const struct rate_sample *rs)\
+{' tcp_bbr3.c
+
+      # Add wrapper at end before module registration
+      sed -i '/static struct tcp_congestion_ops tcp_bbr3_cong_ops/i\
+/* Wrapper for new kernel API */\
+static void bbr_main(struct sock *sk, u32 ack, int flag, const struct rate_sample *rs)\
+{\
+	bbr_main_inner(sk, rs);\
+}\
+' tcp_bbr3.c
+
       # Create Kbuild file for out-of-tree build
       echo "obj-m := tcp_bbr3.o" > Kbuild
     '';

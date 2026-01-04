@@ -263,7 +263,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

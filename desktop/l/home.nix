@@ -319,6 +319,9 @@ SSH_CONFIG_EOF
     vlc
     # ffmpeg moved to system package
     ffmpeg_8-full
+    # not merged yet
+    #srt-xtransmit
+    srt
 
     # Go Development
     # https://nixos.wiki/wiki/Go
@@ -478,6 +481,7 @@ SSH_CONFIG_EOF
     # https://wiki.nixos.org/wiki/Gpu-screen-recorder
     gpu-screen-recorder # CLI
     gpu-screen-recorder-gtk # GUI
+    gradia
 
     # Graphics
     gimp-with-plugins
@@ -764,6 +768,19 @@ SSH_CONFIG_EOF
       #button-layout = "close,minimize,maximize,above:appmenu";
       button-layout = ":minimize,maximize,above,close";
       num-workspaces = 2;
+    };
+    # Custom keyboard shortcut for Gradia screenshot tool
+    # Disables default GNOME screenshot and binds Print key to gradia
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      screenshot = []; # Disable default screenshot
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/gradia/"
+      ];
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/gradia" = {
+      name = "Gradia Screenshot";
+      command = "gradia";
+      binding = "Print";
     };
     # "org/gnome/desktop/interface" = {
     #   color-scheme = "prefer-dark";

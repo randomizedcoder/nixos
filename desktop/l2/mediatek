@@ -1,0 +1,97 @@
+[das@l2:~]$ lspci  | grep -i mediatek
+23:00.0 Network controller: MEDIATEK Corp. Device 7906
+
+[das@l2:~]$ ip link show
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp65s0f0np0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether b0:26:28:ce:de:80 brd ff:ff:ff:ff:ff:ff
+    altname enxb02628cede80
+3: enp65s0f1np1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether b0:26:28:ce:de:81 brd ff:ff:ff:ff:ff:ff
+    altname enxb02628cede81
+4: enp1s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DEFAULT group default qlen 1000
+    link/ether e0:4f:43:e6:2d:b0 brd ff:ff:ff:ff:ff:ff
+    altname enxe04f43e62db0
+5: wlan0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:0a:52:0d:d0:9a brd ff:ff:ff:ff:ff:ff
+6: wlp35s0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 00:0a:52:0d:d0:9b brd ff:ff:ff:ff:ff:ff
+    altname wlx000a520dd09b
+7: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc cake state UP mode DEFAULT group default qlen 1000
+    link/ether aa:8b:73:3b:dc:95 brd ff:ff:ff:ff:ff:ff
+8: dummy0: <BROADCAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc noqueue master br0 state UNKNOWN mode DEFAULT group default qlen 1000
+    link/ether 66:89:f7:d5:62:c5 brd ff:ff:ff:ff:ff:ff
+
+[das@l2:~]$ ls -l /sys/bus/pci/devices/0000:23:00.0/net/
+total 0
+drwxr-xr-x 6 root root 0 Jan  3 11:28 wlan0
+drwxr-xr-x 6 root root 0 Jan  3 11:28 wlp35s0
+
+[das@l2:~]$ iw dev
+phy#1
+	Interface wlp35s0
+		ifindex 6
+		wdev 0x100000001
+		addr 00:0a:52:0d:d0:9b
+		type managed
+		txpower 0.00 dBm
+		multicast TXQ:
+			qsz-byt	qsz-pkt	flows	drops	marks	overlmt	hashcol	tx-bytes	tx-packets
+			0	0	0	0	0	0	0	0		0
+phy#0
+	Interface wlan0
+		ifindex 5
+		wdev 0x1
+		addr 00:0a:52:0d:d0:9a
+		type managed
+		txpower 0.00 dBm
+		multicast TXQ:
+			qsz-byt	qsz-pkt	flows	drops	marks	overlmt	hashcol	tx-bytes	tx-packets
+			0	0	0	0	0	0	0	0		0
+
+[das@l2:~]$
+
+[das@l2:~]$ ethtool -i wlan0
+driver: mt7915e
+version: 6.17.8
+firmware-version: DEV_000000-20240823172837
+expansion-rom-version:
+bus-info: 0000:23:00.0
+supports-statistics: yes
+supports-test: no
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: no
+
+[das@l2:~]$ ethtool -i wlp35s0
+driver: mt7915e
+version: 6.17.8
+firmware-version: N/A
+expansion-rom-version:
+bus-info: 0000:23:00.0
+supports-statistics: yes
+supports-test: no
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: no
+
+[das@l2:~]$
+
+[das@l2:~]$ iw phy phy0 info | grep -A5 "Frequencies"
+		Frequencies:
+			* 2412.0 MHz [1] (17.0 dBm)
+			* 2417.0 MHz [2] (17.0 dBm)
+			* 2422.0 MHz [3] (17.0 dBm)
+			* 2427.0 MHz [4] (17.0 dBm)
+			* 2432.0 MHz [5] (17.0 dBm)
+
+[das@l2:~]$ iw phy phy1 info | grep -A5 "Frequencies"
+		Frequencies:
+			* 5180.0 MHz [36] (23.0 dBm)
+			* 5200.0 MHz [40] (23.0 dBm)
+			* 5220.0 MHz [44] (23.0 dBm)
+			* 5240.0 MHz [48] (23.0 dBm)
+			* 5260.0 MHz [52] (24.0 dBm) (radar detection)
+
+[das@l2:~]$

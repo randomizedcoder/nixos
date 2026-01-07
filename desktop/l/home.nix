@@ -310,10 +310,12 @@ SSH_CONFIG_EOF
     inotify-tools
 
     # SDR #cmake errors
-    # gnuradio
-    # hackrf
-    # gqrx
-    # cubicsdr
+    gnuradio
+    hackrf
+    #soapysdr
+    #soapysdr-with-plugins
+    gqrx
+    cubicsdr
 
     # Media
     vlc

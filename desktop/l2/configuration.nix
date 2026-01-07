@@ -66,6 +66,17 @@
     #kernelPackages = pkgs.linuxPackages;
     kernelPackages = pkgs.linuxPackages_latest;
 
+    # Enable mac80211 debugfs for WiFi AQM tuning
+    kernelPatches = [{
+      name = "mac80211-debugfs";
+      patch = null;
+      structuredExtraConfig = with lib.kernel; {
+        MAC80211_DEBUGFS = yes;
+        # Also enable general WiFi debugging options
+        CFG80211_DEBUGFS = yes;
+      };
+    }];
+
     initrd.kernelModules = [
       "amdgpu"
     ];
@@ -233,6 +244,10 @@
 
   # BBRv3 congestion control from L4S team (out-of-tree module)
   services.bbr3.enable = true;
+
+  # Blackmagic DeckLink support
+  # lspci | grep -i blackmagic -> DeckLink Mini Recorder
+  hardware.decklink.enable = true;
 
 }
 

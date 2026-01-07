@@ -19,41 +19,42 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
-    # CrowdSec NixOS services
-    crowdsec = {
-      url = "git+https://codeberg.org/kampka/nix-flake-crowdsec.git";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # CrowdSec - now in nixpkgs, third-party flake no longer needed
+    # crowdsec = {
+    #   url = "git+https://codeberg.org/kampka/nix-flake-crowdsec.git";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
   };
 
-  outputs = { self, nixpkgs, disko, home-manager, crowdsec, ... }:
+  outputs = { self, nixpkgs, disko, home-manager, ... }:
     let
       system = "x86_64-linux";
 
       lib = nixpkgs.lib;
 
-      overlays = {
-        default = final: prev: {
-          hostapd = prev.hostapd.overrideDerivation (old: {
-            version = "2.10";
-            src = final.fetchurl {
-              url = "https://w1.fi/releases/hostapd-2.10.tar.gz";
-              sha256 = "0pcik0a6yin9nib02frjhaglmg44hwik086iwg1751b7kdwpqvi0";
-              # nix-prefetch-url https://w1.fi/releases/hostapd-2.10.tar.gz
-            };
-            patches = [
-              (final.fetchpatch {
-                url = "https://tildearrow.org/storage/hostapd-2.10-lar.patch";
-                sha256 = "USiHBZH5QcUJfZSxGoFwUefq3ARc4S/KliwUm8SqvoI=";
-              })
-            ];
-          });
-        };
-      };
+      # Intel WiFi hostapd overlay (commented out - using default hostapd for MediaTek MT7915e)
+      # overlays = {
+      #   default = final: prev: {
+      #     hostapd = prev.hostapd.overrideDerivation (old: {
+      #       version = "2.10";
+      #       src = final.fetchurl {
+      #         url = "https://w1.fi/releases/hostapd-2.10.tar.gz";
+      #         sha256 = "0pcik0a6yin9nib02frjhaglmg44hwik086iwg1751b7kdwpqvi0";
+      #         # nix-prefetch-url https://w1.fi/releases/hostapd-2.10.tar.gz
+      #       };
+      #       patches = [
+      #         (final.fetchpatch {
+      #           url = "https://tildearrow.org/storage/hostapd-2.10-lar.patch";
+      #           sha256 = "USiHBZH5QcUJfZSxGoFwUefq3ARc4S/KliwUm8SqvoI=";
+      #         })
+      #       ];
+      #     });
+      #   };
+      # };
 
       pkgs = import nixpkgs {
         inherit system;
-        overlays = [ overlays.default ];
+        # overlays = [ overlays.default ];
         config.allowUnfree = true;
       };
 
@@ -65,8 +66,9 @@
 
           modules = [
             disko.nixosModules.disko
-            crowdsec.nixosModules.crowdsec
-            crowdsec.nixosModules.crowdsec-firewall-bouncer
+            # CrowdSec now in nixpkgs - use services.crowdsec in configuration.nix if needed
+            # crowdsec.nixosModules.crowdsec
+            # crowdsec.nixosModules.crowdsec-firewall-bouncer
             ./configuration.nix
             {
               nixpkgs.pkgs = pkgs;

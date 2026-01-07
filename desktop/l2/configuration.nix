@@ -42,6 +42,8 @@
       #./hostapd.nix
       ./hostapd-multi.nix
       ./network-optimization.nix
+      # BBRv3 congestion control from L4S team
+      ./bbr3-module.nix
       # CPU and IRQ optimization modules
       #./irq-affinity.nix
       ./systemd-slices.nix
@@ -64,6 +66,17 @@
     #kernelPackages = pkgs.linuxPackages;
     kernelPackages = pkgs.linuxPackages_latest;
 
+    # Enable mac80211 debugfs for WiFi AQM tuning
+    kernelPatches = [{
+      name = "mac80211-debugfs";
+      patch = null;
+      structuredExtraConfig = with lib.kernel; {
+        MAC80211_DEBUGFS = yes;
+        # Also enable general WiFi debugging options
+        CFG80211_DEBUGFS = yes;
+      };
+    }];
+
     initrd.kernelModules = [
       "amdgpu"
     ];
@@ -73,6 +86,7 @@
       "bnxt_re"      # RoCEv2 RDMA provider
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
+      "sch_dualpi2"  # DualPI2 L4S AQM packet scheduler (available in kernel 6.17+)
     ];
 
     blacklistedKernelModules = [
@@ -227,6 +241,13 @@
   # systemd.user.settings.Manager = {
   #   CPUAffinity = "8,20,9,21,10,22,11,23";
   # };
+
+  # BBRv3 congestion control from L4S team (out-of-tree module)
+  services.bbr3.enable = true;
+
+  # Blackmagic DeckLink support
+  # lspci | grep -i blackmagic -> DeckLink Mini Recorder
+  hardware.decklink.enable = true;
 
 }
 

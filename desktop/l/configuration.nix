@@ -50,6 +50,8 @@
       ./ollama-service.nix
       ./fan2go.nix
       ./below.nix
+      # BBRv3 congestion control from L4S team
+      ./bbr3-module.nix
     ];
 
   boot = {
@@ -167,6 +169,15 @@
   services.udev.packages = [ pkgs.gnome-settings-daemon ];
   # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];
 
+  # EspoTek Labrador USB oscilloscope
+  services.udev.extraRules = ''
+    # EspoTek Labrador - main device
+    ENV{ID_VENDOR_ID}=="03eb", ENV{ID_MODEL_ID}=="ba94", SYMLINK="EspoTek_Labrador", MODE="0666"
+    ENV{ID_VENDOR_ID}=="03eb", ENV{ID_MODEL_ID}=="a000", SYMLINK="EspoTek_Labrador", MODE="0666"
+    # EspoTek Labrador - DFU bootloader
+    ENV{ID_VENDOR_ID}=="03eb", ENV{ID_MODEL_ID}=="2fe4", SYMLINK="ATXMEGA32A4U_DFU_Bootloader", MODE="0666"
+  '';
+
   # # https://nixos.wiki/wiki/NixOS_Wiki:Audio
   # services.pulseaudio.enable = false; # Use Pipewire, the modern sound subsystem
 
@@ -263,7 +274,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -381,6 +392,9 @@
   # services.spice-vdagentd.enable = true;
 
   # https://wiki.nixos.org/wiki/Laptop
+
+  # BBRv3 congestion control from L4S team (out-of-tree module)
+  services.bbr3.enable = true;
 
   system.stateVersion = "24.11";
 

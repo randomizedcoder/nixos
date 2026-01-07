@@ -29,7 +29,9 @@
     #net.ipv4.tcp_tw_reuse=2
     "net.ipv4.tcp_timestamps" = 1;
     "net.ipv4.tcp_ecn" = 1;
-    "net.core.default_qdisc" = "cake";
+    # DualPI2: Dual Queue PI² AQM for L4S (Low Latency Low Loss Scalable Throughput)
+    # Available in kernel 6.17+ (merged September 2025)
+    "net.core.default_qdisc" = "dualpi2";
     "net.ipv4.tcp_congestion_control" = "cubic";
     #net.ipv4.tcp_congestion_control=bbr
     "net.core.rmem_default" = 26214400;

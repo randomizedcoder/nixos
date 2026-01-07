@@ -1,16 +1,19 @@
 #
 # l2/hostapd-multi.nix
 #
+# MediaTek MT7915e dual-band WiFi 6 card
+# Uses udev rules to create stable interface names based on MAC addresses
+#
 
 { config, lib, pkgs, ... }:
 
 let
+  # MediaTek MT7915e interfaces (stable names via udev rules below)
+  # wlan_2g = MAC 00:0a:52:0d:d0:9a = 2.4GHz radio
+  # wlan_5g = MAC 00:0a:52:0d:d0:9b = 5GHz radio
   radioIfaces = {
-    # non-DFS channels
-    wlp35s0 = 36;
-    wlp65s0 = 40;
-    wlp66s0 = 44;
-    wlp97s0 = 48;
+    wlan_2g = { band = "2g"; channel = 6; };    # 2.4GHz - channel 6 (non-overlapping)
+    wlan_5g = { band = "5g"; channel = 36; };   # 5GHz - channel 36 (non-DFS)
   };
 
   commonSettings = {
@@ -30,18 +33,16 @@ let
     saePasswords = [{ password = "strongpassword"; }];
   };
 
-  genRadio = iface: channel: {
+  genRadio = iface: cfg: {
     countryCode = "US";
-    #band = "2g";
-    band = "5g";
-    channel = channel;
+    band = cfg.band;
+    channel = cfg.channel;
+    # WiFi 6 (802.11ax) settings for MT7915e
     # settings = {
-    #   country_code = "US";
     #   ieee80211d = true;
     #   ieee80211h = false;
-    #   # he_su_beamformer = 1;
-    #   # he_su_beamformee = 1;
-    #   # he_bss_color = 8;
+    #   he_su_beamformer = 1;
+    #   he_su_beamformee = 1;
     # };
 
     networks.${iface} = {
@@ -79,6 +80,15 @@ in {
     #firmware = with pkgs; [ wireless-regdb ];
   };
 
+  # Stable interface names for MediaTek MT7915e based on MAC addresses
+  # This ensures consistent naming across reboots
+  services.udev.extraRules = ''
+    # MediaTek MT7915e 2.4GHz radio
+    SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:0a:52:0d:d0:9a", NAME="wlan_2g"
+    # MediaTek MT7915e 5GHz radio
+    SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:0a:52:0d:d0:9b", NAME="wlan_5g"
+  '';
+
   systemd.tmpfiles.rules = [
     "L+ /lib/firmware/regulatory.db - - - - ${pkgs.wireless-regdb}/lib/firmware/regulatory.db"
     "L+ /lib/firmware/regulatory.db.p7s - - - - ${pkgs.wireless-regdb}/lib/firmware/regulatory.db.p7s"
@@ -99,8 +109,7 @@ in {
 
   # systemctl status hostapd
   services.hostapd.enable = true;
-  services.hostapd.radios = lib.genAttrs (builtins.attrNames radioIfaces)
-    (iface: genRadio iface radioIfaces.${iface});
+  services.hostapd.radios = lib.mapAttrs genRadio radioIfaces;
 
   # systemctl status kea-dhcp4-server.service
   services.kea = {
@@ -254,14 +263,16 @@ in {
       linkConfig = {
         ActivationPolicy = "always-up";
       };
-      cakeConfig = {
-        Bandwidth = "1000M";  # Set your desired bandwidth
-        OverheadBytes = 8;
-        CompensationMode = "ptm";  # e.g. for DSL, change as needed
-        NAT = true;
-        FlowIsolationMode = "triple";
-        PriorityQueueingPreset = "besteffort";
-      };
+      # DualPI2 qdisc configured via systemd service (see below)
+      # cakeConfig removed - was:
+      # cakeConfig = {
+      #   Bandwidth = "1000M";
+      #   OverheadBytes = 8;
+      #   CompensationMode = "ptm";
+      #   NAT = true;
+      #   FlowIsolationMode = "triple";
+      #   PriorityQueueingPreset = "besteffort";
+      # };
     };
 
     "wlan" = {
@@ -271,18 +282,7 @@ in {
       };
     };
 
-    "enp4s0f0np0" = {
-      matchConfig.Name = "enp4s0f0np0";
-      networkConfig = {
-        # IPv4 link-local only
-        LinkLocalAddressing = "ipv4";
-        # IPv6 link-local only
-        IPv6LinkLocalAddressing = "ipv6";
-        # Disable DHCP and router advertisements
-        DHCP = "no";
-        IPv6AcceptRA = false;
-      };
-    };
+    # enp4s0f0np0 removed (interface no longer present)
   };
 
   # Disable conflicting resolvers and provide local one
@@ -297,6 +297,69 @@ in {
     nameserver 1.1.1.1
     nameserver 2606:4700:4700::1111
   '';
+
+  # DualPI2 L4S AQM packet scheduler configuration
+  # https://github.com/L4STeam/linux/wiki/DUALPI2
+  # Available in kernel 6.17+ (merged September 2025)
+  # Interfaces: enp1s0 (WAN), br0 (LAN bridge), wlan_2g (2.4GHz), wlan_5g (5GHz)
+  systemd.services.dualpi2-qdisc = {
+    description = "Configure DualPI2 qdisc on network interfaces";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" "hostapd.service" ];
+    wants = [ "hostapd.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "dualpi2-setup" ''
+        #!/bin/sh
+        set -e
+
+        TC="${pkgs.iproute2}/bin/tc"
+
+        # Function to setup dualpi2 on an interface
+        setup_dualpi2() {
+          iface=$1
+          # Remove existing qdisc (ignore errors if none exists)
+          $TC qdisc del dev "$iface" root 2>/dev/null || true
+          # Add dualpi2 qdisc
+          # Parameters (using defaults):
+          #   target: target delay (default 15ms)
+          #   tupdate: PI controller update interval (default 16ms)
+          #   alpha/beta: PI controller gains
+          $TC qdisc add dev "$iface" root dualpi2
+          echo "Configured dualpi2 on $iface"
+        }
+
+        # Wait a moment for interfaces to be ready
+        sleep 2
+
+        # Configure bridge (LAN) - main interface for WiFi clients
+        if ip link show br0 > /dev/null 2>&1; then
+          setup_dualpi2 br0
+        fi
+
+        # Configure WiFi interfaces
+        if ip link show wlan_2g > /dev/null 2>&1; then
+          setup_dualpi2 wlan_2g
+        fi
+
+        if ip link show wlan_5g > /dev/null 2>&1; then
+          setup_dualpi2 wlan_5g
+        fi
+
+        # Log results
+        echo "=== DualPI2 Configuration Results ===" > /tmp/dualpi2-qdisc.log
+        echo "Timestamp: $(date)" >> /tmp/dualpi2-qdisc.log
+        for iface in enp1s0 br0 wlan_2g wlan_5g; do
+          echo "" >> /tmp/dualpi2-qdisc.log
+          echo "=== $iface ===" >> /tmp/dualpi2-qdisc.log
+          $TC qdisc show dev "$iface" >> /tmp/dualpi2-qdisc.log 2>&1 || echo "Interface not found" >> /tmp/dualpi2-qdisc.log
+        done
+
+        echo "DualPI2 qdisc configuration complete"
+      '';
+    };
+  };
 }
 
 #systemctl status kea

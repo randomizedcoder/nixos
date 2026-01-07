@@ -59,6 +59,20 @@
     rdma-core # ibv_devinfo, rdma
     pciutils
     libpciaccess
+
+    # Blackmagic DeckLink
+    blackmagic-desktop-video
+
+    # Video tools
+    v4l-utils    # v4l2-ctl
+    ffmpeg-full
+
+    # GStreamer with DeckLink support
+    gst_all_1.gstreamer
+    gst_all_1.gst-plugins-base
+    gst_all_1.gst-plugins-good
+    gst_all_1.gst-plugins-bad   # includes decklink plugin
+    gst_all_1.gst-plugins-ugly
   ];
 }
 

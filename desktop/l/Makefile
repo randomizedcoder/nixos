@@ -18,6 +18,14 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
+# Build without installing (no root required)
+build:
+	nix build .#nixosConfigurations.$(EXPECTED_HOSTNAME).config.system.build.toplevel --no-link
+
+# Build with output link in ./result
+build-link:
+	nix build .#nixosConfigurations.$(EXPECTED_HOSTNAME).config.system.build.toplevel
+
 rebuild_l:
 	sudo nixos-rebuild switch --flake .#t
 

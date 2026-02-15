@@ -46,6 +46,12 @@ let
   internalIPv4Prefix = "192.168.1.0/24"; # Internal IPv4 subnet
   internalIPv6Prefix = "fd00::/64";      # Internal IPv6 subnet
 
+  # High-speed NIC interfaces (RDMA/RoCEv2)
+  hsInterface1 = "enp66s0f0np0";
+  hsInterface2 = "enp66s0f1np1";
+  hsIPv4Prefix1 = "10.0.0.0/24";
+  hsIPv4Prefix2 = "10.0.1.0/24";
+
 in {
   # Disable the default iptables firewall since we're using nftables
   networking.firewall.enable = false;
@@ -126,6 +132,16 @@ in {
           flags interval
           elements = {
             ${internalIPv4Prefix}  # Internal IPv4 subnet
+          }
+        }
+
+        # High-speed NIC networks (RDMA/RoCEv2)
+        set hs_ipv4 {
+          type ipv4_addr
+          flags interval
+          elements = {
+            ${hsIPv4Prefix1},  # High-speed interface 1
+            ${hsIPv4Prefix2}   # High-speed interface 2
           }
         }
 
@@ -277,6 +293,12 @@ in {
           iifname "${wanInterface}" icmpv6 type echo-request limit rate 5/second accept
           iifname "${wanInterface}" icmpv6 type @icmpv6_allowed accept
 
+          # High-speed interfaces - allow all traffic for RDMA/RoCEv2
+          iifname "${hsInterface1}" ip saddr @hs_ipv4 accept
+          iifname "${hsInterface2}" ip saddr @hs_ipv4 accept
+          iifname "${hsInterface1}" icmp type @icmp_allowed accept
+          iifname "${hsInterface2}" icmp type @icmp_allowed accept
+
           # Log and drop everything else
           log prefix "[nft-input-drop] " limit rate 5/minute drop
         }
@@ -339,6 +361,12 @@ in {
           iifname "${wanInterface}" oifname "${lanInterface}" icmpv6 type @icmpv6_allowed accept
           iifname "${lanInterface}" oifname "${wanInterface}" icmpv6 type @icmpv6_allowed accept
 
+          # High-speed interfaces - allow forwarding for RDMA/RoCEv2
+          iifname "${hsInterface1}" accept
+          iifname "${hsInterface2}" accept
+          oifname "${hsInterface1}" accept
+          oifname "${hsInterface2}" accept
+
           # Log and drop everything else
           log prefix "[nft-forward-drop] " limit rate 5/minute drop
         }
@@ -369,10 +397,15 @@ in {
           oifname "${lanInterface}" icmpv6 type @icmpv6_allowed accept
           oifname "${wanInterface}" icmpv6 type @icmpv6_allowed accept
 
+          # Allow traffic to high-speed interfaces (RDMA/RoCEv2)
+          oifname "${hsInterface1}" accept
+          oifname "${hsInterface2}" accept
+
           # Block sending traffic to private/reserved ranges (regardless of interface)
           # with exceptions for allocated subnets to prevent IP leakage and network access
           # Based on IANA Special-Purpose Address Registry (RFC 6890)
           # Exclude our allocated subnets from the blocking
+          ip daddr @hs_ipv4 accept
           ip daddr != ${internalIPv4Prefix} ip daddr @special_purpose_ipv4 drop
           ip6 daddr != ${internalIPv6Prefix} ip6 daddr @special_purpose_ipv6 drop
 

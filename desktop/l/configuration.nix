@@ -48,10 +48,14 @@
       #./hyprland.nix
       ./nginx.nix
       ./ollama-service.nix
+      ./llama-service.nix
+      ./litellm-service.nix
       ./fan2go.nix
       ./below.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
+      # Multi-queue CAKE (cake_mq) for scaling CAKE across CPU cores
+      ./mq-cake-module.nix
     ];
 
   boot = {
@@ -248,7 +252,40 @@
   # services.libinput.enable = true;
 
   # https://nixos.wiki/wiki/Printing
-  services.printing.enable = true;
+  # HP MFP M477fdw printer support
+  services.printing = {
+    enable = true;
+    drivers = [ pkgs.hplip pkgs.hplipWithPlugin pkgs.gutenprint pkgs.gutenprintBin ];
+    browsing = true;
+    defaultShared = false;
+  };
+
+  # Declarative printer configuration (using IPP Everywhere / driverless)
+  hardware.printers = {
+    ensurePrinters = [
+      {
+        name = "HP_M477fdw";
+        description = "HP Color LaserJet MFP M477fdw";
+        location = "Home Office";
+        deviceUri = "ipp://172.16.50.63:631/ipp/print";
+        model = "everywhere";
+        ppdOptions = {
+          PageSize = "Letter";
+        };
+      }
+    ];
+    ensureDefaultPrinter = "HP_M477fdw";
+  };
+
+  # Enable CUPS browsed for automatic printer discovery
+  services.avahi.publish.enable = true;
+  services.avahi.publish.userServices = true;
+
+  # Scanner support for HP MFP (multifunction printer)
+  hardware.sane = {
+    enable = true;
+    extraBackends = [ pkgs.hplip ];
+  };
 
   # flameshot now in home.nix
   # https://wiki.nixos.org/wiki/Flameshot
@@ -274,7 +311,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" "scanner" "lp" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -395,6 +432,10 @@
 
   # BBRv3 congestion control from L4S team (out-of-tree module)
   services.bbr3.enable = true;
+
+  # Multi-queue CAKE (cake_mq) - scales CAKE across CPU cores (kernel patches)
+  # Using net-next patches (Jan 2026) - should apply cleanly to 6.18.8
+  services.mqCake.enable = true;
 
   system.stateVersion = "24.11";
 

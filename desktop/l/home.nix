@@ -189,6 +189,9 @@ SSH_CONFIG_EOF
     ncdu
     neofetch
     file
+    lsof
+    socat
+    netcat-gnu
 
     # # Hyprland related
     # waybar
@@ -205,6 +208,7 @@ SSH_CONFIG_EOF
     # Terminal Multiplexers
     tmux
     screen
+    sshpass
 
     # # LLVM/Clang toolchain (needed for race detection and C/C++ builds)
     # llvmPackages_20.clang-tools
@@ -310,7 +314,7 @@ SSH_CONFIG_EOF
     inotify-tools
 
     # SDR #cmake errors
-    gnuradio
+    #gnuradio
     hackrf
     #soapysdr
     #soapysdr-with-plugins
@@ -382,6 +386,7 @@ SSH_CONFIG_EOF
 
     # tcl/expect
     expect
+    tcl-9_0
 
     # Common Lisp 2.5.10
     # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/compilers/sbcl/default.nix#L319
@@ -485,6 +490,23 @@ SSH_CONFIG_EOF
     gpu-screen-recorder-gtk # GUI
     gradia
 
+    # Wrapper script for gradia: raise existing window or launch new instance
+    (pkgs.writeShellScriptBin "gradia-toggle" ''
+      # Check if gradia is already running
+      if pgrep -x "gradia" > /dev/null; then
+        # Try to focus existing gradia window using GNOME Shell
+        ${pkgs.glib}/bin/gdbus call --session \
+          --dest org.gnome.Shell \
+          --object-path /org/gnome/Shell \
+          --method org.gnome.Shell.Eval \
+          "global.get_window_actors().forEach(a => { if (a.meta_window.get_wm_class()?.toLowerCase().includes('gradia')) a.meta_window.activate(global.get_current_time()); })" \
+          2>/dev/null || true
+      else
+        # Launch gradia if not running
+        ${pkgs.gradia}/bin/gradia &
+      fi
+    '')
+
     # Graphics
     gimp-with-plugins
 
@@ -516,13 +538,13 @@ SSH_CONFIG_EOF
     kube-capacity
     kubectl-images
     kubectl-gadget
-    kdash
+    # kdash  # FIXME: GCC 15 incompatible pointer types in oniguruma - https://github.com/kdash-rs/kdash/issues
     # k9s --kubeconfig=dev-d.kubeconfig
     k9s
 
     # Misc
     # https://github.com/jrincayc/ucblogo-code
-    ucblogo
+    #ucblogo
     # https://github.com/wagoodman/dive
     # dive # Duplicate removed
     # https://github.com/sharkdp/hyperfine
@@ -589,6 +611,18 @@ SSH_CONFIG_EOF
     # GPU 1: 1002:7312 "AMD Radeon Pro W5700 (RADV NAVI10)" discrete GPU 0000:63:00.0
     # GPU 2: 10005:0 "llvmpipe (LLVM 21.1.2, 256 bits)" CPU 0000:00:00.0
     vulkan-tools
+
+    # https://github.com/vllm-project/vllm
+    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/python-modules/vllm/default.nix#L553
+    vllm
+
+    opencode
+    claude-code
+    claude-monitor
+    claude-code-router
+
+    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/development/python-modules/litellm/default.nix#L149
+    litellm
 
     # virtual camera control
     # v4l2-ctl --list-devices
@@ -691,6 +725,9 @@ SSH_CONFIG_EOF
         email = "dave.seddon.ca@gmail.com";
         name = "randomizedcoder ";
       };
+      safe = {
+        directory = "*";  # Allow git operations in repos owned by other users (needed for sudo)
+      };
     };
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
@@ -772,16 +809,28 @@ SSH_CONFIG_EOF
       num-workspaces = 2;
     };
     # Custom keyboard shortcut for Gradia screenshot tool
-    # Disables default GNOME screenshot and binds Print key to gradia
+    # Disable GNOME Shell's built-in screenshot UI (introduced in GNOME 42+)
+    "org/gnome/shell/keybindings" = {
+      show-screenshot-ui = []; # Disable the new GNOME screenshot UI on Print
+      screenshot = [];
+      screenshot-window = [];
+    };
+    # Disable legacy screenshot shortcuts in settings-daemon
     "org/gnome/settings-daemon/plugins/media-keys" = {
-      screenshot = []; # Disable default screenshot
+      screenshot = [];
+      screenshot-clip = [];
+      window-screenshot = [];
+      window-screenshot-clip = [];
+      area-screenshot = [];
+      area-screenshot-clip = [];
+      screencast = [];
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/gradia/"
       ];
     };
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/gradia" = {
       name = "Gradia Screenshot";
-      command = "gradia";
+      command = "gradia-toggle";
       binding = "Print";
     };
     # "org/gnome/desktop/interface" = {
@@ -817,6 +866,7 @@ SSH_CONFIG_EOF
     enabled-extensions = with pkgs.gnomeExtensions; [
       blur-my-shell.extensionUuid
       gsconnect.extensionUuid
+      vitals.extensionUuid # CPU, memory, temp monitoring in top bar
     ];
     };
   };

@@ -18,7 +18,7 @@
     [
       ./disko-l2.nix
       ./hardware-configuration.nix
-      #./hardware-graphics.nix
+      ./hardware-graphics.nix
       ./sysctl.nix
       #./wireless_desktop.nix
       ./locale.nix
@@ -33,22 +33,29 @@
       ./prometheus.nix
       ./grafana.nix
       # clickhouse
-      ./clickhouse-service.nix
+      #./clickhouse-service.nix
       #./docker-compose.nix
       #./docker-daemon.nix
       #./smokeping.nix
       #./distributed-builds.nix
       #./hyprland.nix
       #./hostapd.nix
-      ./hostapd-multi.nix
+      #./hostapd-multi.nix
       ./network-optimization.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
+      # Multi-queue CAKE (cake_mq) - backported from net-next/Linux 7.0
+      ./mq-cake-module.nix
       # CPU and IRQ optimization modules
       #./irq-affinity.nix
       ./systemd-slices.nix
       ./kernel-params.nix
       #./monitoring.nix
+      # llama-cpp CUDA test
+      ./llama-service.nix
+      # NIC configuration
+      ./network-interfaces.nix
+      ./ethtool-nics.nix
     ];
 
   boot = {
@@ -64,18 +71,19 @@
 
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages;
-    kernelPackages = pkgs.linuxPackages_latest;
+    #kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
 
-    # Enable mac80211 debugfs for WiFi AQM tuning
-    kernelPatches = [{
-      name = "mac80211-debugfs";
-      patch = null;
-      structuredExtraConfig = with lib.kernel; {
-        MAC80211_DEBUGFS = yes;
-        # Also enable general WiFi debugging options
-        CFG80211_DEBUGFS = yes;
-      };
-    }];
+    # # Enable mac80211 debugfs for WiFi AQM tuning
+    # kernelPatches = [{
+    #   name = "mac80211-debugfs";
+    #   patch = null;
+    #   structuredExtraConfig = with lib.kernel; {
+    #     MAC80211_DEBUGFS = yes;
+    #     # Also enable general WiFi debugging options
+    #     CFG80211_DEBUGFS = yes;
+    #   };
+    # }];
 
     initrd.kernelModules = [
       "amdgpu"
@@ -87,6 +95,10 @@
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
       "sch_dualpi2"  # DualPI2 L4S AQM packet scheduler (available in kernel 6.17+)
+      "nvidia"
+      "nvidia_uvm" # Essential for CUDA/llama.cpp
+      "nvidia_modeset"
+      "nvidia_drm"
     ];
 
     blacklistedKernelModules = [
@@ -94,19 +106,19 @@
       #"i915"
     ];
 
-    initrd.preDeviceCommands = ''
-      echo "Loading regulatory database early"
-      cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db /lib/firmware/
-      cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db.p7s /lib/firmware/
-    '';
+    # initrd.preDeviceCommands = ''
+    #   echo "Loading regulatory database early"
+    #   cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db /lib/firmware/
+    #   cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db.p7s /lib/firmware/
+    # '';
 
     # cat /proc/cmdline
     # cat /etc/modprobe.d/nixos.conf
     extraModprobeConfig = ''
       options cfg80211 ieee80211_regdom=US
       options iwlwifi lar_disable=1
-      options pcie_aspm=off
     '';
+    #options pcie_aspm=off # power saving thingo
 
   };
 
@@ -149,6 +161,8 @@
 
   # https://nixos.wiki/wiki/Networking
   networking.hostName = "l2";
+
+  # Static IP configuration moved to ./network-interfaces.nix
 
   time.timeZone = "America/Los_Angeles";
 
@@ -245,9 +259,12 @@
   # BBRv3 congestion control from L4S team (out-of-tree module)
   services.bbr3.enable = true;
 
+  # Multi-queue CAKE (cake_mq) qdisc - backported from net-next/Linux 7.0
+  services.mqCake.enable = true;
+
   # Blackmagic DeckLink support
   # lspci | grep -i blackmagic -> DeckLink Mini Recorder
-  hardware.decklink.enable = true;
+  #hardware.decklink.enable = true;
 
 }
 

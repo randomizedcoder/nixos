@@ -5,6 +5,9 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+    # Local nixpkgs for testing llama-cpp module changes
+    nixpkgs-local.url = "path:/home/das/Downloads/nixpkgs";
+
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -19,7 +22,7 @@
 
   #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
   #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, home-manager, ... }:
+  outputs = { self, nixpkgs, nixpkgs-local, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -44,6 +47,7 @@
         inherit system;
         specialArgs = {
           unstable = pkgs;
+          inherit nixpkgs-local;
         };
         modules = [
           ./configuration.nix

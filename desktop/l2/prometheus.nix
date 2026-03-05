@@ -14,6 +14,12 @@
           targets = [ "localhost:${toString config.services.prometheus.exporters.node.port}" ];
         }];
       }
+      {
+        job_name = "mq-cake";
+        static_configs = [{
+          targets = [ "localhost:2112" ];
+        }];
+      }
     ];
   };
 }

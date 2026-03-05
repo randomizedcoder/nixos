@@ -1,0 +1,55 @@
+# Reduced config for integration testing
+namespaces:
+  client: ns-gen-a
+  server: ns-gen-b
+  dut: ns-dut
+
+interfaces:
+  dut_ingress: ixgbe0
+  dut_egress: ixgbe1
+
+network:
+  client_ip: 10.1.0.2
+  server_ip: 10.2.0.2
+  bandwidth: 10gbit
+
+tools:
+  - iperf2
+  - wrk
+  - dnsperf
+
+matrix:
+  qdiscs:
+    - fq_codel
+    - cake
+    - mq-cake
+  flow_counts:
+    - 1
+    - 10
+  shuffle: false
+
+# Phase 5: HTTP/DNS settings
+http:
+  file_size: 100k   # wrk test file
+dns:
+  query_file: /var/lib/mq-cake/dns/queries.txt
+  target_qps: 50000
+
+timing:
+  per_tool_duration: 10s
+  cooldown_between_tests: 2s
+  tool_startup_delay: 1s
+
+telemetry:
+  collect_cpu: true
+  cpu_sample_interval: 1s
+  collect_qdisc_stats: true
+
+preflight:
+  enabled: true
+  measure_baseline: true
+
+output:
+  results_dir: /tmp/mq-cake-results
+  format: both
+  include_raw_output: false

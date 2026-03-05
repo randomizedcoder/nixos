@@ -16,7 +16,9 @@ else
 endif
 
 rebuild:
+	nix flake update nixpkgs-local
 	sudo nixos-rebuild switch --flake .
+#nix flake lock --update-input nixpkgs-local
 
 # Build without installing (no root required)
 build:

@@ -1,6 +1,11 @@
 # Kernel Parameters for L2 WiFi Access Point Optimization
 # CPU isolation, network performance, and interrupt handling
 
+# https://www.linkedin.com/pulse/protect-your-process-from-interrupts-timer-ticks-hal-ashburner-cfa-msvyc/
+# CONFIG_NO_HZ_FULL=y
+# Then boot it with the relevant command line so that your isolated CPU cores are also tickless
+# isolcpus=0,2,4-11 nohz_full=0,2,4-11
+
 { config, lib, pkgs, ... }:
 
 {
@@ -9,7 +14,8 @@
     # CPU isolation for network IRQ cores
     # Ethernet IRQs: cores 0,12,1,13,2,14,3,15 (first 4 L cores)
     # WiFi IRQs: cores 4,16,5,17,6,18,7,19 (next 4 L cores)
-    "isolcpus=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
+    # Disabled for stress testing - use all cores
+    # "isolcpus=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
     # "nohz_full=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
     # "rcu_nocbs=0,12,1,13,2,14,3,15,4,16,5,17,6,18,7,19"
 
@@ -44,8 +50,8 @@
     # "iwlwifi.bt_coex_active=0"
 
     # # PCIe optimizations
+    # # (was enabled to debug 82599 crash - root cause was non-Intel SFP+ optics)
     # "pcie_aspm=off"
-    # "pcie_aspm.policy=performance"
 
     # # Bluetooth disabling
     # "bluetooth.blacklist=1"

@@ -32,6 +32,8 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      ./devnull-monitor.nix
+      ./udev-nic-names.nix
       # clickhouse
       #./clickhouse-service.nix
       #./docker-compose.nix
@@ -56,6 +58,8 @@
       # NIC configuration
       ./network-interfaces.nix
       ./ethtool-nics.nix
+      # MQ-CAKE test environment scripts
+      ./mq-cake-test.nix
     ];
 
   boot = {
@@ -106,6 +110,10 @@
       #"i915"
     ];
 
+    # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
+    # https://nixos.org/manual/nixos/stable/options#opt-boot.binfmt.emulatedSystems
+    binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
+
     # initrd.preDeviceCommands = ''
     #   echo "Loading regulatory database early"
     #   cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db /lib/firmware/
@@ -117,6 +125,9 @@
     extraModprobeConfig = ''
       options cfg80211 ieee80211_regdom=US
       options iwlwifi lar_disable=1
+      # Allow third-party SFP+ optics (Finisar, etc.) on Intel NICs
+      options i40e allow_unsupported_sfp=1
+      options ixgbe allow_unsupported_sfp=1
     '';
     #options pcie_aspm=off # power saving thingo
 
@@ -146,10 +157,14 @@
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
       # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-jobs
-      max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
+      #max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
       http-connections = 100; # default 25
       # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-substitution-jobs
       max-substitution-jobs = 64; # default 16
+      # Build parallelism: 4 derivations × 6 cores = 24 total
+      # Better for cross-compilation (GCC benefits from multi-core per build)
+      max-jobs = 4;
+      cores = 6;
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task
@@ -185,7 +200,15 @@
   #   IPQoS throughput
   # '';
 
+  # LLDP for cable/port identification
   services.lldpd.enable = true;
+  environment.etc."lldpd.conf".text = ''
+    # Transmit LLDP on all interfaces (not just those receiving LLDP)
+    configure system interface pattern *
+    # Also enable CDP for Cisco switches
+    configure lldp tx-interval 30
+    configure lldp tx-hold 4
+  '';
   services.timesyncd.enable = true;
   services.fstrim.enable = true;
 
@@ -261,6 +284,9 @@
 
   # Multi-queue CAKE (cake_mq) qdisc - backported from net-next/Linux 7.0
   services.mqCake.enable = true;
+
+  # MQ-CAKE test environment scripts (mq-cake-setup, mq-cake-teardown, mq-cake-verify)
+  services.mq-cake-test.enable = true;
 
   # Blackmagic DeckLink support
   # lspci | grep -i blackmagic -> DeckLink Mini Recorder

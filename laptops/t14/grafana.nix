@@ -18,6 +18,7 @@
         serve_from_sub_path = true;
         enable_gzip = true;
       };
+      security.secret_key = "SW2YcwTIb9zpOOhoPsMm";
     };
   };
 }

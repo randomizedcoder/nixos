@@ -129,8 +129,9 @@ let
     };
 
     # Intel 82599ES (ixgbe driver) - 10GbE SFI/SFP+
-    enp66s0f0 = {
-      description = "Intel 82599ES port 0";
+    # Names pinned by udev-nic-names.nix using MAC address
+    ixgbe0 = {
+      description = "Intel 82599ES port 0 (DUT ingress)";
       ringRx = 8192;
       ringTx = 8192;
       channels = 8;
@@ -145,8 +146,8 @@ let
         "flow-type tcp4 dst-port 139 action -1"   # NetBIOS
       ];
     };
-    enp66s0f1 = {
-      description = "Intel 82599ES port 1";
+    ixgbe1 = {
+      description = "Intel 82599ES port 1 (DUT egress)";
       ringRx = 8192;
       ringTx = 8192;
       channels = 8;

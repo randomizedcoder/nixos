@@ -8,6 +8,9 @@
     # Local nixpkgs for testing llama-cpp module changes
     nixpkgs-local.url = "path:/home/das/Downloads/nixpkgs";
 
+    # Local nixpkgs for testing PCP package and module
+    nixpkgs-pcp.url = "path:/home/das/Downloads/n/nixpkgs";
+
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -22,7 +25,7 @@
 
   #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
   #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, nixpkgs-local, home-manager, ... }:
+  outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-pcp, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -51,6 +54,12 @@
         };
         modules = [
           ./configuration.nix
+          # PCP module from local nixpkgs-pcp
+          (nixpkgs-pcp + "/nixos/modules/services/monitoring/pcp.nix")
+          { nixpkgs.overlays = [ (final: prev: {
+              pcp = (import nixpkgs-pcp { system = system; }).pcp;
+            })];
+          }
           #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {

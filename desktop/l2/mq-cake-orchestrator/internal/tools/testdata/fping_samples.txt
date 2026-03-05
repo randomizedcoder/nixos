@@ -1,0 +1,21 @@
+# fping testdata samples
+# Format: fping -c <count> -p <period_ms> -q <target>
+# Output goes to stderr, format: target : xmt/rcv/%loss = X/Y/Z%, min/avg/max = A/B/C
+
+# 10 pings, 100ms interval, no loss
+1.1.1.1 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 9.59/12.2/17.0
+
+# 20 pings, 100ms interval, no loss
+1.1.1.1 : xmt/rcv/%loss = 20/20/0%, min/avg/max = 6.96/12.8/27.5
+
+# 20 pings, 500ms interval, no loss
+1.1.1.1 : xmt/rcv/%loss = 20/20/0%, min/avg/max = 9.35/11.6/15.7
+
+# 50 pings, 200ms interval, no loss
+1.1.1.1 : xmt/rcv/%loss = 50/50/0%, min/avg/max = 8.41/12.8/43.7
+
+# Example with packet loss (simulated)
+10.2.0.2 : xmt/rcv/%loss = 100/95/5%, min/avg/max = 30.1/31.5/35.2
+
+# Example with high jitter (simulated)
+10.2.0.2 : xmt/rcv/%loss = 100/100/0%, min/avg/max = 28.5/32.1/156.3

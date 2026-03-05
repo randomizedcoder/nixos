@@ -1,0 +1,25 @@
+Starting Flent 2.2.0 using Python 3.13.11.
+Starting rrul test. Expected run time: 20 seconds.
+Data file written to ./rrul-2026-02-17T182901.901609.flent.gz
+
+Summary of rrul test run from 2026-02-17 18:29:01
+
+                             avg       median       99th %          # data pts
+ Ping (ms) ICMP   :         2.79         2.40         6.67 ms              100
+ Ping (ms) UDP BE :         0.86         0.72         4.46 ms              100
+ Ping (ms) UDP BK :         0.75         0.70         2.70 ms              100
+ Ping (ms) UDP EF :         0.92         0.79         6.72 ms              100
+ Ping (ms) avg    :         1.33          N/A          N/A ms              100
+ TCP download BE  :      2990.88      3130.09      3143.06 Mbits/s         100
+ TCP download BK  :      2989.73      3129.93      3137.30 Mbits/s         100
+ TCP download CS5 :      1506.77      1394.30      2358.58 Mbits/s         100
+ TCP download EF  :      1899.72      1860.59      2366.02 Mbits/s         100
+ TCP download avg :      2346.78          N/A          N/A Mbits/s         100
+ TCP download sum :      9387.10          N/A          N/A Mbits/s         100
+ TCP totals       :     18780.89          N/A          N/A Mbits/s         100
+ TCP upload BE    :      1672.44      1657.92      2246.59 Mbits/s         100
+ TCP upload BK    :      2969.05      3119.74      3184.00 Mbits/s         100
+ TCP upload CS5   :      1550.43      1530.03      2043.43 Mbits/s         100
+ TCP upload EF    :      3201.87      3152.62      3935.48 Mbits/s         100
+ TCP upload avg   :      2348.45          N/A          N/A Mbits/s         100
+ TCP upload sum   :      9393.79          N/A          N/A Mbits/s         100

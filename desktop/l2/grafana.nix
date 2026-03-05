@@ -19,5 +19,27 @@
         enable_gzip = true;
       };
     };
+
+    # Provision Prometheus data source
+    provision = {
+      enable = true;
+      datasources.settings.datasources = [
+        {
+          name = "Prometheus";
+          type = "prometheus";
+          access = "proxy";
+          url = "http://localhost:${toString config.services.prometheus.port}";
+          isDefault = true;
+        }
+      ];
+
+      # Provision mq-cake dashboard
+      dashboards.settings.providers = [
+        {
+          name = "mq-cake";
+          options.path = ./grafana-dashboards;
+        }
+      ];
+    };
   };
 }

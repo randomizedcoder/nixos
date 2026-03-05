@@ -1,0 +1,25 @@
+[2026-02-17 18:28:32] Client version 0.3.2 running
+[2026-02-17 18:28:32] Connected to server 10.2.0.2:35481
+[2026-02-17 18:28:34] Idle latency to server 1.76 ms
+[2026-02-17 18:28:36] Testing download...
+[2026-02-17 18:28:43] Testing upload...
+[2026-02-17 18:28:50] Testing both download and upload...
+
+-- Download test --
+          Throughput: 9414.29 Mbps
+             Latency: 0.5 ms (0.5 ms down, 0.0 ms up)
+         Packet loss: 0%
+
+-- Upload test --
+          Throughput: 9412.97 Mbps
+             Latency: 0.6 ms (0.4 ms down, 0.1 ms up)
+         Packet loss: 0%
+
+-- Bidirectional test --
+          Throughput: 18739.55 Mbps (9369.86 Mbps down, 9369.69 Mbps up)
+             Latency: 1.4 ms (0.7 ms down, 0.7 ms up)
+         Packet loss: 0%
+
+[2026-02-17 18:28:59] Writing data...
+[2026-02-17 18:28:59] Saved raw data as crusader-results/test 2026-02-17 18.28.59.crr
+[2026-02-17 18:28:59] Saved plot as crusader-results/test 2026-02-17 18.28.59.png

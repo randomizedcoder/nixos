@@ -2,10 +2,12 @@
   #hyprland,
   config,
   pkgs,
+  lib,
   ...
 }:
 
 {
+  imports = [ ./claude.nix ];
   # Ghostty configuration
   programs.ghostty = {
     enable = true;
@@ -262,6 +264,7 @@ SSH_CONFIG_EOF
     gawk
     jq
     git
+    gh #github tool
     htop
     # using btop-romc
     #btop
@@ -318,8 +321,8 @@ SSH_CONFIG_EOF
     hackrf
     #soapysdr
     #soapysdr-with-plugins
-    gqrx
-    cubicsdr
+    #gqrx  # TEMPORARILY DISABLED: gr-osmosdr fails to build against Boost 1.89
+    #cubicsdr  # TEMPORARILY DISABLED: likely same gr-osmosdr/Boost issue
 
     # Media
     vlc

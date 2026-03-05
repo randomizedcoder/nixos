@@ -5,7 +5,7 @@ EXPECTED_HOSTNAME := l2
 
 ACTUAL_HOSTNAME := $(shell hostname)
 
-all: check_hostname rebuild
+all: check_hostname fix_null rebuild
 
 check_hostname:
 ifeq ($(ACTUAL_HOSTNAME),$(EXPECTED_HOSTNAME))
@@ -14,6 +14,9 @@ else
 	@echo "Error: Hostname does not match. Expected: $(EXPECTED_HOSTNAME), Got: $(ACTUAL_HOSTNAME)"
 	@exit 1
 endif
+
+fix_null:
+	sudo chmod 666 /dev/null && stat /dev/null
 
 rebuild:
 	sudo nixos-rebuild switch --flake .

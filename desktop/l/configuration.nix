@@ -55,7 +55,8 @@
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
       # Multi-queue CAKE (cake_mq) for scaling CAKE across CPU cores
-      ./mq-cake-module.nix
+      # TEMPORARILY DISABLED: patches don't apply cleanly to 6.19.5, needs rebase
+      #./mq-cake-module.nix
     ];
 
   boot = {
@@ -156,6 +157,11 @@
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
+      trusted-users = [ "das" ];
+      # Build parallelism: 4 derivations × 6 cores = 24 total
+      # Better for cross-compilation (GCC benefits from multi-core per build)
+      max-jobs = 4;
+      cores = 6;
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task
@@ -430,12 +436,15 @@
 
   # https://wiki.nixos.org/wiki/Laptop
 
+  # Performance Co-Pilot monitoring - this was a test of the pcp package
+  #services.pcp.enable = true;
+
   # BBRv3 congestion control from L4S team (out-of-tree module)
   services.bbr3.enable = true;
 
   # Multi-queue CAKE (cake_mq) - scales CAKE across CPU cores (kernel patches)
-  # Using net-next patches (Jan 2026) - should apply cleanly to 6.18.8
-  services.mqCake.enable = true;
+  # TEMPORARILY DISABLED: patches don't apply cleanly to 6.19.5, needs rebase
+  #services.mqCake.enable = true;
 
   system.stateVersion = "24.11";
 

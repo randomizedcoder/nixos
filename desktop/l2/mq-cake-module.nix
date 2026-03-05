@@ -215,3 +215,13 @@ in {
 # alias:          net-sch-cake_mq
 
 # [das@l2:~]$
+
+  # qdisc cake_mq 8001: root
+  # ├── cake parent 8001:1  (13 pkts)
+  # ├── cake parent 8001:2
+  # ├── cake parent 8001:3  (2 pkts)
+  # ├── cake parent 8001:4
+  # ├── cake parent 8001:5
+  # ├── cake parent 8001:6  (91 pkts)  ← most traffic
+  # ├── cake parent 8001:7
+  # └── cake parent 8001:8

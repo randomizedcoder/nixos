@@ -1,0 +1,121 @@
+# stress-config.yaml
+# Concurrent stress test configuration with flow ramping
+# All tools run simultaneously with incrementally increasing flow counts
+
+namespaces:
+  client: ns-gen-a
+  server: ns-gen-b
+  dut: ns-dut
+
+interfaces:
+  dut_ingress: ixgbe0
+  dut_egress: ixgbe1
+
+network:
+  client_ip: 10.1.0.2
+  server_ip: 10.2.0.2
+  bandwidth: 10gbit
+
+# Sequential mode tools (used when --stress is not set)
+tools:
+  - iperf2
+  - iperf3
+  - wrk
+  - dnsperf
+
+matrix:
+  qdiscs:
+    # - fq_codel
+    # - cake
+    - mq-cake
+  flow_counts:
+    - 100
+  shuffle: false
+
+# Stress test mode configuration
+stress:
+  enabled: true
+  step_duration: 60s       # Hold each flow level for 60 seconds
+  stabilize_delay: 5s      # Wait 5s after incrementing before measuring
+
+  # Per-tool flow configuration
+  # Total flows at each step = sum of all tool flows
+  tools:
+    - name: iperf2
+      start: 300           # Start with 100 TCP flows
+      increment: 100       # Add 100 flows each step
+      max: 1000            # Cap at 1000 flows
+
+    # iperf3 disabled - single-threaded, CPU-bound at 10G speeds
+    # - name: iperf3
+    #   start: 100           # Start with 100 TCP flows
+    #   increment: 100       # Add 100 flows each step
+    #   max: 500             # iperf3 caps at ~128 per instance, multi-instance to reach 500
+
+    - name: wrk
+      start: 100            # Start with 50 HTTP connections
+      increment: 50        # Add 50 connections each step
+      max: 500             # Cap at 500 connections
+
+    - name: dnsperf
+      start: 20            # Start with 10 concurrent DNS queries
+      increment: 10        # Add 10 concurrent queries each step
+      max: 100             # Cap at 100 concurrent queries
+
+    - name: flent
+      start: 1             # RRUL is a fixed test (4 up + 4 down streams)
+      increment: 0         # No ramping for flent
+      max: 1
+
+    - name: crusader
+      start: 1             # Single latency probe
+      increment: 0         # No ramping for crusader
+      max: 1
+
+    - name: fping
+      start: 1             # Single ICMP latency probe
+      increment: 0         # No ramping for fping
+      max: 1               # Pure network latency (no app server overhead)
+
+  # Breaking point detection thresholds
+  max_latency_p99_ms: 500  # Stop if P99 latency exceeds 500ms
+  max_packet_loss_pct: 10  # Stop if packet loss exceeds 10% (was 5%, but netem jitter can cause some loss)
+  max_cpu_pct: 95          # Stop if any CPU core exceeds 95%
+  min_throughput_pct: 50   # Stop if throughput drops below 50% of baseline
+
+  # Multi-instance configuration
+  flows_per_instance: 100  # Max flows per tool instance (iperf2/iperf3)
+  metrics_port: 2112       # Prometheus metrics endpoint
+
+# netem latency injection (simulates WAN conditions)
+netem:
+  enabled: true
+  latency: 30              # Base delay: 30ms
+  jitter: 3                # Jitter: 3ms (10% of latency)
+  limit: 100000            # Queue size: 100k packets
+
+# Phase 5: HTTP/DNS settings
+http:
+  file_size: 100k
+dns:
+  query_file: /var/lib/mq-cake/dns/queries.txt
+  target_qps: 50000
+
+timing:
+  per_tool_duration: 60s
+  cooldown_between_tests: 5s
+  tool_startup_delay: 1s
+
+telemetry:
+  collect_cpu: true
+  cpu_sample_interval: 1s
+  collect_qdisc_stats: true
+
+preflight:
+  enabled: true
+  measure_baseline: true
+
+output:
+  results_dir: /tmp/mq-cake-stress-results
+  format: both
+  include_raw_output: false

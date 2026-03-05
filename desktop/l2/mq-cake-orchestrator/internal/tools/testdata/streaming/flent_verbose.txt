@@ -1,0 +1,144 @@
+Starting Flent 2.2.0 using Python 3.13.11.
+Executing test environment file /nix/store/idafbkw9c0jfm9sliqg25m59i7zrhy5c-flent-2.2.0/lib/python3.13/site-packages/flent/tests/rrul.conf
+Looking up hostname '10.2.0.2'.
+Executing test environment file /nix/store/idafbkw9c0jfm9sliqg25m59i7zrhy5c-flent-2.2.0/lib/python3.13/site-packages/flent/tests/rrul.conf
+Gathering local metadata
+Executing 'uname -s' on localhost
+Executing 'uname -r' on localhost
+Executing 'find /sys/module -name .note.gnu.build-id' on localhost
+Executing 'hexdump -ve "/1 \"%02x\"" /sys/module/cfg80211/notes/.note.gnu.build-id' on localhost
+Executing 'sysctl -e net.core.rmem_max net.core.wmem_max net.ipv4.tcp_autocorking net.ipv4.tcp_early_retrans net.ipv4.tcp_ecn net.ipv4.tcp_pacing_ca_ratio net.ipv4.tcp_pacing_ss_ratio net.ipv4.tcp_dsack net.ipv4.tcp_fack net.ipv4.tcp_sack net.ipv4.tcp_fastopen net.ipv4.tcp_syncookies net.ipv4.tcp_window_scaling net.ipv4.tcp_notsent_lowat net.ipv4.tcp_limit_output_bytes net.ipv4.tcp_timestamps net.ipv4.tcp_congestion_control net.ipv4.tcp_allowed_congestion_control net.ipv4.tcp_available_congestion_control net.ipv4.tcp_mem net.ipv4.tcp_rmem net.ipv4.tcp_wmem net.ipv4.tcp_moderate_rcvbuf net.ipv4.tcp_no_metrics_save' on localhost
+Looking up hostname '10.2.0.2'.
+Executing 'ip route get 10.2.0.2' on localhost
+Executing 'tc qdisc show dev enp35s0f0np0' on localhost
+Executing 'tc -s qdisc show dev enp35s0f0np0' on localhost
+Executing 'tc class show dev enp35s0f0np0' on localhost
+Executing 'ethtool -k enp35s0f0np0' on localhost
+Executing 'for i in /sys/class/net/enp35s0f0np0/queues/tx-*; do [ -d $i/byte_queue_limits ] && echo -n "$(basename $i) " && cat $i/byte_queue_limits/limit_max; done' on localhost
+Executing 'basename $(readlink /sys/class/net/enp35s0f0np0/device/driver)' on localhost
+Executing 'ip link show dev enp35s0f0np0' on localhost
+Executing 'ethtool enp35s0f0np0' on localhost
+Starting rrul test. Expected run time: 20 seconds.
+which: Found netperf executable at /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf
+NetperfDemoRunner(TCP upload BE): Adding child SsRunner
+SsRunner(TCP upload BE :: child 0): Starting new runner (dup key ('localhost', 0.5, 10, '10.2.0.2', 4, (12865,)))
+which: Found bash executable at /etc/profiles/per-user/das/bin/bash
+Looking up hostname '10.2.0.2'.
+NetperfDemoRunner(TCP upload BK): Adding child SsRunner
+SsRunner(TCP upload BK :: child 0): Found duplicate runner (('localhost', 0.5, 10, '10.2.0.2', 4, (12865,))), reusing output
+NetperfDemoRunner(TCP upload CS5): Adding child SsRunner
+SsRunner(TCP upload CS5 :: child 0): Found duplicate runner (('localhost', 0.5, 10, '10.2.0.2', 4, (12865,))), reusing output
+NetperfDemoRunner(TCP upload EF): Adding child SsRunner
+SsRunner(TCP upload EF :: child 0): Found duplicate runner (('localhost', 0.5, 10, '10.2.0.2', 4, (12865,))), reusing output
+UdpRttRunner(Ping (ms) UDP EF): Adding child IrttRunner
+UdpRttRunner(Ping (ms) UDP EF): Cannot use irtt runner (No irtt binary found in PATH.). Using netperf UDP_RR
+UdpRttRunner(Ping (ms) UDP EF): Adding child NetperfDemoRunner
+UdpRttRunner(Ping (ms) UDP BK): Adding child IrttRunner
+UdpRttRunner(Ping (ms) UDP BK): Cannot use irtt runner (No irtt binary found in PATH.). Using netperf UDP_RR
+UdpRttRunner(Ping (ms) UDP BK): Adding child NetperfDemoRunner
+UdpRttRunner(Ping (ms) UDP BE): Adding child IrttRunner
+UdpRttRunner(Ping (ms) UDP BE): Cannot use irtt runner (No irtt binary found in PATH.). Using netperf UDP_RR
+UdpRttRunner(Ping (ms) UDP BE): Adding child NetperfDemoRunner
+Looking up hostname '10.1.0.2'.
+which: Found fping executable at /nix/store/j8g48d9gazk0xwq7sb9p9dxm0dcyr489-fping-5.5/bin/fping
+which: Found ping executable at /etc/profiles/per-user/das/bin/ping
+SsRunner(TCP upload BE :: child 0): Active runner for dup key ('localhost', 0.5, 10, '10.2.0.2', 4, (12865,)): forking
+SsRunner(TCP upload BE :: child 0): Forking to run command /etc/profiles/per-user/das/bin/bash /nix/store/idafbkw9c0jfm9sliqg25m59i7zrhy5c-flent-2.2.0/lib/python3.13/site-packages/flent/scripts/ss_iterate.sh -I 0.50 -l 10 -H localhost -t '10.2.0.2' -f ' and dport != 12865'
+SsRunner(TCP upload BE :: child 0): Forked /etc/profiles/per-user/das/bin/bash as pid 61087
+NetperfDemoRunner(TCP upload BE): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0x0,0x0 -H 10.2.0.2 -p 12865 -t TCP_STREAM -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP upload BE): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61088
+SsRunner(TCP upload BK :: child 0): Duplicate for dup key ('localhost', 0.5, 10, '10.2.0.2', 4, (12865,)). Not forking
+NetperfDemoRunner(TCP upload BK): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0x20,0x20 -H 10.2.0.2 -p 12865 -t TCP_STREAM -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP upload BK): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61089
+SsRunner(TCP upload CS5 :: child 0): Duplicate for dup key ('localhost', 0.5, 10, '10.2.0.2', 4, (12865,)). Not forking
+NetperfDemoRunner(TCP upload CS5): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0xa0,0xa0 -H 10.2.0.2 -p 12865 -t TCP_STREAM -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP upload CS5): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61090
+SsRunner(TCP upload EF :: child 0): Duplicate for dup key ('localhost', 0.5, 10, '10.2.0.2', 4, (12865,)). Not forking
+NetperfDemoRunner(TCP upload EF): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0xb8,0xb8 -H 10.2.0.2 -p 12865 -t TCP_STREAM -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP upload EF): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61091
+NetperfDemoRunner(TCP download BE): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0x0,0x0 -H 10.2.0.2 -p 12865 -t TCP_MAERTS -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP download BE): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61092
+NetperfDemoRunner(TCP download BK): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0x20,0x20 -H 10.2.0.2 -p 12865 -t TCP_MAERTS -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP download BK): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61093
+NetperfDemoRunner(TCP download CS5): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0xa0,0xa0 -H 10.2.0.2 -p 12865 -t TCP_MAERTS -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP download CS5): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61094
+NetperfDemoRunner(TCP download EF): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0xb8,0xb8 -H 10.2.0.2 -p 12865 -t TCP_MAERTS -l 10 -F /dev/urandom -f m -L 10.1.0.2,4  --   -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(TCP download EF): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61095
+NetperfDemoRunner(Ping (ms) UDP EF :: child 0): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0xb8,0xb8 -H 10.2.0.2 -p 12865 -t UDP_RR -l 20 -F /dev/urandom  -L 10.1.0.2,4  -- -e 2  -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(Ping (ms) UDP EF :: child 0): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61096
+NetperfDemoRunner(Ping (ms) UDP BK :: child 0): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4 -Y 0x20,0x20 -H 10.2.0.2 -p 12865 -t UDP_RR -l 20 -F /dev/urandom  -L 10.1.0.2,4  -- -e 2  -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(Ping (ms) UDP BK :: child 0): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61097
+NetperfDemoRunner(Ping (ms) UDP BE :: child 0): Forking to run command /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf -P 0 -v 0 -D -0.50 -4  -H 10.2.0.2 -p 12865 -t UDP_RR -l 20 -F /dev/urandom  -L 10.1.0.2,4  -- -e 2  -L 10.1.0.2,4 -H 10.2.0.2 -k THROUGHPUT,LOCAL_CONG_CONTROL,REMOTE_CONG_CONTROL,TRANSPORT_MSS,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,LOCAL_SOCKET_TOS,REMOTE_SOCKET_TOS,DIRECTION,ELAPSED_TIME,PROTOCOL,LOCAL_SEND_SIZE,LOCAL_RECV_SIZE,REMOTE_SEND_SIZE,REMOTE_RECV_SIZE,LOCAL_BYTES_SENT,LOCAL_BYTES_RECVD,REMOTE_BYTES_SENT,REMOTE_BYTES_RECVD  
+NetperfDemoRunner(Ping (ms) UDP BE :: child 0): Forked /nix/store/iv7nyf96z68smh0vrib0zwalnwdymj09-netperf-20210121/bin/netperf as pid 61098
+PingRunner(Ping (ms) ICMP): Forking to run command /nix/store/j8g48d9gazk0xwq7sb9p9dxm0dcyr489-fping-5.5/bin/fping  -D -p 500 -c 41 -t 40000  -S 10.1.0.2 10.2.0.2
+PingRunner(Ping (ms) ICMP): Forked /nix/store/j8g48d9gazk0xwq7sb9p9dxm0dcyr489-fping-5.5/bin/fping as pid 61099
+Forked 13 processes in 0.022956 seconds
+Started 16 threads in 0.001501 seconds
+NetperfDemoRunner(TCP upload BK): Finished
+NetperfDemoRunner(TCP download BE): Finished
+NetperfDemoRunner(TCP download CS5): Finished
+NetperfDemoRunner(TCP upload EF): Finished
+NetperfDemoRunner(TCP upload CS5): Finished
+NetperfDemoRunner(TCP download BK): Finished
+SsRunner(TCP upload BE :: child 0): Finished
+NetperfDemoRunner(TCP download EF): Finished
+NetperfDemoRunner(TCP upload BE): Finished
+PingRunner(Ping (ms) ICMP): Killed by timeout
+NetperfDemoRunner(Ping (ms) UDP BE :: child 0): Finished
+NetperfDemoRunner(Ping (ms) UDP BK :: child 0): Finished
+NetperfDemoRunner(Ping (ms) UDP EF :: child 0): Finished
+PingRunner(Ping (ms) ICMP): Sending signal 2 to pid 61099
+Ran test in 21.005620 seconds
+Parsing results in parallel on linux platform
+Parsing completed in 0.085236 seconds
+Finished post-test computation in 0.000215 seconds
+Ran full test in 21.115880 seconds
+Runner aggregation finished
+Postprocessing data using 6 postprocessors
+Recording postrun metadata
+Executing 'tc -s qdisc show dev enp35s0f0np0' on localhost
+Writing data file to './rrul-2026-02-18T111346.443181.flent.gz'
+Data file written to ./rrul-2026-02-18T111346.443181.flent.gz
+Creating new DefaultFormatter
+
+Summary of rrul test run from 2026-02-18 11:13:46
+
+                                              avg       median       99th %          # data pts
+ Ping (ms) ICMP                    :        62.00        62.20        70.88 ms               41
+ Ping (ms) UDP BE                  :        61.35        61.63        70.35 ms               41
+ Ping (ms) UDP BK                  :        61.54        61.65        74.43 ms               41
+ Ping (ms) UDP EF                  :        61.16        61.27        64.27 ms               41
+ Ping (ms) avg                     :        61.51          N/A          N/A ms               41
+ TCP download BE                   :       489.36       559.25       588.67 Mbits/s          41
+ TCP download BK                   :      1144.97      1224.13      1282.63 Mbits/s          41
+ TCP download CS5                  :       317.90       328.37       373.79 Mbits/s          41
+ TCP download EF                   :      1163.76      1235.58      1270.67 Mbits/s          41
+ TCP download avg                  :       779.00          N/A          N/A Mbits/s          41
+ TCP download sum                  :      3115.99          N/A          N/A Mbits/s          41
+ TCP totals                        :      6332.69          N/A          N/A Mbits/s          41
+ TCP upload BE                     :        78.42        80.76       100.66 Mbits/s          41
+ TCP upload BE::tcp_cwnd           :       405.50       393.50       517.56                  18
+ TCP upload BE::tcp_delivery_rate  :        77.80        76.71       101.34                  18
+ TCP upload BE::tcp_pacing_rate    :        95.04        91.33       120.86                  18
+ TCP upload BE::tcp_rtt            :        60.06        59.71        62.26                  18
+ TCP upload BE::tcp_rtt_var        :         2.06         1.99         3.90                  18
+ TCP upload BK                     :      1174.35      1242.03      1357.63 Mbits/s          41
+ TCP upload BK::tcp_cwnd           :     13107.61     13814.00     13814.00                  18
+ TCP upload BK::tcp_delivery_rate  :      1113.32      1181.09      1351.10                  18
+ TCP upload BK::tcp_pacing_rate    :      3060.76      3193.30      3363.87                  18
+ TCP upload BK::tcp_rtt            :        59.69        59.63        62.43                  18
+ TCP upload BK::tcp_rtt_var        :         2.35         2.28         4.01                  18
+ TCP upload CS5                    :       801.22       898.14       990.35 Mbits/s          41
+ TCP upload CS5::tcp_cwnd          :      4085.11      4472.50      4601.39                  18
+ TCP upload CS5::tcp_delivery_rate :       786.75       851.39       936.26                  18
+ TCP upload CS5::tcp_pacing_rate   :       974.69      1051.96      1142.50                  18
+ TCP upload CS5::tcp_rtt           :        59.80        59.59        62.17                  18
+ TCP upload CS5::tcp_rtt_var       :         1.93         1.95         3.06                  18
+ TCP upload EF                     :      1162.71      1227.73      1952.63 Mbits/s          41
+ TCP upload EF::tcp_cwnd           :     13250.89     13988.00     13988.00                  18
+ TCP upload EF::tcp_delivery_rate  :      1119.02      1247.52      1395.90                  18
+ TCP upload EF::tcp_pacing_rate    :      3087.67      3235.51      3402.64                  18
+ TCP upload EF::tcp_rtt            :        59.79        59.64        63.18                  18
+ TCP upload EF::tcp_rtt_var        :         2.50         2.43         4.10                  18
+ TCP upload avg                    :       804.17          N/A          N/A Mbits/s          41
+ TCP upload sum                    :      3216.70          N/A          N/A Mbits/s          41

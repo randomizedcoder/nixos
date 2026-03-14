@@ -12,6 +12,10 @@
     # Local nixpkgs for testing llama-cpp module
     nixpkgs-local.url = "path:/home/das/Downloads/nixpkgs";
 
+    # Custom nix with build telemetry
+    nix-custom.url = "path:/home/das/Downloads/nix";
+    nix-custom.inputs.nixpkgs.follows = "nixpkgs";
+
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -29,7 +33,7 @@
     # };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-local, disko, home-manager, ... }:
+  outputs = { self, nixpkgs, nixpkgs-local, disko, home-manager, nix-custom, ... }:
     let
       system = "x86_64-linux";
 
@@ -57,7 +61,7 @@
 
       pkgs = import nixpkgs {
         inherit system;
-        # overlays = [ overlays.default ];
+        overlays = [ nix-custom.overlays.default ];
         config.allowUnfree = true;
       };
 

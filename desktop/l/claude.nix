@@ -1,6 +1,9 @@
 { pkgs, lib, ... }:
 
 let
+  profiles = [ "personal" "work" ];
+  defaultProfile = "personal";
+
   claude-statusline = pkgs.writeShellApplication {
     name = "claude-statusline";
     runtimeInputs = [ pkgs.jq ];
@@ -57,65 +60,71 @@ in
 {
   home.packages = [ claude-statusline ];
 
-  # claude-use function: switch ANTHROPIC_API_KEY from ~/.claude/api-keys/<name>
+  # claude-use: switch CLAUDE_CONFIG_DIR between OAuth profiles
   programs.bash.initExtra = ''
     claude-use() {
-      local keys_dir="$HOME/.claude/api-keys"
+      local profiles_dir="$HOME/.claude/profiles"
       local name="''${1:-}"
 
       if [ -z "$name" ]; then
-        echo "Available API keys:"
-        if [ -d "$keys_dir" ]; then
-          for f in "$keys_dir"/*; do
-            [ -f "$f" ] || continue
-            local bname
-            bname="$(basename "$f")"
-            if [ -n "''${ANTHROPIC_API_KEY:-}" ]; then
-              local file_key
-              file_key="$(tr -d '[:space:]' < "$f")"
-              if [ "$file_key" = "$ANTHROPIC_API_KEY" ]; then
-                echo "  * $bname (active)"
-                continue
-              fi
-            fi
-            echo "    $bname"
-          done
-        else
-          echo "  (no keys directory at $keys_dir)"
-        fi
+        echo "Claude profiles:"
+        for p in ${lib.concatStringsSep " " profiles}; do
+          local pdir="$profiles_dir/$p"
+          if [ "''${CLAUDE_CONFIG_DIR:-}" = "$pdir" ]; then
+            echo "  * $p (active)"
+          else
+            echo "    $p"
+          fi
+        done
         echo ""
-        echo "Usage: claude-use <name>"
+        echo "Usage: claude-use <profile>"
         return 0
       fi
 
-      local key_file="$keys_dir/$name"
-      if [ ! -f "$key_file" ]; then
-        echo "Error: key file not found: $key_file" >&2
-        echo "Available keys:" >&2
-        ls "$keys_dir" 2>/dev/null || echo "  (none)" >&2
+      local profile_dir="$profiles_dir/$name"
+      if [ ! -d "$profile_dir" ]; then
+        echo "Error: profile not found: $profile_dir" >&2
+        echo "Available profiles: ${lib.concatStringsSep " " profiles}" >&2
         return 1
       fi
 
-      local key
-      key="$(tr -d '[:space:]' < "$key_file")"
-      if [ -z "$key" ]; then
-        echo "Error: key file is empty: $key_file" >&2
-        return 1
-      fi
-
-      export ANTHROPIC_API_KEY="$key"
-      echo "Switched to API key: $name"
+      export CLAUDE_CONFIG_DIR="$profile_dir"
+      echo "Switched to profile: $name (CLAUDE_CONFIG_DIR=$profile_dir)"
     }
+
+    claude-use-setup() {
+      local name="''${1:-}"
+      if [ -z "$name" ]; then
+        echo "Usage: claude-use-setup <profile>"
+        echo "Sets up OAuth login for a profile."
+        return 1
+      fi
+
+      local profile_dir="$HOME/.claude/profiles/$name"
+      if [ ! -d "$profile_dir" ]; then
+        echo "Error: profile directory not found: $profile_dir" >&2
+        echo "Run 'make' first to create profile directories." >&2
+        return 1
+      fi
+
+      export CLAUDE_CONFIG_DIR="$profile_dir"
+      echo "Setting up OAuth for profile: $name"
+      echo "CLAUDE_CONFIG_DIR=$profile_dir"
+      claude auth login
+    }
+
+    # Default profile
+    if [ -z "''${CLAUDE_CONFIG_DIR:-}" ]; then
+      export CLAUDE_CONFIG_DIR="$HOME/.claude/profiles/${defaultProfile}"
+    fi
   '';
 
-  # Copy writable settings.json on activation (allows runtime edits, reset on rebuild)
-  home.activation.claudeSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    install -m 644 ${settingsFile} "$HOME/.claude/settings.json"
-  '';
-
-  # Create api-keys directory with restricted permissions
-  home.activation.createClaudeApiKeysDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    mkdir -p "$HOME/.claude/api-keys"
-    chmod 700 "$HOME/.claude/api-keys"
+  # Create profile directories and deploy settings.json to each
+  home.activation.claudeProfiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ${lib.concatMapStringsSep "\n    " (profile: ''
+      mkdir -p "$HOME/.claude/profiles/${profile}"
+      chmod 700 "$HOME/.claude/profiles/${profile}"
+      install -m 644 ${settingsFile} "$HOME/.claude/profiles/${profile}/settings.json"
+    '') profiles}
   '';
 }

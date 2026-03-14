@@ -51,4 +51,7 @@ s:
 l2s:
 	rsync -avzd /home/das/nixos/ l2:/home/das/nixos/
 
+nix-custom:
+	nix flake update nix-custom
+
 # end

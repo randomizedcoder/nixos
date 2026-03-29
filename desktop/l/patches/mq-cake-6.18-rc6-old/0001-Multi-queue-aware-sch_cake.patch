@@ -1,0 +1,107 @@
+From c1efd5d2a5071b227c8ebad59abad10914e85ad9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Toke=20H=C3=B8iland-J=C3=B8rgensen?= <toke@redhat.com>
+Date: Tue, 2 Sep 2025 13:04:25 +0200
+Subject: [PATCH 1/8] Multi-queue aware sch_cake
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This series adds a multi-queue aware variant of the sch_cake scheduler,
+called 'cake_mq'. Using this makes it possible to scale the rate shaper
+of sch_cake across multiple CPUs, while still enforcing a single global
+rate on the interface.
+
+The approach taken in this patch series is to implement a separate qdisc
+called 'cake_mq', which is based on the existing 'mq' qdisc, but differs
+in a couple of aspects:
+
+- It will always install a cake instance on each hardware queue (instead
+  of using the default qdisc for each queue like 'mq' does).
+
+- The cake instances on the queues will share their configuration, which
+  can only be modified through the parent cake_mq instance.
+
+Doing things this way does incur a bit of code duplication (reusing the
+'mq' qdisc code), but it simplifies user configuration by centralising
+all configuration through the cake_mq qdisc (which also serves as an
+obvious way of opting into the multi-queue aware behaviour). The cake_mq
+qdisc takes all the same configuration parameters as the cake qdisc.
+
+An earlier version of this work was presented at this year's Netdevconf:
+https://netdevconf.info/0x19/sessions/talk/mq-cake-scaling-software-rate-limiting-across-cpu-cores.html
+
+The patch series is structured as follows:
+
+- Patch 1 factors out the sch_cake configuration variables into a
+  separate struct that can be shared between instances.
+
+- Patch 2 adds the basic cake_mq qdisc, based on the mq code
+
+- Patch 3 adds configuration sharing across the cake instances installed
+  under cake_mq
+
+- Patch 4 adds the shared shaper state that enables the multi-core rate
+  shaping
+
+A patch to iproute2 to make it aware of the cake_mq qdisc is included as
+a separate patch as part of this series.
+
+To: Toke Høiland-Jørgensen <toke@toke.dk>
+To: Jamal Hadi Salim <jhs@mojatatu.com>
+To: Cong Wang <xiyou.wangcong@gmail.com>
+To: Jiri Pirko <jiri@resnulli.us>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Simon Horman <horms@kernel.org>
+Cc: Jonas Köppeler <j.koeppeler@tu-berlin.de>
+Cc: cake@lists.bufferbloat.net
+Cc: netdev@vger.kernel.org
+
+---
+Changes since RFC:
+
+- Drop the sync_time parameter for now and always use the 200 us value.
+  We are planning to explore auto-configuration of the sync time, so
+  this is to avoid committing to a UAPI. If needed, a parameter can be
+  added back later.
+- Keep the tc yaml spec in sync with the new stats member
+- Rebase on net-next
+- Link to RFC: https://lore.kernel.org/r/20250924-mq-cake-sub-qdisc-v1-0-43a060d1112a@redhat.com
+
+---
+Changes in v3:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v2: https://lore.kernel.org/r/20251127-mq-cake-sub-qdisc-v2-0-24d9ead047b9@redhat.com
+
+Changes in v2:
+- Rebase on top of net-next, incorporating Eric's changes
+- Link to v1: https://lore.kernel.org/r/20251124-mq-cake-sub-qdisc-v1-0-a2ff1dab488f@redhat.com
+
+--- b4-submit-tracking ---
+# This section is used internally by b4 prep for tracking purposes.
+{
+  "series": {
+    "revision": 3,
+    "change-id": "20250902-mq-cake-sub-qdisc-cdf0b59d2fe5",
+    "prefixes": [
+      "net-next"
+    ],
+    "history": {
+      "RFC": [
+        "20250924-mq-cake-sub-qdisc-v1-0-43a060d1112a@redhat.com"
+      ],
+      "v1": [
+        "20251124-mq-cake-sub-qdisc-v1-0-a2ff1dab488f@redhat.com"
+      ],
+      "v2": [
+        "20251127-mq-cake-sub-qdisc-v2-0-24d9ead047b9@redhat.com"
+      ]
+    }
+  }
+}
+-- 
+2.52.0
+

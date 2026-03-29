@@ -1,9 +1,21 @@
-{
+{ 
   description = "l Flake";
 
   # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+
+    # Local nixpkgs for testing llama-cpp module changes
+    nixpkgs-local.url = "path:/home/das/Downloads/nixpkgs";
+
+    # Local nixpkgs for onnxruntime ROCm + obs-backgroundremoval
+    nixpkgs-onnx.url = "path:/home/das/Downloads/onnx/nixpkgs";
+
+    # Local nixpkgs for OBS plugin updates
+    nixpkgs-obs.url = "path:/home/das/Downloads/n/nixpkgs";
+
+    # Local nixpkgs for testing PCP package and module
+    #nixpkgs-pcp.url = "path:/home/das/Downloads/n/nixpkgs";
 
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
@@ -19,7 +31,8 @@
 
   #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
   #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, home-manager, ... }:
+  #outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-pcp, home-manager, ... }:
+  outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-onnx, nixpkgs-obs, home-manager, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -44,34 +57,44 @@
         inherit system;
         specialArgs = {
           unstable = pkgs;
+          inherit nixpkgs-local;
         };
         modules = [
           ./configuration.nix
+          # PCP module from local nixpkgs-pcp
+          #(nixpkgs-pcp + "/nixos/modules/services/monitoring/pcp.nix")
+          #{ nixpkgs.overlays = [ (final: prev: {
+          #    pcp = (import nixpkgs-pcp { system = system; }).pcp;
+          #  })];
+          #}
           #hyprland.nixosModules.default
           home-manager.nixosModules.home-manager
           {
-            # # Apply the overlay to NixOS
-            # nixpkgs.overlays = [
-            #   (final: prev: {
-            #     # Custom onnxruntime with ROCm support
-            #     # Note: CUDA and ROCm are mutually exclusive - only one can be enabled
-            #     onnxruntime = final.callPackage ./custom-packages/onnxruntime/package.nix {
-            #       cudaSupport = false;    # Disable CUDA when using ROCm
-            #       ncclSupport = false;    # NCCL requires CUDA, so disable with ROCm
-            #       rocmSupport = true;     # Enable ROCm support for AMD GPUs
-            #       rcclSupport = true;     # Enable RCCL for ROCm multi-GPU support
-            #     };
-
-            #     # Custom Python onnxruntime module that uses our custom onnxruntime
-            #     python313Packages = prev.python313Packages.override (old: {
-            #       overrides = prev.lib.composeExtensions (old.overrides or (_: _: {})) (pyfinal: pyprev: {
-            #         onnxruntime = pyfinal.callPackage ./custom-packages/python-onnxruntime/default.nix {
-            #           onnxruntime = final.onnxruntime;
-            #         };
-            #       });
-            #     });
-            #   })
-            # ];
+            nixpkgs.overlays = [
+              (final: prev:
+                let
+                  pkgsRocm = import nixpkgs-onnx {
+                    system = "x86_64-linux";
+                    config = prev.config // { rocmSupport = true; };
+                  };
+                  pkgsObs = import nixpkgs-obs {
+                    system = "x86_64-linux";
+                    config = prev.config;
+                  };
+                in {
+                  onnxruntime = pkgsRocm.onnxruntime;
+                  obs-studio-plugins = prev.obs-studio-plugins // {
+                    obs-backgroundremoval = pkgsRocm.obs-studio-plugins.obs-backgroundremoval;
+                    # Plugin updates from nixpkgs-obs
+                    obs-move-transition = pkgsObs.obs-studio-plugins.obs-move-transition;
+                    obs-source-clone = pkgsObs.obs-studio-plugins.obs-source-clone;
+                    obs-stroke-glow-shadow = pkgsObs.obs-studio-plugins.obs-stroke-glow-shadow;
+                    obs-multi-rtmp = pkgsObs.obs-studio-plugins.obs-multi-rtmp;
+                    advanced-scene-switcher = pkgsObs.obs-studio-plugins.advanced-scene-switcher;
+                    obs-livesplit-one = pkgsObs.obs-studio-plugins.obs-livesplit-one;
+                  };
+                })
+            ];
 
             # Allow unfree packages
             nixpkgs.config.allowUnfree = true;

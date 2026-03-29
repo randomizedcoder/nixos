@@ -54,4 +54,7 @@ update_oldm.:
 restart_display_manager:
 	sudo systemctl restart display-manager.service
 
+sync:
+	rsync -avz ./ t14:~/nixos/laptops/t14/
+
 # end

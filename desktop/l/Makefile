@@ -16,7 +16,17 @@ else
 endif
 
 rebuild:
+	nix flake update nixpkgs-local
 	sudo nixos-rebuild switch --flake .
+#nix flake lock --update-input nixpkgs-local
+
+# Build without installing (no root required)
+build:
+	nix build .#nixosConfigurations.$(EXPECTED_HOSTNAME).config.system.build.toplevel --no-link
+
+# Build with output link in ./result
+build-link:
+	nix build .#nixosConfigurations.$(EXPECTED_HOSTNAME).config.system.build.toplevel
 
 rebuild_l:
 	sudo nixos-rebuild switch --flake .#t
@@ -56,6 +66,9 @@ update_oldm.:
 
 restart_display_manager:
 	sudo systemctl restart display-manager.service
+
+update-local:
+	sudo nix flake update nixpkgs-local
 
 #ls -l /run/opengl-driver/lib/gbm/
 #readlink /run/opengl-driver/lib/gbm/dri_gbm.so

@@ -34,7 +34,8 @@
     hwloc
     #gparted
     ncdu
-    neofetch
+    fastfetch
+    #neofethc is no more
     file
 
     # Terminal Multiplexers

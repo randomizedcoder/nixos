@@ -8,6 +8,7 @@
     enable = true;
     settings = {
       security.admin_password = "admin"; # this is my local only instance
+      security.secret_key = "admin"; # required since nixpkgs 2025+, local-only instance
       users.password_hint = "admin";
       server = {
         # Listening Address

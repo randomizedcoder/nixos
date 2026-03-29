@@ -26,7 +26,7 @@
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp
-    neofetch
+    fastfetch
     libxml2  # Added for bazel/clang development
 
     # Wayland support

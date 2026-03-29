@@ -7,6 +7,10 @@
   services.grafana = {
     enable = true;
     settings = {
+      security = {
+        # Old Grafana default; required to be set explicitly since NixOS 26.05
+        secret_key = "SW2YcwTIb9zpOOhoPsMm";
+      };
       server = {
         # Listening Address
         http_addr = "0.0.0.0";
@@ -18,6 +22,28 @@
         serve_from_sub_path = true;
         enable_gzip = true;
       };
+    };
+
+    # Provision Prometheus data source
+    provision = {
+      enable = true;
+      datasources.settings.datasources = [
+        {
+          name = "Prometheus";
+          type = "prometheus";
+          access = "proxy";
+          url = "http://localhost:${toString config.services.prometheus.port}";
+          isDefault = true;
+        }
+      ];
+
+      # Provision mq-cake dashboard
+      dashboards.settings.providers = [
+        {
+          name = "mq-cake";
+          options.path = ./grafana-dashboards;
+        }
+      ];
     };
   };
 }

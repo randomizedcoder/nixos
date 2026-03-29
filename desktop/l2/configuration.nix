@@ -18,7 +18,7 @@
     [
       ./disko-l2.nix
       ./hardware-configuration.nix
-      #./hardware-graphics.nix
+      ./hardware-graphics.nix
       ./sysctl.nix
       #./wireless_desktop.nix
       ./locale.nix
@@ -32,23 +32,34 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      ./devnull-monitor.nix
+      ./udev-nic-names.nix
       # clickhouse
-      ./clickhouse-service.nix
+      #./clickhouse-service.nix
       #./docker-compose.nix
       #./docker-daemon.nix
       #./smokeping.nix
       #./distributed-builds.nix
       #./hyprland.nix
       #./hostapd.nix
-      ./hostapd-multi.nix
+      #./hostapd-multi.nix
       ./network-optimization.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
+      # Multi-queue CAKE (cake_mq) - now included in kernel 7.x
+      #./mq-cake-module.nix
       # CPU and IRQ optimization modules
       #./irq-affinity.nix
       ./systemd-slices.nix
       ./kernel-params.nix
       #./monitoring.nix
+      # llama-cpp CUDA test
+      ./llama-service.nix
+      # NIC configuration
+      ./network-interfaces.nix
+      ./ethtool-nics.nix
+      # MQ-CAKE test environment scripts
+      ./mq-cake-test.nix
     ];
 
   boot = {
@@ -64,18 +75,19 @@
 
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages;
-    kernelPackages = pkgs.linuxPackages_latest;
+    #kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
 
-    # Enable mac80211 debugfs for WiFi AQM tuning
-    kernelPatches = [{
-      name = "mac80211-debugfs";
-      patch = null;
-      structuredExtraConfig = with lib.kernel; {
-        MAC80211_DEBUGFS = yes;
-        # Also enable general WiFi debugging options
-        CFG80211_DEBUGFS = yes;
-      };
-    }];
+    # # Enable mac80211 debugfs for WiFi AQM tuning
+    # kernelPatches = [{
+    #   name = "mac80211-debugfs";
+    #   patch = null;
+    #   structuredExtraConfig = with lib.kernel; {
+    #     MAC80211_DEBUGFS = yes;
+    #     # Also enable general WiFi debugging options
+    #     CFG80211_DEBUGFS = yes;
+    #   };
+    # }];
 
     initrd.kernelModules = [
       "amdgpu"
@@ -87,6 +99,10 @@
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
       "sch_dualpi2"  # DualPI2 L4S AQM packet scheduler (available in kernel 6.17+)
+      "nvidia"
+      "nvidia_uvm" # Essential for CUDA/llama.cpp
+      "nvidia_modeset"
+      "nvidia_drm"
     ];
 
     blacklistedKernelModules = [
@@ -94,19 +110,26 @@
       #"i915"
     ];
 
-    initrd.preDeviceCommands = ''
-      echo "Loading regulatory database early"
-      cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db /lib/firmware/
-      cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db.p7s /lib/firmware/
-    '';
+    # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
+    # https://nixos.org/manual/nixos/stable/options#opt-boot.binfmt.emulatedSystems
+    binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
+
+    # initrd.preDeviceCommands = ''
+    #   echo "Loading regulatory database early"
+    #   cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db /lib/firmware/
+    #   cp ${pkgs.wireless-regdb}/lib/firmware/regulatory.db.p7s /lib/firmware/
+    # '';
 
     # cat /proc/cmdline
     # cat /etc/modprobe.d/nixos.conf
     extraModprobeConfig = ''
       options cfg80211 ieee80211_regdom=US
       options iwlwifi lar_disable=1
-      options pcie_aspm=off
+      # Allow third-party SFP+ optics (Finisar, etc.) on Intel NICs
+      options i40e allow_unsupported_sfp=1
+      options ixgbe allow_unsupported_sfp=1
     '';
+    #options pcie_aspm=off # power saving thingo
 
   };
 
@@ -134,10 +157,26 @@
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
       # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-jobs
-      max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
+      #max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
       http-connections = 100; # default 25
       # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-substitution-jobs
       max-substitution-jobs = 64; # default 16
+      # Build parallelism for 24-core Threadripper PRO 3945WX:
+      #
+      # Previous: max-jobs=4, cores=6 (4 derivations × 6 cores = 24 total)
+      #   Pro: good for parallel multi-package builds
+      #   Con: single large builds (kernel, GHC) only used 6 cores (~25% CPU)
+      #
+      # Current: max-jobs=1, cores=24 (1 derivation × 24 cores)
+      #   Pro: large builds use all cores; most nix builds are single-drv anyway
+      #   Con: less parallelism when building many independent small packages
+      #
+      # Changed 2026-03-18: observed kernel --rebuild using only 25% CPU on l2
+      # during PR#15508 registerOutputs() benchmarking. Single large builds
+      # benefit much more from cores=24 than from parallel small derivations.
+      # Can override per-command: nix build --option cores 6 -j4
+      max-jobs = 1;
+      cores = 24;
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task
@@ -149,6 +188,8 @@
 
   # https://nixos.wiki/wiki/Networking
   networking.hostName = "l2";
+
+  # Static IP configuration moved to ./network-interfaces.nix
 
   time.timeZone = "America/Los_Angeles";
 
@@ -171,7 +212,15 @@
   #   IPQoS throughput
   # '';
 
+  # LLDP for cable/port identification
   services.lldpd.enable = true;
+  environment.etc."lldpd.conf".text = ''
+    # Transmit LLDP on all interfaces (not just those receiving LLDP)
+    configure system interface pattern *
+    # Also enable CDP for Cisco switches
+    configure lldp tx-interval 30
+    configure lldp tx-hold 4
+  '';
   services.timesyncd.enable = true;
   services.fstrim.enable = true;
 
@@ -245,9 +294,15 @@
   # BBRv3 congestion control from L4S team (out-of-tree module)
   services.bbr3.enable = true;
 
+  # Multi-queue CAKE (cake_mq) qdisc - backported from net-next/Linux 7.0
+  #services.mqCake.enable = true;
+
+  # MQ-CAKE test environment scripts (mq-cake-setup, mq-cake-teardown, mq-cake-verify)
+  #services.mq-cake-test.enable = true;
+
   # Blackmagic DeckLink support
   # lspci | grep -i blackmagic -> DeckLink Mini Recorder
-  hardware.decklink.enable = true;
+  #hardware.decklink.enable = true;
 
 }
 

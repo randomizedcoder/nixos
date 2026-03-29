@@ -60,7 +60,7 @@
             ];
 
             # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
-            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
+            home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.das = { config, pkgs, ... }: {
               imports = [

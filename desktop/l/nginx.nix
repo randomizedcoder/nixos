@@ -13,7 +13,7 @@
   # grep ExecStartPre /etc/systemd/system/nginx.service
   services.nginx = {
     enable = true;
-    defaultHTTPListenPort = 8080;
+    defaultHTTPListenPort = 8880;
     # statusPage = true;  # Disabled to avoid conflicting server blocks
 
     recommendedProxySettings = true;

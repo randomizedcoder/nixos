@@ -47,11 +47,16 @@
       #./distributed-builds.nix
       #./hyprland.nix
       ./nginx.nix
-      ./ollama-service.nix
+      #./ollama-service.nix
+      ./llama-service.nix
+      ./litellm-service.nix
       ./fan2go.nix
       ./below.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
+      # Multi-queue CAKE (cake_mq) for scaling CAKE across CPU cores
+      # TEMPORARILY DISABLED: patches don't apply cleanly to 6.19.5, needs rebase
+      #./mq-cake-module.nix
     ];
 
   boot = {
@@ -152,6 +157,26 @@
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
+      trusted-users = [ "das" ];
+      # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-jobs
+      #max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
+      http-connections = 100; # default 25
+      # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-substitution-jobs
+      max-substitution-jobs = 64; # default 16
+      # Build parallelism for 24-thread Threadripper PRO 3945WX:
+      #
+      # Previous: max-jobs=4, cores=6 (4 derivations × 6 cores = 24 total)
+      #   Pro: good for parallel multi-package builds
+      #   Con: single large builds (kernel, GHC) only used 6 cores (~25% CPU)
+      #
+      # Current: max-jobs=1, cores=24 (1 derivation × 24 cores)
+      #   Pro: large builds use all cores; most nix builds are single-drv anyway
+      #   Con: less parallelism when building many independent small packages
+      #
+      # Can override per-command: nix build --option cores 6 -j4
+      max-jobs = 1;
+      cores = 24;
+      extra-sandbox-paths = [ "/var/cache/bazel-nix" ];
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task
@@ -248,7 +273,40 @@
   # services.libinput.enable = true;
 
   # https://nixos.wiki/wiki/Printing
-  services.printing.enable = true;
+  # HP MFP M477fdw printer support
+  services.printing = {
+    enable = true;
+    drivers = [ pkgs.hplip pkgs.hplipWithPlugin pkgs.gutenprint pkgs.gutenprintBin ];
+    browsing = true;
+    defaultShared = false;
+  };
+
+  # Declarative printer configuration (using IPP Everywhere / driverless)
+  hardware.printers = {
+    ensurePrinters = [
+      {
+        name = "HP_M477fdw";
+        description = "HP Color LaserJet MFP M477fdw";
+        location = "Home Office";
+        deviceUri = "ipp://172.16.50.63:631/ipp/print";
+        model = "everywhere";
+        ppdOptions = {
+          PageSize = "Letter";
+        };
+      }
+    ];
+    ensureDefaultPrinter = "HP_M477fdw";
+  };
+
+  # Enable CUPS browsed for automatic printer discovery
+  services.avahi.publish.enable = true;
+  services.avahi.publish.userServices = true;
+
+  # Scanner support for HP MFP (multifunction printer)
+  hardware.sane = {
+    enable = true;
+    extraBackends = [ pkgs.hplip ];
+  };
 
   # flameshot now in home.nix
   # https://wiki.nixos.org/wiki/Flameshot
@@ -274,7 +332,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" "scanner" "lp" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -393,8 +451,15 @@
 
   # https://wiki.nixos.org/wiki/Laptop
 
+  # Performance Co-Pilot monitoring - this was a test of the pcp package
+  #services.pcp.enable = true;
+
   # BBRv3 congestion control from L4S team (out-of-tree module)
   services.bbr3.enable = true;
+
+  # Multi-queue CAKE (cake_mq) - scales CAKE across CPU cores (kernel patches)
+  # TEMPORARILY DISABLED: patches don't apply cleanly to 6.19.5, needs rebase
+  #services.mqCake.enable = true;
 
   system.stateVersion = "24.11";
 

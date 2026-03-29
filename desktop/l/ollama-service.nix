@@ -32,6 +32,7 @@ in {
     enable = true;
     host = "[::]";
     #port = 11434; # default
+    #port = 11435;
 
     # acceleration option was removed - use package instead
     # See: https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/ollama.nix
@@ -53,6 +54,7 @@ in {
     # ollama list
 
     loadModels = [
+      "gpt-oss:latest"
       #https://ollama.com/library/nemotron-3-nano
       "nemotron-3-nano:latest"
       "nomic-embed-text:latest"
@@ -67,6 +69,7 @@ in {
       #"deepseek-r1:1.5b"
       "llama3-groq-tool-use:70b-q2_K"
       "qwen2.5-coder:32b"
+      "qwen3-coder:30b"
       "gpt-oss:20b" # https://ollama.com/library/gpt-oss
       #"gemini-3-flash-preview:latest" # https://ollama.com/library/gemini-3-flash-preview
     ];

@@ -6,6 +6,7 @@
 }:
 
 {
+  imports = [ ./claude.nix ];
   # Ghostty configuration
   programs.ghostty = {
     enable = true;
@@ -68,7 +69,7 @@
     hwloc
     gparted
     ncdu
-    neofetch
+    fastfetch
     file
 
     # # Hyprland related
@@ -235,7 +236,10 @@
     bazel-buildtools
     bazelisk
 
-    code-cursor
+    opencode
+    claude-code
+    claude-monitor
+    claude-code-router
 
     # # https://github.com/bazel-contrib/bazel-gazelle/tags
     # # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/by-name/ba/bazel-gazelle/package.nix#L26
@@ -271,12 +275,12 @@
     flutter #3.35.2
     #flutter329
     # https://search.nixos.org/packages?channel=unstable&query=flutter
-    firebase-tools
-    android-studio
-    android-tools
-    android-udev-rules
+    #firebase-tools # broken with nodejs v24 in nixos-unstable
+    #android-studio
+    #android-tools
+    #android-udev-rules
     # Java for Android development
-    jdk17
+    #jdk17
 
     nordic
     gnome-themes-extra
@@ -384,7 +388,7 @@
 
     # Misc
     # https://github.com/jrincayc/ucblogo-code
-    ucblogo
+    #ucblogo # broken: build failure with current gcc
     # https://github.com/wagoodman/dive
     # dive # Duplicate removed
     # https://github.com/sharkdp/hyperfine
@@ -430,7 +434,7 @@
     rocmPackages.rocminfo
     rocmPackages.rocm-smi
     rocmPackages.rocm-core
-    rocmPackages.rocmPath
+    #rocmPackages.rocmPath # removed from nixpkgs
     lact
     # https://github.com/aristocratos/btop
     btop-rocm
@@ -439,7 +443,7 @@
     ollama-rocm
     rocmPackages.rccl
     # https://jeffser.com/alpaca/
-    alpaca
+    #alpaca # broken: plotly build failure via spacy -> wandb
 
     # virtual camera control
     # v4l2-ctl --list-devices
@@ -459,7 +463,7 @@
     onnxruntime
 
     # Standard Python onnxruntime module (should work with custom C++ library)
-    python313Packages.onnxruntime
+    #python313Packages.onnxruntime # broken: plotly build failure
   ];
 
   # vscode
@@ -531,8 +535,8 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder";
+    settings.user.email = "dave.seddon.ca@gmail.com";
+    settings.user.name = "randomizedcoder";
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };
@@ -565,7 +569,7 @@
       obs-retro-effects
       obs-replay-source
       obs-freeze-filter
-      obs-color-monitor
+      #obs-color-monitor # broken: Qt::GuiPrivate not found
       #looking-glass-obs
       obs-vintage-filter
       obs-scale-to-sound

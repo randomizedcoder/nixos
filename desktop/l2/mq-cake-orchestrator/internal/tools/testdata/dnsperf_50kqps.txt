@@ -1,0 +1,22 @@
+DNS Performance Testing Tool
+Version 2.11.0
+
+[Status] Command line: dnsperf -s 10.2.0.2 -p 53 -d /var/lib/mq-cake/dns/queries.txt -c 100 -Q 50000 -l 30
+[Status] Sending queries (target rate 50000 qps)
+
+[Status] Testing complete (interrupting)
+
+Statistics:
+
+  Queries sent:         1500000
+  Queries completed:    1498523 (99.90%)
+  Queries lost:         1477 (0.10%)
+
+  Response codes:       NOERROR 1498523 (100.00%)
+
+  Average packet size:  request 45, response 61
+  Run time (s):         30.000892
+  Queries per second:   49950.827083
+
+  Average Latency (s):  0.001234 (min 0.000089, max 0.045672)
+  Latency StdDev (s):   0.000567

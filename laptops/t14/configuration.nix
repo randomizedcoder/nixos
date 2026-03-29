@@ -43,6 +43,8 @@
       ./docker-daemon.nix
       #./smokeping.nix
       #./x.nix
+      ./bbr3-module.nix
+      #./distributed-builds.nix
     ];
 
   boot = {
@@ -179,6 +181,9 @@
     ipv6 = true;
     openFirewall = true;
   };
+
+  # BBRv3 congestion control from L4S team (out-of-tree module)
+  services.bbr3.enable = true;
 
   services.bpftune.enable = true;
   # Enable touchpad support (enabled default in most desktopManager).

@@ -1,0 +1,13 @@
+Running 5s test @ http://10.2.0.2/1k.bin
+  8 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     0.88ms    1.04ms  60.58ms   99.24%
+    Req/Sec    13.47k     1.07k   16.51k    71.32%
+  Latency Distribution
+     50%  795.00us
+     75%    1.00ms
+     90%    1.24ms
+     99%    1.82ms
+  546612 requests in 5.10s, 685.50MB read
+Requests/sec: 107174.52
+Transfer/sec:    134.41MB

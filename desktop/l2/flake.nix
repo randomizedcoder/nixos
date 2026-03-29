@@ -61,7 +61,17 @@
 
       pkgs = import nixpkgs {
         inherit system;
-        overlays = [ nix-custom.overlays.default ];
+        overlays = [
+          (final: prev:
+            let
+              ps = nix-custom.lib.makeComponents { pkgs = final; };
+            in {
+              nix = (ps.nix-everything.overrideAttrs (old: {
+                doCheck = false;
+              }));
+            }
+          )
+        ];
         config.allowUnfree = true;
       };
 

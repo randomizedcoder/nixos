@@ -47,7 +47,7 @@
       #./distributed-builds.nix
       #./hyprland.nix
       ./nginx.nix
-      ./ollama-service.nix
+      #./ollama-service.nix
       ./llama-service.nix
       ./litellm-service.nix
       ./fan2go.nix
@@ -158,10 +158,25 @@
       experimental-features = [ "nix-command" "flakes" ];
       download-buffer-size = "500000000";
       trusted-users = [ "das" ];
-      # Build parallelism: 4 derivations × 6 cores = 24 total
-      # Better for cross-compilation (GCC benefits from multi-core per build)
-      max-jobs = 4;
-      cores = 6;
+      # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-jobs
+      #max-jobs = 12; # default = 1.  Setting this to 1/2 my cores
+      http-connections = 100; # default 25
+      # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-substitution-jobs
+      max-substitution-jobs = 64; # default 16
+      # Build parallelism for 24-thread Threadripper PRO 3945WX:
+      #
+      # Previous: max-jobs=4, cores=6 (4 derivations × 6 cores = 24 total)
+      #   Pro: good for parallel multi-package builds
+      #   Con: single large builds (kernel, GHC) only used 6 cores (~25% CPU)
+      #
+      # Current: max-jobs=1, cores=24 (1 derivation × 24 cores)
+      #   Pro: large builds use all cores; most nix builds are single-drv anyway
+      #   Con: less parallelism when building many independent small packages
+      #
+      # Can override per-command: nix build --option cores 6 -j4
+      max-jobs = 1;
+      cores = 24;
+      extra-sandbox-paths = [ "/var/cache/bazel-nix" ];
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task

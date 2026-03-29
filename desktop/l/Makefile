@@ -67,6 +67,9 @@ update_oldm.:
 restart_display_manager:
 	sudo systemctl restart display-manager.service
 
+update-local:
+	sudo nix flake update nixpkgs-local
+
 #ls -l /run/opengl-driver/lib/gbm/
 #readlink /run/opengl-driver/lib/gbm/dri_gbm.so
 #glxinfo | grep -i 'renderer'

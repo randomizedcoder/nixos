@@ -154,6 +154,10 @@ Host c9372
   PubkeyAuthentication no
   PreferredAuthentications password
 
+Host z
+  Hostname 148.100.85.239
+  User linux1
+
 Host *
   User das
   KeepAlive yes
@@ -189,7 +193,8 @@ SSH_CONFIG_EOF
     hwloc
     gparted
     ncdu
-    neofetch
+    #neofetch
+    fastfetch
     file
     lsof
     socat
@@ -603,8 +608,8 @@ SSH_CONFIG_EOF
     # https://github.com/ollama/ollama
     ollama-rocm
     rocmPackages.rccl
-    # https://jeffser.com/alpaca/
-    alpaca
+    ## https://jeffser.com/alpaca/
+    #alpaca
     # MESA_VK_DEVICE_SELECT=list vulkaninfo
     # MESA_VK_DEVICE_SELECT=1002:66a1
     # [nix-shell:~/Downloads/srt/gosrt]$ MESA_VK_DEVICE_SELECT=list vulkaninfo
@@ -683,9 +688,10 @@ SSH_CONFIG_EOF
       rust-lang.rust-analyzer
       bazelbuild.vscode-bazel
       #continue.continue # stopped working 2025/11/04
-      rooveterinaryinc.roo-cline
+      #rooveterinaryinc.roo-cline
       waderyan.gitblame
       mattn.lisp
+      anthropic.claude-code
     ];
   };
 

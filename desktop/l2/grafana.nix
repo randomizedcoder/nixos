@@ -7,6 +7,10 @@
   services.grafana = {
     enable = true;
     settings = {
+      security = {
+        # Old Grafana default; required to be set explicitly since NixOS 26.05
+        secret_key = "SW2YcwTIb9zpOOhoPsMm";
+      };
       server = {
         # Listening Address
         http_addr = "0.0.0.0";

@@ -46,8 +46,8 @@
       ./network-optimization.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
-      # Multi-queue CAKE (cake_mq) - backported from net-next/Linux 7.0
-      ./mq-cake-module.nix
+      # Multi-queue CAKE (cake_mq) - now included in kernel 7.x
+      #./mq-cake-module.nix
       # CPU and IRQ optimization modules
       #./irq-affinity.nix
       ./systemd-slices.nix
@@ -161,10 +161,22 @@
       http-connections = 100; # default 25
       # https://nix.dev/manual/nix/2.28/command-ref/conf-file#conf-max-substitution-jobs
       max-substitution-jobs = 64; # default 16
-      # Build parallelism: 4 derivations × 6 cores = 24 total
-      # Better for cross-compilation (GCC benefits from multi-core per build)
-      max-jobs = 4;
-      cores = 6;
+      # Build parallelism for 24-core Threadripper PRO 3945WX:
+      #
+      # Previous: max-jobs=4, cores=6 (4 derivations × 6 cores = 24 total)
+      #   Pro: good for parallel multi-package builds
+      #   Con: single large builds (kernel, GHC) only used 6 cores (~25% CPU)
+      #
+      # Current: max-jobs=1, cores=24 (1 derivation × 24 cores)
+      #   Pro: large builds use all cores; most nix builds are single-drv anyway
+      #   Con: less parallelism when building many independent small packages
+      #
+      # Changed 2026-03-18: observed kernel --rebuild using only 25% CPU on l2
+      # during PR#15508 registerOutputs() benchmarking. Single large builds
+      # benefit much more from cores=24 than from parallel small derivations.
+      # Can override per-command: nix build --option cores 6 -j4
+      max-jobs = 1;
+      cores = 24;
     };
     gc = {
       automatic = true;                  # Enable automatic execution of the task
@@ -283,10 +295,10 @@
   services.bbr3.enable = true;
 
   # Multi-queue CAKE (cake_mq) qdisc - backported from net-next/Linux 7.0
-  services.mqCake.enable = true;
+  #services.mqCake.enable = true;
 
   # MQ-CAKE test environment scripts (mq-cake-setup, mq-cake-teardown, mq-cake-verify)
-  services.mq-cake-test.enable = true;
+  #services.mq-cake-test.enable = true;
 
   # Blackmagic DeckLink support
   # lspci | grep -i blackmagic -> DeckLink Mini Recorder

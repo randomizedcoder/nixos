@@ -27,7 +27,8 @@
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp
-    neofetch
+    fastfetch
+    #neofetch is no more
 
     hostapd
     bridge-utils

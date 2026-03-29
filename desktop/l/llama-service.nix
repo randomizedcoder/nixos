@@ -13,9 +13,15 @@
 #   journalctl -u llama-cpp-mi50 -f
 #   journalctl -u llama-cpp-w7500 -f
 #
-
-#CUDA_VISIBLE_DEVICES=0,1,2,3,4 /mnt/sda/llamav2/llama.cpp/build/bin/llama-server -m /mnt/sda/llamav2/llama.cpp/models/Qwen3CoderNext/Qwen3-Coder-Next-MXFP4_MOE.gguf --ctx-size 130000 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --batch-size 4096 --ubatch-size 4096 --flash-attn auto --fit on --host 0.0.0.0 --port 8000 --api-key YOUR_API_KEY_HERE -a Qwen3Coder --temp 1.0 --top-p 0.95 --top-k 40 --min-p 0.01 --jinja
-# https://huggingface.co/unsloth/Qwen3-Coder-Next-GGUF/tree/main
+# Model selection sources (reviewed 2026-03-23):
+#   https://huggingface.co/spaces/open-llm-leaderboard/open_llm_leaderboard#/
+#   https://localaimaster.com/models/best-local-ai-coding-models
+#   https://onyx.app/open-llm-leaderboard
+#   https://www.sitepoint.com/best-local-llm-models-2026/
+#   https://huggingface.co/unsloth/Qwen3-Coder-Next-GGUF
+#   https://huggingface.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF
+#   https://huggingface.co/bartowski/Llama-3.3-70B-Instruct-GGUF
+#
 
 { config, lib, pkgs, nixpkgs-local, ... }:
 
@@ -32,6 +38,7 @@ in {
   services.llama-cpp.instances = {
 
     # MI50: 32GB VRAM - large model
+    # Text comprehension / reasoning (active)
     mi50 = {
       enable = true;
       package = localPkgs.llama-cpp;
@@ -44,11 +51,15 @@ in {
       enableMetrics = true;
       openFirewall = true;
 
-      hfRepo = "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF";
+      # Text review: Qwen3-30B-A3B MoE (~17GB Q4), strong reasoning & comprehension
+      hfRepo = "unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF";
+      # Coding: Qwen3-Coder-30B-A3B MoE (~17GB Q4), top coding model at this tier
+      # hfRepo = "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF";
       environment.ROCR_VISIBLE_DEVICES = "1";
     };
 
     # W7500: 8GB VRAM - small model
+    # Text comprehension / reasoning (active)
     w7500 = {
       enable = true;
       package = localPkgs.llama-cpp;
@@ -61,8 +72,12 @@ in {
       enableMetrics = true;
       openFirewall = true;
 
-      hfRepo = "Qwen/Qwen2.5-3B-Instruct-GGUF";
-      hfFile = "qwen2.5-3b-instruct-q4_k_m.gguf";
+      # Text review: Qwen2.5-7B-Instruct (~5.5GB Q5), good comprehension for 8GB card
+      hfRepo = "Qwen/Qwen2.5-7B-Instruct-GGUF";
+      hfFile = "qwen2.5-7b-instruct-q5_k_m-00001-of-00002.gguf";
+      # Coding: Qwen2.5-Coder-7B-Instruct (~5.5GB Q5), best coding model for 8GB VRAM
+      # hfRepo = "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF";
+      # hfFile = "qwen2.5-coder-7b-instruct-q5_k_m.gguf";
       environment.ROCR_VISIBLE_DEVICES = "0";
     };
 

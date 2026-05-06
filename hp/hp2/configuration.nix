@@ -26,21 +26,34 @@
       #
       ./sysctl.nix
       # ./wireless.nix
+      # ./wireless_desktop.nix
       ./hosts.nix
       ./firewall.nix
       ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
+      # home manager is imported by the flake
       #./home.nix
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      # Docker disabled 2026-04-20: hp2 is a dedicated xdp2 benchmark host;
+      # docker workloads (gdp container, build cache) were eating /home/das
+      # disk and adding scheduler noise (xdp2 docs/physical-testbed.md §7).
       #./docker-daemon.nix
       #./k8s_node.nix
       #./k3s_master.nix
       #./k3s_node.nix
-      ./systemd.services.ethtool-enp3s0f0.nix
-      ./systemd.services.ethtool-enp3s0f1.nix
+      # Per-NIC X710 tuning is now provided by the xdp2 physical-testbed
+      # NixOS module (xdp2.nixosModules.physical-testbed, wired via
+      # flake.nix). Old ad-hoc services retained as dead files for the
+      # moment — delete after a clean nixos-rebuild switch has validated
+      # the module-driven replacement:
+      #   ./systemd.services.ethtool-enp1s0f0np0.nix
+      #   ./systemd.services.ethtool-enp1s0f1np1.nix
+      ./nginx.nix
+      # INSECURE: passwordless root SSH for isolated lab network
+      ./sshd-INSECURE.nix
     ];
 
 # https://nixos.wiki/wiki/Kubernetes#reset_to_a_clean_state
@@ -58,7 +71,58 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
+  # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
+  # kernel (xdp2 docs/physical-testbed.md §3 — was channel-default
+  # 6.12.x on stable while hp5 ran 6.18.x on unstable, 2026-04-20).
   boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
+  # for the option reference and trade-offs. lowJitter starts OFF on hp2
+  # (the reference host); flip to true once a baseline run exists to
+  # compare the delta.
+  xdp2.testbed = {
+    enable = true;
+    peerInterfaces = [ "enp1s0f0np0" "enp1s0f1np1" ];
+    addresses = {
+      # /29 (not /30): .2 and .5 must share a subnet; see xdp2
+      # docs/physical-testbed.md Appendix A §9 for the diagnosis.
+      enp1s0f0np0 = { local = "10.10.0.2/29"; peer = "10.10.0.5"; };
+      enp1s0f1np1 = { local = "10.10.1.2/29"; peer = "10.10.1.5"; };
+    };
+    # 4c/8t Ryzen 5 PRO 2400G → isolate SMT pairs 2,3,4,5,6,7; leave
+    # logical CPUs 0,1 for housekeeping (ssh, nix-daemon, kernel).
+    isolatedCpus = [ 2 3 4 5 6 7 ];
+    hugepages2M = 1024;  # 2 GiB — aligned with hp5; also matches dpdkBenchHost minimum
+    disableNonEssentialServices = true;
+    lowJitter = false;
+    managementInterface = "eno1";
+
+    # Live X710 ntuple (i40e Flow Director) steering rules, matched with
+    # hp5. hp2 is the peer/sender but we program the same UDP/443 → q1
+    # rule here so role-swap runs (where hp2 is the receiver) steer
+    # consistently. See xdp2 docs/ntuple-template-bench.md.
+    flowDirectorRules = [
+      { interface = "enp1s0f0np0"; flowType = "udp4"; destPort = 443; queue = 1; }
+    ];
+    # realServicesBench intentionally OFF on hp2: hp5 hosts the nginx
+    # target; hp2 runs the kernel pktgen driver (no wrk2/nginx needed).
+
+    # Deliverable-2 DPDK alternative for the hp2 kernel pktgen ~1.37 Mpps
+    # TX cap. Reserves vfio-pci + 1024×2 MiB hugepages + iommu=pt at boot
+    # so `nix run .#xdp2-exp-dpdk-baseline -- hp5 hp2` can rebind
+    # enp1s0f0np0 to vfio-pci and run DPDK pktgen userspace. The driver
+    # rebind happens INSIDE the orchestrator's lifecycle (trap-driven
+    # cleanup restores i40e on exit); this option only ensures the
+    # kernel-cmdline / module bits are present. Intentionally NOT set on
+    # hp5 — hp5's NIC must stay on i40e so Flow Director rules survive.
+    dpdkBenchHost = true;
+  };
+
+  # wrk2 retained on hp2 even though the af-xdp-template bench moved
+  # off it (kernel pktgen now drives the peer). Cheap to keep, useful
+  # for ad-hoc TCP load generation / regression checks.
+  environment.systemPackages = [ pkgs.wrk2 ];
+  #boot.kernelPackages = pkgs.linuxPackages;
   #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
   nix = {
@@ -71,6 +135,7 @@
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
+      download-buffer-size = "100000000";
     };
   };
 
@@ -85,6 +150,11 @@
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   networking.networkmanager.enable = false;
+
+  # Explicit nameservers — DHCP from the LAN gateway has been observed
+  # to land an empty resolv.conf, breaking nix-binary-cache fetches
+  # (xdp2 docs/physical-testbed.md §3, hp5 incident 2026-04-20).
+  networking.nameservers = [ "172.16.40.1" "1.1.1.1" "8.8.8.8" ];
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
@@ -102,7 +172,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" "kubernetes" ];
+    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" "video" "nginx" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication
@@ -123,11 +193,19 @@
      enableSSHSupport = true;
   };
 
-  services.openssh.enable = true;
+  # services.openssh.enable = true;  # Replaced by sshd-INSECURE.nix
 
   services.timesyncd.enable = true;
 
   services.fstrim.enable = true;
+
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    ipv4 = true;
+    ipv6 = true;
+    openFirewall = true;
+  };
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
@@ -140,6 +218,15 @@
   # virtualisation.libvirtd.enable = true;
   # programs.virt-manager.enable = true;
   # services.qemuGuest.enable = true;
+
+  # Show fastfetch before login prompt
+  services.getty.loginProgram = let
+    loginWrapper = pkgs.writeShellScript "login-with-fastfetch" ''
+      ${pkgs.fastfetch}/bin/fastfetch
+      echo ""
+      exec ${pkgs.shadow}/bin/login "$@"
+    '';
+  in "${loginWrapper}";
 
   # https://wiki.nixos.org/wiki/Laptop
 }

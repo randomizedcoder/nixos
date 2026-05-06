@@ -1,0 +1,126 @@
+#!/usr/bin/env expect
+#
+# vm-cert-inject.exp - Inject certificates into K8s MicroVM via virtio console.
+#
+# Usage:
+#   expect vm-cert-inject.exp <virtio_port> <password> <hostname> <file_spec>...
+#
+# File spec format:
+#   local_path:remote_path:permissions
+#   __CMD__:command  (to run a command instead of transferring a file)
+#
+# Transfer method:
+#   base64 encode -> split into chunks -> send via heredoc -> verify md5sum
+#
+
+set timeout 60
+set prompt_pattern {root@k8s-[a-z0-9]+:.*[#$]}
+
+# Parse arguments
+if {$argc < 4} {
+    puts "Usage: vm-cert-inject.exp <port> <password> <hostname> <file_specs...>"
+    exit 1
+}
+
+set port [lindex $argv 0]
+set password [lindex $argv 1]
+set hostname [lindex $argv 2]
+
+# Remaining args are file specs
+set file_specs [lrange $argv 3 end]
+
+# Connect to virtio console
+spawn socat -,rawer tcp:127.0.0.1:$port
+after 500
+
+# Send a newline to get a prompt or login screen
+send "\r"
+expect {
+    "login:" {
+        send "root\r"
+        expect "Password:"
+        send "$password\r"
+        expect -re $prompt_pattern
+    }
+    -re $prompt_pattern {
+        # Already logged in
+    }
+    timeout {
+        puts "ERROR: Cannot connect to $hostname on port $port"
+        exit 1
+    }
+}
+
+# Ensure PKI directory exists
+send "mkdir -p /var/lib/kubernetes/pki\r"
+expect -re $prompt_pattern
+
+# Process each file spec
+foreach spec $file_specs {
+    set parts [split $spec ":"]
+    set local_path [lindex $parts 0]
+    set remote_path [lindex $parts 1]
+
+    # Handle command execution
+    if {$local_path eq "__CMD__"} {
+        set cmd $remote_path
+        puts "  CMD: $cmd"
+        send "$cmd\r"
+        expect -re $prompt_pattern
+        continue
+    }
+
+    set perm [lindex $parts 2]
+    if {$perm eq ""} {
+        set perm "0644"
+    }
+
+    # Read and base64 encode the file
+    if {![file exists $local_path]} {
+        puts "  WARN: File not found: $local_path, skipping"
+        continue
+    }
+
+    set b64 [exec base64 -w0 $local_path]
+
+    puts -nonewline "  $local_path -> $remote_path ... "
+
+    # Transfer via base64 chunks through heredoc
+    set max_retries 3
+    set success 0
+
+    for {set attempt 0} {$attempt < $max_retries} {incr attempt} {
+        # Send base64 data and decode on remote
+        send "echo '$b64' | base64 -d > $remote_path\r"
+        expect -re $prompt_pattern
+
+        # Set permissions
+        send "chmod $perm $remote_path\r"
+        expect -re $prompt_pattern
+
+        # Verify via md5sum
+        set local_md5 [exec md5sum $local_path]
+        set local_md5 [lindex [split $local_md5 " "] 0]
+
+        send "md5sum $remote_path\r"
+        expect -re {([a-f0-9]{32})} {
+            set remote_md5 $expect_out(1,string)
+        }
+        expect -re $prompt_pattern
+
+        if {$local_md5 eq $remote_md5} {
+            set success 1
+            puts "OK"
+            break
+        }
+        puts -nonewline "retry($attempt) "
+    }
+
+    if {!$success} {
+        puts "FAILED after $max_retries attempts"
+    }
+}
+
+# Disconnect cleanly
+send "exit\r"
+expect eof

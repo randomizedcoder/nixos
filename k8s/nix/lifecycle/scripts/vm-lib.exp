@@ -1,0 +1,80 @@
+#!/usr/bin/env expect
+#
+# vm-lib.exp - Shared expect library for K8s MicroVM console interaction.
+#
+# Provides:
+#   vmlib::login    - Login to VM via console
+#   vmlib::run_cmd  - Run a command and wait for prompt
+#   vmlib::retry    - Retry a command with configurable attempts
+#
+
+namespace eval vmlib {
+    variable prompt_pattern {root@k8s-[a-z0-9]+:.*#}
+    variable default_timeout 30
+
+    # Login to VM console
+    # Returns 1 on success, 0 on failure
+    proc login {port password {timeout 60}} {
+        variable prompt_pattern
+
+        set spawn_id [spawn socat -,rawer tcp:127.0.0.1:$port]
+        set ::spawn_id $spawn_id
+
+        after 500
+        send "\r"
+
+        set ::timeout $timeout
+        expect {
+            "login:" {
+                send "root\r"
+                expect "Password:"
+                send "$password\r"
+                expect -re $prompt_pattern
+                return 1
+            }
+            -re $prompt_pattern {
+                # Already logged in
+                return 1
+            }
+            timeout {
+                return 0
+            }
+        }
+    }
+
+    # Run a command and wait for prompt
+    proc run_cmd {cmd {timeout 30}} {
+        variable prompt_pattern
+
+        set ::timeout $timeout
+        send "$cmd\r"
+        expect -re $prompt_pattern
+    }
+
+    # Run a command and capture output
+    proc run_cmd_capture {cmd {timeout 30}} {
+        variable prompt_pattern
+
+        set ::timeout $timeout
+        send "$cmd\r"
+        expect -re "(.*)\r\n.*$prompt_pattern"
+        return $expect_out(1,string)
+    }
+
+    # Retry a command until it succeeds
+    proc retry {cmd max_attempts delay_ms {timeout 30}} {
+        for {set i 0} {$i < $max_attempts} {incr i} {
+            set ::timeout $timeout
+            send "$cmd\r"
+            expect {
+                -re {active} {
+                    return 1
+                }
+                timeout {
+                    after $delay_ms
+                }
+            }
+        }
+        return 0
+    }
+}

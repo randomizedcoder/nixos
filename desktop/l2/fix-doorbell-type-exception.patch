@@ -1,0 +1,100 @@
+From: randomizedcoder <dave.seddon.ca@gmail.com>
+Subject: [PATCH] rocr: Skip GPUs with deprecated doorbell type instead of aborting
+
+GPUs with DoorbellType != 2 (e.g. Polaris/gfx803 devices like Radeon
+Pro WX 2100) throw HSA_STATUS_ERROR during GpuAgent construction,
+which is not caught by the DiscoverGpu handler in amd_topology.cpp.
+This causes the entire HSA runtime initialization to fail, even when
+other supported GPUs (e.g. MI50, W5700) are present in the system.
+
+Root cause: The doorbell type check throws HSA_STATUS_ERROR, but
+DiscoverGpu only catches HSA_STATUS_ERROR_INVALID_ISA. The uncaught
+exception propagates up and kills hsa_init() for all devices.
+
+Fix (two parts):
+
+1. amd_gpu_agent.cpp: Change the doorbell type check from a bare if
+   to a documented switch statement that throws HSA_STATUS_ERROR_INVALID_ISA
+   (which DiscoverGpu already catches) with a descriptive message including
+   the doorbell type value.
+
+2. amd_topology.cpp (defense-in-depth): Broaden the DiscoverGpu catch
+   handler to also catch HSA_STATUS_ERROR, and always print the skip
+   message (not just in debug builds). This ensures that even if other
+   GpuAgent construction failures throw HSA_STATUS_ERROR, they are
+   handled gracefully rather than aborting all GPU initialization.
+
+Doorbell types (assigned by kernel in kfd_topology.c):
+  0 = PRE_1_0: Kaveri, Hawaii, Tonga
+  1 = 1_0:     Carrizo, Fiji, Polaris10, Polaris11, Polaris12, Vegam
+  2 = 2_0:     Vega and newer (GCN 5.0+, GC IP >= 9.0.1)
+
+--- a/runtime/hsa-runtime/core/runtime/amd_gpu_agent.cpp
++++ b/runtime/hsa-runtime/core/runtime/amd_gpu_agent.cpp
+@@ -126,8 +126,34 @@
+   const bool is_apu_node = (properties_.NumCPUCores > 0);
+   profile_ = (is_apu_node) ? HSA_PROFILE_FULL : HSA_PROFILE_BASE;
+
+-  if (node_props.Capability.ui32.DoorbellType != 2)
+-    throw AMD::hsa_exception(HSA_STATUS_ERROR, "Agent creation failed.\nThe GPU node uses a deprecated doorbell type\n");
++  // Only DoorbellType 2 (HSA_CAP_DOORBELL_TYPE_2_0) is supported by the HSA runtime.
++  // Doorbell types are assigned by the kernel in kfd_topology.c based on ASIC generation:
++  //   0 = PRE_1_0: Kaveri, Hawaii, Tonga
++  //   1 = 1_0:     Carrizo, Fiji, Polaris10, Polaris11, Polaris12, Vegam
++  //   2 = 2_0:     Vega and newer (GCN 5.0+, GC IP >= 9.0.1)
++  //   3 =          Reserved for future use
++  //
++  // NOTE: DoorbellType is currently a 2-bit field (bits 12-13 of capability).
++  // As AMD adds new GPU generations, this field may be widened or new values
++  // added. When that happens, update this switch to accept the new type(s).
++  // The default case ensures unrecognized future types are skipped gracefully
++  // rather than aborting HSA initialization for all devices in the system.
++  switch (node_props.Capability.ui32.DoorbellType) {
++    case 2: // HSA_CAP_DOORBELL_TYPE_2_0 — supported
++      break;
++    case 0: // HSA_CAP_DOORBELL_TYPE_PRE_1_0 — deprecated (Kaveri, Hawaii, Tonga)
++    case 1: // HSA_CAP_DOORBELL_TYPE_1_0 — deprecated (Fiji, Polaris, Vegam)
++    default: {
++      // Fall through to default for any unrecognized future doorbell types.
++      // This prevents a single unsupported/new GPU from killing initialization
++      // for all devices. DiscoverGpu will catch this and skip the device.
++      std::ostringstream msg;
++      msg << "Agent creation failed.\nThe GPU node uses unsupported doorbell type "
++          << node_props.Capability.ui32.DoorbellType
++          << " (only type 2 is currently supported).\n";
++      throw AMD::hsa_exception(HSA_STATUS_ERROR_INVALID_ISA, msg.str().c_str());
++    }
++  }
+
+   hsa_status_t err = driver().GetClockCounters(node_id(), &t0_);
+   t1_ = t0_;
+--- a/runtime/hsa-runtime/core/runtime/amd_topology.cpp
++++ b/runtime/hsa-runtime/core/runtime/amd_topology.cpp
+@@ -169,13 +169,20 @@
+   } catch (const hsa_exception& e) {
+-    if(e.error_code() == HSA_STATUS_ERROR_INVALID_ISA) {
+-      ifdebug {
+-        if (!strIsEmpty(e.what())) debug_print("Warning: %s\n", e.what());
+-      }
+-      // Ignore unrecognized GPUs.
++    const hsa_status_t err = e.error_code();
++    // Skip unsupported GPUs and proceed with supported ones. This covers:
++    //   - HSA_STATUS_ERROR_INVALID_ISA: unrecognized GPU generation
++    //   - HSA_STATUS_ERROR: deprecated doorbell type (pre-Vega GPUs)
++    //   - Any future GpuAgent construction failure for unsupported hardware
++    // Without this, a single unsupported GPU in a multi-GPU system would
++    // abort HSA initialization for all devices.
++    const bool unsupported_device = (err == HSA_STATUS_ERROR_INVALID_ISA ||
++                                     err == HSA_STATUS_ERROR);
++    if (unsupported_device) {
++      if (!strIsEmpty(e.what()))
++        fprintf(stderr, "ROCm/HSA: Skipping unsupported GPU (node %u): %s\n",
++                node_id, e.what());
+       return nullptr;
+-    } else {
+-      // Rethrow remaining exceptions.
+-      throw;
+     }
++    // Rethrow remaining exceptions (e.g. out of memory, internal errors).
++    throw;
+   }

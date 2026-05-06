@@ -66,7 +66,7 @@
     iproute2
     vlan
     tcpdump
-    wireshark
+    #wireshark
     #iperf2
     netperf
     flent
@@ -89,8 +89,8 @@
     go
     # rust
     # https://nixos.wiki/wiki/Rust
-    pkgs.cargo
-    pkgs.rustc
+    # pkgs.cargo
+    # pkgs.rustc
     #
     # debug
     strace
@@ -99,7 +99,8 @@
     # for pprof
     graphviz
     #
-    ffmpeg-full
+    #ffmpeg
+    #ffmpeg-full
   ];
 
   programs.bash = {
@@ -125,13 +126,14 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder ";
+    settings.user.email = "dave.seddon.ca@gmail.com";
+    settings.user.name = "randomizedcoder";
+    signing.format = null;
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };
 
-  nixpkgs.config.allowUnfree = true;
+  #nixpkgs.config.allowUnfree = true;  # not needed with useGlobalPkgs
 
   home.stateVersion = "24.05";
   programs.home-manager.enable = true;

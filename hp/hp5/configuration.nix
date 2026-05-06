@@ -36,16 +36,26 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
-      ./docker-daemon.nix
+      # docker-daemon disabled 2026-04-20: hp5 is a dedicated xdp2
+      # benchmark host, docker workloads add scheduler noise. Enabled by
+      # xdp2.testbed.disableNonEssentialServices = false if truly needed.
+      #./docker-daemon.nix
       #./k8s_master.nix
       #./k8s_node.nix
       #./k3s_master.nix
-      ./k3s_node.nix
-      ./systemd.services.ethtool-enp3s0f0.nix
-      ./systemd.services.ethtool-enp3s0f1.nix
+      #./k3s_node.nix
+      # Per-NIC X710 tuning is now provided by the xdp2 physical-testbed
+      # NixOS module (xdp2.nixosModules.physical-testbed, wired via
+      # flake.nix). Old ad-hoc services retained as dead files for the
+      # moment — delete after a clean nixos-rebuild switch has validated
+      # the module-driven replacement:
+      #   ./systemd.services.ethtool-enp1s0f0np0.nix
+      #   ./systemd.services.ethtool-enp1s0f1np1.nix
       #./hls_tmpfs.nix
       ./nginx.nix
-      ./ffmpeg-hls-service.nix
+      #./ffmpeg-hls-service.nix
+      # INSECURE: passwordless root SSH for isolated lab network
+      ./sshd-INSECURE.nix
     ];
 
   # Bootloader.
@@ -58,8 +68,51 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.kernelPackages = pkgs.linuxPackages;
+  # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
+  # kernel (xdp2 docs/physical-testbed.md §3, 2026-04-20).
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
+  # for the option reference and trade-offs. hp5 enables lowJitter = true
+  # because it has the cleaner software baseline (no residual docker/k8s
+  # history) and is the target host for ns-precision latency tails.
+  xdp2.testbed = {
+    enable = true;
+    peerInterfaces = [ "enp1s0f0np0" "enp1s0f1np1" ];
+    addresses = {
+      # /29 (not /30): .2 and .5 must share a subnet; see xdp2
+      # docs/physical-testbed.md Appendix A §9 for the diagnosis.
+      enp1s0f0np0 = { local = "10.10.0.5/29"; peer = "10.10.0.2"; };
+      enp1s0f1np1 = { local = "10.10.1.5/29"; peer = "10.10.1.2"; };
+    };
+    # 4c/8t Ryzen 5 PRO 2400G → isolate SMT pairs 2,3,4,5,6,7; leave
+    # logical CPUs 0,1 for housekeeping (ssh, nix-daemon, kernel).
+    isolatedCpus = [ 2 3 4 5 6 7 ];
+    hugepages2M = 1024;  # 2 GiB — aligned with hp2 (where dpdkBenchHost also sets 1024)
+    disableNonEssentialServices = true;
+    lowJitter = true;
+    managementInterface = "eno1";
+
+    # Live X710 ntuple (i40e Flow Director) steering rules — drive the
+    # af-xdp-template bench (xdp2 docs/ntuple-template-bench.md).
+    # UDP/443 → queue 1 matches what xdp2-flow-dissector-ntuple-template-bench
+    # programs and xdp2-bench --mode af-xdp-template binds to. We dropped
+    # the prior TCP/22 + TCP/443 entries: SSH falls back to default RSS
+    # (still reachable), and the wrk2 TCP/443 path was retired in favour of
+    # kernel pktgen sending open-loop UDP. Each rule is programmed
+    # idempotently at its list-index slot by xdp2-nic-tune-<ifname>.service.
+    flowDirectorRules = [
+      { interface = "enp1s0f0np0"; flowType = "udp4"; destPort = 443; queue = 1; }
+    ];
+
+    # hp5 is the receiver/listener — re-enable nginx (pinned to CPUs 0,1
+    # via CPUAffinity) + install wrk2/h2load. See xdp2 docs/ntuple-template-bench.md
+    # for the AF_XDP-zerocopy-steals-the-queue caveat (nginx completes the
+    # handshake; wrk's bulk TCP/443 data is steered straight to the parser).
+    realServicesBench = true;
+  };
+
+  #boot.kernelPackages = pkgs.linuxPackages;
   #boot.kernelPackages = pkgs.linuxPackages_4_19; # 4.19.319
   #boot.kernelPackages = pkgs.linuxPackages_5_4; # 5.4.281
   #boot.kernelPackages = pkgs.linuxPackages_5_15; # 5.15.164
@@ -67,11 +120,11 @@
   #boot.kernelPackages = pkgs.linuxPackages_6_8; # 6.8
   #boot.kernelPackages = pkgs.linuxPackages_6_10; # 6.10
 
-  boot.blacklistedKernelModules = [ "nouveau" ];
+  #boot.blacklistedKernelModules = [ "nouveau" ];
 
-  boot.extraModulePackages = with config.boot.kernelPackages; [
-    nvidia_x11
-  ];
+  #boot.extraModulePackages = with config.boot.kernelPackages; [
+  #  nvidia_x11
+  #];
 
   nix = {
     gc = {
@@ -97,59 +150,40 @@
 
   networking.networkmanager.enable = false;
 
+  # Explicit nameservers — DHCP from the LAN gateway returned an empty
+  # resolv.conf on 2026-04-20, breaking nix-binary-cache fetches and
+  # causing a 30-min triage detour (xdp2 docs/physical-testbed.md §3).
+  networking.nameservers = [ "172.16.40.1" "1.1.1.1" "8.8.8.8" ];
+
   time.timeZone = "America/Los_Angeles";
 
 
   # hardware.opengl.enable = true;
   # was renamed to:
-  hardware.graphics = {
-    enable = true;
-    # P620
-    # Linux x64 (AMD64/EM64T) Display Driver 535.146.02 | Linux 64-bit
-    # https://www.nvidia.com/en-us/drivers/details/216820/
-    # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/os-specific/linux/nvidia-x11/default.nix
-    # version = "535.154.05";
-    # package = config.boot.kernelPackages.nvidiaPackages.dc_535;
-    # version = "535.216.01";
-    #package = config.boot.kernelPackages.nvidiaPackages.legacy_535;
-    extraPackages = with pkgs; [
-      vdpauinfo             # sudo vainfo
-      libva-utils           # sudo vainfo
-      # https://discourse.nixos.org/t/nvidia-open-breaks-hardware-acceleration/58770/2
-      nvidia-vaapi-driver
-      vaapiVdpau
-    ];
-  };
+  # hardware.graphics = {
+  #   enable = true;
+  #   extraPackages = with pkgs; [
+  #     vdpauinfo
+  #     libva-utils
+  #     nvidia-vaapi-driver
+  #     libva-vdpau-driver
+  #   ];
+  # };
 
-  # https://wiki.nixos.org/w/index.php?title=NVIDIA
-  # https://nixos.wiki/wiki/Nvidia
-  # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/hardware/video/nvidia.nix
-  # https://github.com/NixOS/nixpkgs/blob/nixos-24.11/nixos/modules/hardware/video/nvidia.nix
-  hardware.nvidia = {
-    open = false;
-    # https://github.com/NixOS/nixpkgs/pull/326369 hits stable
-    modesetting.enable = true;
-    powerManagement = {
-      enable = true;
-    };
-    nvidiaSettings = true;
-    package = pkgs.linuxPackages.nvidia_x11;
-  };
+  # hardware.nvidia = {
+  #   open = false;
+  #   modesetting.enable = true;
+  #   powerManagement = {
+  #     enable = true;
+  #   };
+  #   nvidiaSettings = true;
+  #   package = pkgs.linuxPackages.nvidia_x11;
+  # };
 
-  services.xserver.videoDrivers = [ "nvidia" ];
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
+  # services.xserver.videoDrivers = [ "nvidia" ];
 
   environment.sessionVariables = {
     TERM = "xterm-256color";
-    #MY_VARIABLE = "my-value";
-    #ANOTHER_VARIABLE = "another-value";
-    #CUDA_PATH = "${pkgs.cudatoolkit}";
-    CUDA_PATH = "${pkgs.linuxPackages.nvidia_x11}/lib";
-    # export LD_LIBRARY_PATH=${pkgs.linuxPackages.nvidia_x11}/lib
-    EXTRA_LDFLAGS = "-L/lib -L${pkgs.linuxPackages.nvidia_x11}/lib";
-    EXTRA_CCFLAGS = "-I/usr/include";
-    LD_LIBRARY_PATH = "$\{LD_LIBRARY_PATH\}:/run/opengl-driver/lib:${pkgs.linuxPackages.nvidia_x11}/lib";
   };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
@@ -177,7 +211,7 @@
      enableSSHSupport = true;
   };
 
-  services.openssh.enable = true;
+  # services.openssh.enable = true;  # Replaced by sshd-INSECURE.nix
 
 
   services.lldpd.enable = true;
@@ -205,6 +239,15 @@
   # virtualisation.libvirtd.enable = true;
   # programs.virt-manager.enable = true;
   # services.qemuGuest.enable = true;
+
+  # Show fastfetch before login prompt
+  services.getty.loginProgram = let
+    loginWrapper = pkgs.writeShellScript "login-with-fastfetch" ''
+      ${pkgs.fastfetch}/bin/fastfetch
+      echo ""
+      exec ${pkgs.shadow}/bin/login "$@"
+    '';
+  in "${loginWrapper}";
 
   # https://wiki.nixos.org/wiki/Laptop
 }

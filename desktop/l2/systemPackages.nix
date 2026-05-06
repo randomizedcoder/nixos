@@ -52,15 +52,13 @@
     nmap
     tshark
     perf-tools
-    linuxPackages_latest.perf
+    perf
 
     clinfo
     lact
 
-    # NVIDIA Tools
-    nvidia-vaapi-driver
-    nvtopPackages.full # Excellent multi-GPU monitor (shows both AMD and NVIDIA)
-    cudaPackages.cuda_nvcc # If you plan to compile llama.cpp locally
+    # GPU monitoring (supports AMD and NVIDIA)
+    nvtopPackages.full
 
     rdma-core # ibv_devinfo, rdma
     mstflint  # Mellanox firmware tools (mstconfig to allow third-party SFPs)

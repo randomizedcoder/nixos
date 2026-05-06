@@ -22,7 +22,7 @@
   imports =
     [
       ./hardware-configuration.nix
-      #./hardware-graphics.nix
+      ./hardware-nvidia.nix
       ./sysctl.nix
       ./wireless_desktop.nix
       ./locale.nix
@@ -37,26 +37,24 @@
       ./grafana.nix
       # clickhouse
       ./clickhouse-service.nix
-      # GPU fan control
-      #./gpu-fan-control.nix
-      # Corsair fan control
-      ./corsair-fan-control.nix
       #./docker-compose.nix
       ./docker-daemon.nix
       #./smokeping.nix
       #./distributed-builds.nix
       #./hyprland.nix
       ./nginx.nix
-      #./ollama-service.nix
+      # llama-cpp CUDA on RTX 3070
       ./llama-service.nix
-      ./litellm-service.nix
-      ./fan2go.nix
       ./below.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
       # Multi-queue CAKE (cake_mq) for scaling CAKE across CPU cores
       # TEMPORARILY DISABLED: patches don't apply cleanly to 6.19.5, needs rebase
       #./mq-cake-module.nix
+      # On-demand AnyConnect VPN via OpenConnect
+      ./openconnect-vpn.nix
+      # On-demand NordLayer VPN via OpenVPN
+      ./nordlayer-vpn.nix
     ];
 
   boot = {
@@ -73,7 +71,7 @@
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
     #kernelPackages = pkgs.linuxPackages;
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
 
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
@@ -104,6 +102,10 @@
       "bnxt_re"      # RoCEv2 RDMA provider
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
+      "nvidia"
+      "nvidia_uvm"       # Essential for CUDA/llama.cpp
+      "nvidia_modeset"
+      "nvidia_drm"
     ];
 
     blacklistedKernelModules = [
@@ -227,6 +229,8 @@
     QT_QPA_PLATFORM = "wayland";
     #MY_VARIABLE = "my-value";
   };
+  # fix for /bin/sh for the claude bug
+  environment.binsh = "${pkgs.bash}/bin/bash";
 
   # System-wide LD_LIBRARY_PATH for ROCm tools (rocm-smi needs libdrm_amdgpu.so)
   # Use lib.mkForce to override pipewire's setting, combining both paths
@@ -370,7 +374,7 @@
 
   services.xserver = {
     enable = true;
-    videoDrivers = [ "amdgpu" ];
+    videoDrivers = [ "amdgpu" "nvidia" ];
     xkb = {
       layout = "us";
       variant = "";
@@ -391,8 +395,8 @@
     enable = true;
   };
 
-  # Enable fan2go for Corsair Commander PRO fan control
-  hardware.fan2go.enable = true;
+  # Enable hardware graphics for CUDA runtime
+  hardware.graphics.enable = true;
 
   xdg.portal = {
     enable = true;
@@ -460,6 +464,19 @@
   # Multi-queue CAKE (cake_mq) - scales CAKE across CPU cores (kernel patches)
   # TEMPORARILY DISABLED: patches don't apply cleanly to 6.19.5, needs rebase
   #services.mqCake.enable = true;
+
+  # Second NVMe drive (2TB data storage)
+  fileSystems."/mnt" = {
+    device = "/dev/disk/by-uuid/d249da43-6743-4397-a50c-e1047a08e005";
+    fsType = "ext4";
+  };
+
+  # Bind mount Downloads from second NVMe to home directory
+  fileSystems."/home/das/Downloads" = {
+    device = "/mnt/Downloads";
+    fsType = "none";
+    options = [ "bind" ];
+  };
 
   system.stateVersion = "24.11";
 

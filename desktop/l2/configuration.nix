@@ -42,7 +42,7 @@
       #./distributed-builds.nix
       #./hyprland.nix
       #./hostapd.nix
-      #./hostapd-multi.nix
+      ./hostapd-multi.nix
       ./network-optimization.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
@@ -50,16 +50,23 @@
       #./mq-cake-module.nix
       # CPU and IRQ optimization modules
       #./irq-affinity.nix
-      ./systemd-slices.nix
+      #./systemd-slices.nix  # WiFi AP slices, not needed currently
       ./kernel-params.nix
       #./monitoring.nix
-      # llama-cpp CUDA test
+      # llama-cpp CUDA (RTX 3070) + ROCm (MI50)
       ./llama-service.nix
+      # Corsair Commander PRO fan control for MI50 GPU cooling
+      ./fan2go.nix
       # NIC configuration
       ./network-interfaces.nix
       ./ethtool-nics.nix
       # MQ-CAKE test environment scripts
       ./mq-cake-test.nix
+      # WiFi TSF synchronisation via upstream mt76 PTP patches
+      ./tsf-sync.nix
+      # INSECURE: passwordless root SSH for isolated lab network.
+      # Replaces the inline services.openssh block below.
+      ./sshd-INSECURE.nix
     ];
 
   boot = {
@@ -76,7 +83,7 @@
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages;
     #kernelPackages = pkgs.linuxPackages_latest;
-    kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
+    kernelPackages = pkgs.linuxPackages_latest;
 
     # # Enable mac80211 debugfs for WiFi AQM tuning
     # kernelPatches = [{
@@ -99,15 +106,6 @@
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
       "sch_dualpi2"  # DualPI2 L4S AQM packet scheduler (available in kernel 6.17+)
-      "nvidia"
-      "nvidia_uvm" # Essential for CUDA/llama.cpp
-      "nvidia_modeset"
-      "nvidia_drm"
-    ];
-
-    blacklistedKernelModules = [
-      "nouveau"
-      #"i915"
     ];
 
     # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
@@ -143,6 +141,9 @@
       zlib
       libxml2
       pciutils # for broadcom niccli
+      libdrm
+      numactl
+      rocmPackages.clr.icd
     ];
   };
 
@@ -195,15 +196,16 @@
 
   systemd.services.systemd-udev-settle.enable = false;
 
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = "yes"; # Change me to "no"!!
-      #AllowUsers = [ "das" ]
-    };
-  };
+  # Replaced by ./sshd-INSECURE.nix (imported above).
+  # services.openssh = {
+  #   enable = true;
+  #   settings = {
+  #     PasswordAuthentication = false;
+  #     KbdInteractiveAuthentication = false;
+  #     PermitRootLogin = "yes"; # Change me to "no"!!
+  #     #AllowUsers = [ "das" ]
+  #   };
+  # };
 
   # programs.ssh.extraConfig = ''
   # Host hp4.home
@@ -263,11 +265,19 @@
   # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
   services.lact = {
     enable = true;
-    # Optional: Add custom settings here if needed
-    # settings = {
-    #   # Example settings
-    # };
   };
+
+  # ROCm support for MI50 (gfx906) compute
+  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/amdgpu.nix
+  hardware.amdgpu.opencl.enable = true;
+
+  # https://nixos.wiki/wiki/AMD_GPU
+  systemd.tmpfiles.rules = [
+    "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
+  ];
+
+  # Enable fan2go for Corsair Commander PRO fan control (MI50 cooling)
+  hardware.fan2go.enable = true;
 
   # # https://nixos.wiki/wiki/Virt-manager
   # virtualisation.libvirtd.enable = true;

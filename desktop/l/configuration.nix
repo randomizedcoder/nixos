@@ -55,6 +55,17 @@
       ./openconnect-vpn.nix
       # On-demand NordLayer VPN via OpenVPN
       ./nordlayer-vpn.nix
+      # Direct OpenVPN connection to NordLayer (alternative to the
+      # proprietary daemon above — coexists, autoStart=false).
+      ./nordlayer-openvpn.nix
+      # Lets LAN traffic survive nordlayer's kill-switch (SSH between
+      # machines on the local network while the VPN is connected).
+      ./nordlayer-lan-bypass.nix
+      # Sandboxed nordlayer in a systemd-nspawn container — the
+      # recommended entry point for VPN access. The container has its own
+      # netns/routing/firewall so nordlayer can't disrupt the host.
+      # Reach it via `ssh -J vpn-jump@127.0.0.1:2222 user@remote.vpn`.
+      ./nordlayer-sandbox.nix
     ];
 
   boot = {

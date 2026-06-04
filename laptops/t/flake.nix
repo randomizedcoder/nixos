@@ -1,96 +1,61 @@
+#
+# nixos/laptops/t/flake.nix
+#
+# Aligned with the hp1/hp3/chromebox1 benchmark-host pattern.
+# Differences from the laptop's prior config: dropped hyprland +
+# hyprland-plugins inputs (no Wayland compositor on a headless
+# benchmark host), dropped the nixos-24.11 + unstable-overlay
+# arrangement in favor of a single nixos-unstable pin (so the xdp2
+# module evaluates against the same nixpkgs the other benchmark hosts
+# use).
+#
 {
-  description = "t Flake";
+  description = "t (Intel Comet Lake-H benchmark host) Flake";
 
-  # https://nix.dev/manual/nix/2.24/command-ref/new-cli/nix3-flake.html#flake-inputs
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    # https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
-    # nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/8f146535307f0168d758fe6fee6f52663cb11695";#iperf2_2.2.1
-    # nixpkgs-unstable.url = "github:randomizedcoder/nixpkgs/c9580e24eb621d72eda63355d7c8dbfb1654d333";
-    # https://github.com/NixOS/nix/issues/12022
-    #nix flake lock --override-input nixpkgs /home/eelco/Dev/nixpkgs
-    #nix flake lock --override-input nixpkgs "/home/das/Downloads/nixpkgs
-    #nixpkgs.url = "/home/das/Downloads/nixpkgs";
-    #nixpkgs = "../../../Downloads/nixpkgs/";
-    # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
+    # Aligned with hp1/hp2/hp3/hp5/chromebox1 on nixos-unstable so the
+    # xdp2 module evaluates against the same nixpkgs every benchmark
+    # host uses.
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
-      # The `follows` keyword in inputs is used for inheritance.
-      # Here, `inputs.nixpkgs` of home-manager is kept consistent with
-      # the `inputs.nixpkgs` of the current flake,
-      # to avoid problems caused by different versions of nixpkgs.
+      url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hyprland.url = "github:hyprwm/Hyprland";
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      # https://github.com/hyprwm/hyprland-plugins
-      inputs.hyprland.follows = "hyprland";
+    # xdp2 provides nixosModules.physical-testbed for the benchmark-host
+    # tuning. See xdp2 docs/physical-testbed.md §5–§7. On t the module
+    # is applied with peerInterfaces=[] (WiFi-only; no peer DAC link)
+    # but isolatedCpus is populated (Comet Lake-H has 8c/16t — plenty
+    # of room to dedicate cores).
+    xdp2 = {
+      # merge/matrix-physical-testbed carries the nic-tuning module
+      # split. Flip back to xdp2-rs / main once that branch is merged
+      # forward.
+      url = "github:randomizedcoder/xdp2/merge/matrix-physical-testbed";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  #outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }:
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, hyprland, ... }:
+  outputs = inputs@{ nixpkgs, home-manager, xdp2, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
-        config = {
-          allowUnfree = true;
-            allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-              "nvidia-x11"
-              "nvidia-settings"
-              "nvidia-persistenced"
-              "google-chrome"
-              "android-studio"
-              "android-studio-stable"
-              ];
-        };
-      };
-      # https://nixos.wiki/wiki/Flakes#Importing_packages_from_multiple_channels
-      # overlay-unstable = final: prev: {
-      #   unstable = nixpkgs-unstable.legacyPackages.${prev.system};
-      # };
-      overlay-unstable = final: prev: {
-        unstable = import nixpkgs-unstable {
-          inherit system;
-          config = {
-            allowUnfree = true;
-            # allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-            #   "vscode"
-            #   "code-cursor"
-            #   "slack"
-            #   "zoom-us"
-            #   "nvidia-x11"
-            #   ];
-          };
-        };
+        config = { allowUnfree = true; };
       };
       lib = nixpkgs.lib;
     in {
-    nixosConfigurations = {
-      t = lib.nixosSystem rec {
-        inherit system;
-        specialArgs = {
-          inherit hyprland;
-          inherit overlay-unstable;
-        };
-        modules = [
-          ({ config, pkgs, ... }: { nixpkgs.overlays = [ overlay-unstable ]; })
-          ./configuration.nix
-          hyprland.nixosModules.default
-          home-manager.nixosModules.home-manager
-          {
-            # https://nix-community.github.io/home-manager/nixos-options.xhtml#nixos-opt-home-manager.useGlobalPkgs
-            #home-manager.useGlobalPkgs = true; # This disables the Home Manager options nixpkgs.*.
-            home-manager.useUserPackages = true;
-            home-manager.users.das = import ./home.nix;
-            home-manager.extraSpecialArgs = specialArgs;
-            # see also: https://github.com/HeinzDev/Hyprland-dotfiles/blob/main/flake.nix
-          }
-        ];
-      };
+    nixosConfigurations.t = lib.nixosSystem {
+      inherit system;
+      modules = [
+        ./configuration.nix
+        xdp2.nixosModules.physical-testbed
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.das = import ./home.nix;
+        }
+      ];
     };
   };
 }

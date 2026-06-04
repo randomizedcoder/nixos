@@ -18,43 +18,40 @@ endif
 rebuild:
 	sudo nixos-rebuild switch --flake .
 
-rebuild_t:
-	sudo nixos-rebuild switch --flake .#t
-
-#https://nixos.org/manual/nixos/unstable/index.html#sec-nix-network-issues
-#nixos-rebuild switch --option binary-caches http://my-cache.example.org/
-
-impure:
-	sudo nixos-rebuild switch --impure --flake .
-
 rebuild_trace:
 	sudo nixos-rebuild switch --show-trace --flake .
 
 update:
 	sudo nix flake update;
 
-rebuild_old:
-	# sudo cp ./flake.nix /etc/nixos/
-	# sudo cp ./flake.lock /etc/nixos/
-	# sudo cp ../../modules/* /etc/nixos/
-	# sudo cp ./configuration.nix /etc/nixos/
-	# #sudo cp ./home-manager.nix /etc/nixos/
-	# sudo cp ./home.nix /etc/nixos/
-	# sudo cp ./prometheus.nix /etc/nixos/
-	# sudo cp ./*.nix /etc/nixos/
-	# sudo nix-channel --update
-	# sudo nixos-rebuild switch
-	#sudo cp ./* /etc/nixos/
-	sudo nix flake update;
-	#sudo nix-channel --update;
-	sudo nixos-rebuild switch --flake .
+# Bootstrap target for a host where the existing /etc/nix/nix.conf
+# doesn't yet include the xdp2 flake input (post-rewrite first run)
+# or where you've blown away flake.lock and want to rebuild fresh.
+# `boot` rather than `switch` because the xdp2 physical-testbed module
+# sets kernel cmdline (mitigations=off, hugepages, isolcpus, nohz_full,
+# rcu_nocbs, processor.max_cstate=1) — those only apply after reboot.
+#
+# Note: nixos-rebuild itself doesn't accept --extra-experimental-features
+# (that's a `nix` flag). Use --option to forward it through.
+bootstrap:
+	sudo nixos-rebuild boot \
+	  --option experimental-features 'nix-command flakes' \
+	  --flake .#t
+	@echo
+	@echo "bootstrap complete — reboot with: sudo reboot"
 
-update_oldm.:
-	sudo nix-channel --update
-	sudo nixos-rebuild switch
-	#nix-shell -p vim
+bootstrap_switch:
+	sudo nixos-rebuild switch \
+	  --option experimental-features 'nix-command flakes' \
+	  --flake .#t
 
-restart_display_manager:
-	sudo systemctl restart display-manager.service
+bootstrap_update:
+	sudo nix --extra-experimental-features 'nix-command flakes' flake update
+
+sync:
+	rsync -avz /home/das/nixos/laptops/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/laptops/"${EXPECTED_HOSTNAME}"/
+
+lock:
+	scp "${EXPECTED_HOSTNAME}":/home/das/nixos/laptops/t/flake.lock ./
 
 # end

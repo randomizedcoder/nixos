@@ -1,12 +1,9 @@
-{
-  config,
-  pkgs,
-  ...
-}:
+{ config, pkgs, ... }:
 
-# Aligned with ~/nixos/hp/hp1/home.nix — chromebox1 is now an xdp2
-# benchmark host, not a k3s control plane. Dropped KUBECONFIG and the
-# kubectl shell alias.
+# Mirrors ~/nixos/hp/hp1/home.nix (the new mlx5-pair sibling). hp3 is
+# the dut on the hp1↔hp3 testbed; otherwise its home-manager profile is
+# identical to hp1's. Aligned with hp2/hp5 home profiles so all four
+# benchmark hosts have the same userland toolchain.
 
 {
   home.username = "das";
@@ -25,22 +22,59 @@
     tmux
     screen
     #
+    libgcc
+    gcc
+    automake
+    gnumake
+    pkg-config
+    #
+    perl
+    python3
+    #
     gawk
     jq
     git
     htop
     btop
+    minicom
+    #
+    bzip2
+    gzip
+    lz4
+    zip
+    unzip
+    xz
+    zstd
     #
     rsync
+    tree
     #
     ethtool
     iproute2
     vlan
     tcpdump
+    netperf
+    flent
+    bpftools
+    fping
+    inetutils
+    #
+    netcat-gnu
+    inetutils
+    #
+    inotify-tools
+    #
+    libcap
+    gcc
+    #
+    go
     #
     strace
     #
-    gnumake
+    dive
+    graphviz
+    #
+    iftop
   ];
 
   programs.bash = {
@@ -65,6 +99,6 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  home.stateVersion = "24.11";
   programs.home-manager.enable = true;
+  home.stateVersion = "24.11";
 }

@@ -13,15 +13,30 @@
     ./home-ssh-config.nix
   ];
   # Ghostty configuration
-  # `shell-integration-features` is a comma-separated string; the two
-  # ssh-* tokens make ghostty (a) install its terminfo on remote hosts
-  # the first time you SSH there, and (b) fall back to TERM=xterm-256color
-  # if the terminfo install fails — so backspace etc. work on hosts that
-  # don't already know `xterm-ghostty`.
+  #
+  # `term = xterm-256color` is the primary defense: ghostty advertises
+  # xterm-256color in the local $TERM, which ssh propagates to remote ptys.
+  # Works regardless of jump chains, sudo, scripts, or tmux panes that
+  # predate shell-integration loading. Ghostty's own feature detection
+  # uses live terminal queries (DA1/DA2/XTGETTCAP), not the TERM string,
+  # so the only practical loss is TUI apps that gate Kitty graphics on
+  # TERM=xterm-ghostty specifically.
+  #
+  # `shell-integration-features = ssh-env` adds a belt: when ghostty's
+  # ssh wrapper IS in the loop (direct ssh from a ghostty-launched bash),
+  # it explicitly sets TERM=xterm-256color for the ssh subprocess —
+  # belt-and-suspenders for the `term` setting above.
+  #
+  # `ssh-terminfo` is deliberately omitted: it tries to install ghostty's
+  # terminfo on the remote via a no-PTY pipe ssh, which RunPod (and many
+  # container hosts with custom entrypoints) refuses. The install fails
+  # silently, ssh-env never falls back, TERM stays xterm-ghostty on the
+  # remote, and TUI tools break. Plain ssh-env is more reliable.
   programs.ghostty = {
     enable = true;
     settings = {
-      shell-integration-features = "ssh-env,ssh-terminfo";
+      shell-integration-features = "ssh-env";
+      term = "xterm-256color";
     };
   };
   # https://ghostty.zerebos.com/app/import-export
@@ -324,6 +339,11 @@
     clippy
     #clang_multi
 
+    # Language servers (for Claude Code CLI / editor LSP)
+    clang-tools                      # clangd for C/C++
+    python3Packages.python-lsp-server # pylsp for Python
+    bash-language-server             # for Bash
+
     # Commenting out flutter for now
     # # Mobile Development
     # flutter #3.35.2
@@ -367,7 +387,7 @@
     gnomeExtensions.space-bar
     # https://github.com/AstraExt/astra-monitor
     gnomeExtensions.astra-monitor
-    gnomeExtensions.obs-status
+    # gnomeExtensions.obs-status  # removed from nixpkgs 2026-05-23
     libgtop
 
     networkmanager-openconnect
@@ -588,7 +608,7 @@
       ms-vscode.cpptools
       ms-vscode.hexeditor
       ms-vscode.makefile-tools
-      ms-python.python
+      # ms-python.python  # commented 2026-05-23: pulls jedi-language-server which fails (jedi 0.20 vs pin <0.20); nixpkgs PR #522705 fixes test but not the runtime dep check
       ms-python.vscode-pylance
       ms-kubernetes-tools.vscode-kubernetes-tools
       redhat.vscode-yaml

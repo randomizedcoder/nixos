@@ -17,11 +17,6 @@
       22     # ssh
       5001   # iperf2
     ];
-    #   allowedTCPPorts = [ 22 5001 ];
-    #   #allowedUDPPortRanges = [
-    #   #  { from = 4000; to = 4007; }
-    #   #  { from = 8000; to = 8010; }
-    #   #];
     # NixOS automagically creates stateful connection tracking, which we don't want
     # for performance reasons
     # extraCommands = ''

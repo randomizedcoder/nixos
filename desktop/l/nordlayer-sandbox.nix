@@ -158,6 +158,38 @@ in
         settings = {
           PermitRootLogin        = "yes";
           PasswordAuthentication = false;
+
+          # ── Bastion concurrency tuning ─────────────────────────────
+          # Default MaxStartups is 10:30:100 — meaning random drop with
+          # ~30% probability starts at the 11th concurrent unauthenticated
+          # connection and ramps to 100% at the 100th. Observed during
+          # fleet-scale snapshot.exp runs at -P 20: 6/100 sporadic
+          # "ssh eof before prompt" failures, matching the MaxStartups
+          # drop-probability ramp for that concurrency.
+          #
+          # Raising the floor to 100 lets all 100 connections through
+          # without random drops; full of 200 sets the hard ceiling
+          # well above any realistic fleet-walk burst.
+          MaxStartups               = "100:30:200";
+
+          # Default LoginGraceTime is 2m: a stuck unauthenticated
+          # connection holds a MaxStartups slot for two whole minutes.
+          # Our handshakes complete in ~3-5 s, so 30 s is plenty and
+          # recycles wedged slots much faster.
+          LoginGraceTime            = "30s";
+
+          # We're key-only. Telling sshd this explicitly skips offering
+          # KbdInteractive prompts during the auth phase (trims a few
+          # round-trips per connection).
+          KbdInteractiveAuthentication = false;
+
+          # Note: UseDns is already false-by-default in NixOS sshd; not
+          # pinning here because NixOS uses `UseDns` (lowercase "ns") as
+          # the option name and writing it as `UseDNS` collides on the
+          # generated sshd_config dedup check.
+
+          # Kerberos auth isn't used here; skip negotiating it.
+          GSSAPIAuthentication      = false;
         };
       };
       users.users.root.openssh.authorizedKeys.keys = [ jumpAuthorizedKey ];

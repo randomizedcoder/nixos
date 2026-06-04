@@ -87,6 +87,14 @@ Host vpn-jump
   StrictHostKeyChecking accept-new
   UserKnownHostsFile ~/.ssh/known_hosts.d/vpn-jump
   ServerAliveInterval 30
+  # Disable connection multiplexing on the proxy hops. Sharing one
+  # master across many ProxyJump-ed destination ssh's (the prod fleet
+  # has ~3500 hosts) produced sporadic channel races and "ssh eof
+  # before prompt" at ~50% rate during 100-host fleet walks. Each
+  # destination ssh gets a fresh handshake to vpn-jump now; costs
+  # ~1 RTT extra per ssh, but yields 100% success instead of 50%.
+  ControlMaster no
+  ControlPath none
 
 # RunPod test host behind the NordLayer VPN.
 Host runpod-jump
@@ -95,6 +103,49 @@ Host runpod-jump
   IdentityFile ~/.ssh/id_ed25519_runpod
   IdentitiesOnly yes
   ProxyJump vpn-jump
+  # See vpn-jump above for the multiplex-on-jump-host rationale.
+  # This is the inner proxy; every prod fleet ssh forwards through it.
+  ControlMaster no
+  ControlPath none
+
+# RunPod dev jump host behind the same NordLayer VPN.
+Host dev-runpod-jump
+  Hostname dev-docssh.runpod.io
+  User rp_das
+  IdentityFile ~/.ssh/id_ed25519_runpod
+  IdentitiesOnly yes
+  ProxyJump vpn-jump
+  # Match runpod-jump (above) for the dev fleet path.
+  ControlMaster no
+  ControlPath none
+
+# RunPod dev internal targets reachable through the dev-runpod-jump host.
+# Listed before the 100.* wildcard so these specific IPs match first.
+Host 100.65.0.149 100.65.0.150 100.65.0.151 100.65.0.152
+  User sshpower
+  Port 2009
+  IdentityFile ~/.ssh/id_rsa_runpod_dev
+  IdentitiesOnly yes
+  ProxyJump vpn-jump,dev-runpod-jump
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  LogLevel ERROR
+
+# RunPod internal targets reachable through the runpod-jump host
+# (CGNAT 100.64.0.0/10 overlay). Long-form ssh command for any arbitrary
+# RunPod IP — equivalent to what this block does, no config needed:
+#   ssh -J vpn-jump,runpod-jump -i ~/.ssh/id_rsa_runpod -o IdentitiesOnly=yes \\
+#       -o StrictHostKeyChecking=no -p 2009 sshpower@<IP>
+# With this block: ssh 100.65.25.46
+Host 100.*
+  User sshpower
+  Port 2009
+  IdentityFile ~/.ssh/id_rsa_runpod
+  IdentitiesOnly yes
+  ProxyJump vpn-jump,runpod-jump
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  LogLevel ERROR
 
 Host ex2200
   HostName 172.16.50.11

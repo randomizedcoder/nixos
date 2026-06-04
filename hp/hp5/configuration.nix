@@ -70,7 +70,18 @@
   # https://nixos.wiki/wiki/Linux_kernel
   # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
   # kernel (xdp2 docs/physical-testbed.md §3, 2026-04-20).
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  #
+  # TEMPORARY (2026-05-24): switched to a custom net-next 7.1.0-rc4
+  # kernel built from the flow-keys-compat-reorder branch's
+  # combined-test-rfc tree (4 patches: flow_dissector docs +
+  # flow_hash_from_keys_small + sch_cake adoption + bpf_flow PPPoE).
+  # See ./test-kernel/default.nix and the xdp2 repo at
+  # kernel-patches/test-kernel/ for the build derivation, the
+  # rationale, and the post-boot test plan. Restore the line above
+  # after testing is complete.
+  boot.kernelPackages = pkgs.linuxPackagesFor
+    (pkgs.callPackage ./test-kernel {});
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
   # for the option reference and trade-offs. hp5 enables lowJitter = true
@@ -82,8 +93,16 @@
     addresses = {
       # /29 (not /30): .2 and .5 must share a subnet; see xdp2
       # docs/physical-testbed.md Appendix A §9 for the diagnosis.
-      enp1s0f0np0 = { local = "10.10.0.5/29"; peer = "10.10.0.2"; };
-      enp1s0f1np1 = { local = "10.10.1.5/29"; peer = "10.10.1.2"; };
+      # IPv6 ULA: fd10:10:N::M/64 where N matches v4 third octet and
+      # M matches v4 host octet. See docs/physical-testbed.md §15.
+      enp1s0f0np0 = {
+        local  = "10.10.0.5/29";    peer  = "10.10.0.2";
+        local6 = "fd10:10:0::5/64"; peer6 = "fd10:10:0::2";
+      };
+      enp1s0f1np1 = {
+        local  = "10.10.1.5/29";    peer  = "10.10.1.2";
+        local6 = "fd10:10:1::5/64"; peer6 = "fd10:10:1::2";
+      };
     };
     # 4c/8t Ryzen 5 PRO 2400G → isolate SMT pairs 2,3,4,5,6,7; leave
     # logical CPUs 0,1 for housekeeping (ssh, nix-daemon, kernel).

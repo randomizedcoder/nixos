@@ -85,7 +85,7 @@ ROCm-based AMD GPU support requiring careful LD_LIBRARY_PATH management:
 - `claude-use <profile>` switches `CLAUDE_CONFIG_DIR` for the current shell
 - `claude-use` (no args) lists profiles and marks the active one
 - `claude-use-setup <profile>` sets the config dir and runs `claude auth login` for one-time OAuth setup
-- Default profile (`personal`) is exported automatically in new shells if `CLAUDE_CONFIG_DIR` is unset
+- Default profile (`runpod`) is exported automatically in new shells if `CLAUDE_CONFIG_DIR` is unset
 - Two Claude Code instances can run simultaneously with different profiles in separate terminals
 
 ## Development Notes

@@ -74,7 +74,18 @@
   # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
   # kernel (xdp2 docs/physical-testbed.md §3 — was channel-default
   # 6.12.x on stable while hp5 ran 6.18.x on unstable, 2026-04-20).
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  #
+  # TEMPORARY (2026-05-24): switched to a custom net-next 7.1.0-rc4
+  # kernel built from the flow-keys-compat-reorder branch's
+  # combined-test-rfc tree (4 patches: flow_dissector docs +
+  # flow_hash_from_keys_small + sch_cake adoption + bpf_flow PPPoE).
+  # Mirrors the same swap on hp5. See ./test-kernel/default.nix and
+  # the xdp2 repo at kernel-patches/test-kernel/ for the build
+  # derivation, rationale, and post-boot test plan. Restore the line
+  # above after testing is complete.
+  boot.kernelPackages = pkgs.linuxPackagesFor
+    (pkgs.callPackage ./test-kernel {});
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
   # for the option reference and trade-offs. lowJitter starts OFF on hp2
@@ -86,8 +97,16 @@
     addresses = {
       # /29 (not /30): .2 and .5 must share a subnet; see xdp2
       # docs/physical-testbed.md Appendix A §9 for the diagnosis.
-      enp1s0f0np0 = { local = "10.10.0.2/29"; peer = "10.10.0.5"; };
-      enp1s0f1np1 = { local = "10.10.1.2/29"; peer = "10.10.1.5"; };
+      # IPv6 ULA: fd10:10:N::M/64 where N matches v4 third octet and
+      # M matches v4 host octet. See docs/physical-testbed.md §15.
+      enp1s0f0np0 = {
+        local  = "10.10.0.2/29";    peer  = "10.10.0.5";
+        local6 = "fd10:10:0::2/64"; peer6 = "fd10:10:0::5";
+      };
+      enp1s0f1np1 = {
+        local  = "10.10.1.2/29";    peer  = "10.10.1.5";
+        local6 = "fd10:10:1::2/64"; peer6 = "fd10:10:1::5";
+      };
     };
     # 4c/8t Ryzen 5 PRO 2400G → isolate SMT pairs 2,3,4,5,6,7; leave
     # logical CPUs 0,1 for housekeeping (ssh, nix-daemon, kernel).
@@ -115,7 +134,12 @@
     # cleanup restores i40e on exit); this option only ensures the
     # kernel-cmdline / module bits are present. Intentionally NOT set on
     # hp5 — hp5's NIC must stay on i40e so Flow Director rules survive.
-    dpdkBenchHost = true;
+    #
+    # TEMPORARY (2026-05-24): commented out — the xdp2 flake input locked
+    # at f36b3237c1abb (2026-04-26) doesn't yet declare this option, which
+    # blocks `nixos-rebuild` eval. Restore once the xdp2 input is bumped
+    # to a commit that adds the dpdkBenchHost option.
+    #dpdkBenchHost = true;
   };
 
   # wrk2 retained on hp2 even though the af-xdp-template bench moved

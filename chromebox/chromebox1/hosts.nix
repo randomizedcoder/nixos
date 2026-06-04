@@ -11,6 +11,7 @@
     "172.16.50.232" = ["hp4" "hp4eth"]; # rack
     "172.16.40.70"  = ["hp5" "hp5eth"];
     "172.16.40.122" = ["pi5-1" "pi5-1-eth"];
-    "172.16.40.62" = ["chromebox3" "chromebox3-eth"];
+    "172.16.40.178" = ["chromebox1" "chromebox1-eth"];
+    "172.16.40.62"  = ["chromebox3" "chromebox3-eth"];
   };
 }

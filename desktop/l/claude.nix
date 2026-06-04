@@ -22,7 +22,7 @@
 
 let
   profiles = [ "personal" "siden" "runpod" ];
-  defaultProfile = "personal";
+  defaultProfile = "runpod";
 
   # Per-profile model selection — exported as ANTHROPIC_MODEL by claude-use.
   profileModels = {

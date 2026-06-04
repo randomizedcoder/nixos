@@ -4,8 +4,6 @@
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
-  #nixpkgs.config.nvidia.acceptLicense = true;
-
   # $ nix search wget
   environment.systemPackages = with pkgs; [
   #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
@@ -29,7 +27,6 @@
     iw
     wirelesstools
     wpa_supplicant
-    #wpa_supplicant_ro_ssids
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp

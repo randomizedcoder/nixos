@@ -414,6 +414,11 @@ SSH_CONFIG_EOF
     clippy
     #clang_multi
 
+    # Language servers (for Claude Code CLI / editor LSP)
+    clang-tools                      # clangd for C/C++
+    python3Packages.python-lsp-server # pylsp for Python
+    bash-language-server             # for Bash
+
     # Commenting out flutter for now
     # # Mobile Development
     # flutter #3.35.2
@@ -457,7 +462,7 @@ SSH_CONFIG_EOF
     gnomeExtensions.space-bar
     # https://github.com/AstraExt/astra-monitor
     gnomeExtensions.astra-monitor
-    gnomeExtensions.obs-status
+    # gnomeExtensions.obs-status  # removed from nixpkgs 2026-05-23
     libgtop
 
     networkmanager-openconnect
@@ -639,7 +644,7 @@ SSH_CONFIG_EOF
       ms-vscode.cpptools
       ms-vscode.hexeditor
       ms-vscode.makefile-tools
-      ms-python.python
+      # ms-python.python  # commented 2026-05-23: pulls jedi-language-server which fails (jedi 0.20 vs pin <0.20); nixpkgs PR #522705 fixes test but not the runtime dep check
       ms-python.vscode-pylance
       ms-kubernetes-tools.vscode-kubernetes-tools
       redhat.vscode-yaml

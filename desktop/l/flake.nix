@@ -28,12 +28,11 @@
 
     # xdp2 — provides nixosModules.physical-testbed (NIC tuning, CPU
     # isolation, static testbed addressing) for the l <-> l2 25 GbE
-    # perf-testing pair. Points at the LOCAL checkout because l uses the
-    # new xdp2.testbed.dedicatedHost = false generator-lite option, which
-    # is not yet on the pushed branch. Once it merges, switch to:
-    #   xdp2.url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
+    # perf-testing pair. GitHub ref (flow-keys-compat-reorder, which
+    # carries the xdp2.testbed.dedicatedHost generator-lite option l uses)
+    # so the input resolves the same on l and l2.
     xdp2 = {
-      url = "git+file:///home/das/Downloads/xdp2";
+      url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # hyprland.url = "github:hyprwm/Hyprland";

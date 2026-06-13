@@ -40,13 +40,13 @@
 
     # xdp2 physical-testbed NixOS module: CPU isolation, IRQ pinning,
     # NIC tuning, hugepages, lowJitter, disableNonEssentialServices.
-    # Local checkout (current flow-keys-compat-reorder work): the old
-    # xdp2-rs branch predates the xdp2.nicTuning option, so driver
-    # selection (mlx5_core, set in configuration.nix) errored there.
-    # Switch to github:randomizedcoder/xdp2/flow-keys-compat-reorder
-    # once that branch is pushed/merged.
+    # flow-keys-compat-reorder branch (replaces the old xdp2-rs branch,
+    # which predated the xdp2.nicTuning option needed for the mlx5_core
+    # driver selection in configuration.nix). GitHub ref so the input
+    # resolves identically on l and l2 (a machine-local git+file path
+    # only exists on the host where the repo is checked out).
     xdp2 = {
-      url = "git+file:///home/das/Downloads/xdp2";
+      url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

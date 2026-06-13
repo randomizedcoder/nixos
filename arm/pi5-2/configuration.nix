@@ -1,5 +1,5 @@
 #
-# arm/pi5-1/configuration.nix
+# arm/pi5-2/configuration.nix
 #
 
 {
@@ -66,7 +66,7 @@
     pkgs.callPackage ./test-kernel { inherit nixos-raspberrypi; }
   );
 
-  networking.hostName = "pi5-1";
+  networking.hostName = "pi5-2";
   networking.networkmanager.enable = false;
 
   time.timeZone = "America/Los_Angeles";
@@ -123,7 +123,7 @@
   services.timesyncd.enable = true;
   services.fstrim.enable = true;
 
-  # mDNS so `pi5-1.local` resolves on the LAN (the installer had this off).
+  # mDNS so `pi5-2.local` resolves on the LAN (the installer had this off).
   services.avahi = {
     enable = true;
     nssmdns4 = true;

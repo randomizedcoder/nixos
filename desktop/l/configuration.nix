@@ -66,6 +66,11 @@
       # netns/routing/firewall so nordlayer can't disrupt the host.
       # Reach it via `ssh -J vpn-jump@127.0.0.1:2222 user@remote.vpn`.
       ./nordlayer-sandbox.nix
+      # Series-3 flow_dissector fast-path: applies the 3 canonical gated
+      # patches (0001/0002/0003-series3.patch) as a kernelPatches overlay
+      # on l's stock NVIDIA-compatible kernel, so l can run the symmetric
+      # A/B against l2. Enabled below (services.flowdis-fastpath.enable).
+      ./flowdis-fastpath-module.nix
     ];
 
   boot = {
@@ -488,6 +493,68 @@
     fsType = "none";
     options = [ "bind" ];
   };
+
+  # ===================================================================
+  # Series-3 perf-testing: l is the generator for the 25 GbE l <-> l2
+  # pair (Pair #4, see xdp2 docs/physical-testbed.md §21).
+  # ===================================================================
+
+  # Apply the gated series-3 flow_dissector patches to l's stock kernel
+  # so net.core.flow_dissector_fastpath exists and the A/B can flip it.
+  # Keeps pkgs.linuxPackages (NVIDIA-compatible) — the patch touches
+  # only flow_dissector.c / sysctl_net_core.c, no net-next needed.
+  services.flowdis-fastpath.enable = true;
+
+  # xdp2 physical-testbed in GENERATOR-LITE mode. Unlike the dedicated
+  # hp/l2 hosts, l is a daily-driver desktop: keep mitigations on, keep
+  # all desktop services, skip the always-on C-state/THP/audit tuning,
+  # and isolate only ~4 logical cores for traffic generation. The
+  # physical-testbed module is imported in flake.nix.
+  xdp2.testbed = {
+    enable = true;
+
+    peerInterfaces = [ "enp35s0f0np0" "enp35s0f1np1" ];
+
+    # Pair #4: l (generator, .2) <-> l2 (DUT, .5). /29 subnets; IPv6 ULA
+    # fd10:10:N::M/64 (N = v4 third octet, M = v4 host octet).
+    addresses = {
+      enp35s0f0np0 = {
+        local  = "10.10.4.2/29";    peer  = "10.10.4.5";
+        local6 = "fd10:10:4::2/64"; peer6 = "fd10:10:4::5";
+      };
+      enp35s0f1np1 = {
+        local  = "10.10.5.2/29";    peer  = "10.10.5.5";
+        local6 = "fd10:10:5::2/64"; peer6 = "fd10:10:5::5";
+      };
+    };
+
+    # Only ~4 logical cores isolated for the generator; the remaining
+    # ~20 threads stay for the interactive desktop. The soak harness
+    # taskset-pins iperf/tcpreplay onto these (GEN_CORES=2-5).
+    isolatedCpus = [ 2 3 4 5 ];
+    hugepages2M = 512;
+
+    # --- generator-lite: keep the desktop healthy and secure ---
+    dedicatedHost = false;               # skip max_cstate=1 / THP=never / audit=0
+    disableMitigations = false;          # CPU mitigations stay ON (daily driver)
+    disableNonEssentialServices = false; # keep GNOME / printing / VPN / etc.
+    lowJitter = false;                   # keep turbo for interactive use
+
+    # Management interface (kept for SSH / nix); enp1s0 is l's onboard NIC.
+    managementInterface = "enp1s0";
+  };
+
+  # Mellanox ports use the same mlx5_core ethtool/IRQ/tc-flower branch
+  # as l2 and hp1/hp3 (NOT the default i40e).
+  xdp2.nicTuning.driver = "mlx5_core";
+
+  # l runs NetworkManager (wireless_desktop.nix). Hand the data-plane
+  # Mellanox ports to xdp2.testbed's static config instead of letting NM
+  # manage / DHCP them.
+  networking.networkmanager.unmanaged = [
+    "interface-name:enp35s0f0np0"
+    "interface-name:enp35s0f1np1"
+  ];
 
   system.stateVersion = "24.11";
 

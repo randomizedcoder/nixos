@@ -25,6 +25,17 @@
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # xdp2 — provides nixosModules.physical-testbed (NIC tuning, CPU
+    # isolation, static testbed addressing) for the l <-> l2 25 GbE
+    # perf-testing pair. Points at the LOCAL checkout because l uses the
+    # new xdp2.testbed.dedicatedHost = false generator-lite option, which
+    # is not yet on the pushed branch. Once it merges, switch to:
+    #   xdp2.url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
+    xdp2 = {
+      url = "git+file:///home/das/Downloads/xdp2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # hyprland.url = "github:hyprwm/Hyprland";
     # hyprland-plugins = {
     #   url = "github:hyprwm/hyprland-plugins";
@@ -36,7 +47,7 @@
   #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
   #outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-pcp, home-manager, ... }:
   #outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-onnx, nixpkgs-obs, home-manager, ... }:
-  outputs = { self, nixpkgs, home-manager, agenix, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, agenix, xdp2, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -62,10 +73,15 @@
         specialArgs = {
           unstable = pkgs;
           inherit agenix;
+          inherit inputs;
         };
         modules = [
           ./configuration.nix
           agenix.nixosModules.default
+          # xdp2 physical-testbed: NIC tuning + static testbed addressing
+          # for the 25 GbE l <-> l2 pair. Options set in configuration.nix
+          # (xdp2.testbed generator-lite profile).
+          xdp2.nixosModules.physical-testbed
           # PCP module from local nixpkgs-pcp
           #(nixpkgs-pcp + "/nixos/modules/services/monitoring/pcp.nix")
           #{ nixpkgs.overlays = [ (final: prev: {

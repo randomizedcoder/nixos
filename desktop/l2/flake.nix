@@ -37,9 +37,21 @@
       url = "github:randomizedcoder/tsf-sync/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # xdp2 physical-testbed NixOS module: CPU isolation, IRQ pinning,
+    # NIC tuning, hugepages, lowJitter, disableNonEssentialServices.
+    # Local checkout (current flow-keys-compat-reorder work): the old
+    # xdp2-rs branch predates the xdp2.nicTuning option, so driver
+    # selection (mlx5_core, set in configuration.nix) errored there.
+    # Switch to github:randomizedcoder/xdp2/flow-keys-compat-reorder
+    # once that branch is pushed/merged.
+    xdp2 = {
+      url = "git+file:///home/das/Downloads/xdp2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-local, disko, home-manager, nix-custom, tsf-sync, ... }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-local, disko, home-manager, nix-custom, tsf-sync, xdp2, ... }@inputs:
     let
       system = "x86_64-linux";
 
@@ -109,6 +121,9 @@
             # CrowdSec now in nixpkgs - use services.crowdsec in configuration.nix if needed
             # crowdsec.nixosModules.crowdsec
             # crowdsec.nixosModules.crowdsec-firewall-bouncer
+            # xdp2 physical-testbed: same module hp5 uses; configured
+            # via xdp2.testbed = { ... } in configuration.nix.
+            xdp2.nixosModules.physical-testbed
             ./configuration.nix
             {
               nixpkgs.pkgs = pkgs;

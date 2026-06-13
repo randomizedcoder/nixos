@@ -1,15 +1,15 @@
 #
-# arm/pi5-1/flake.nix
+# arm/pi4-2/flake.nix
 #
-# NixOS config for the Raspberry Pi 5 "pi5-1".
+# NixOS config for the Raspberry Pi 4 "pi4-2".
 # Pi-specific support (kernel, firmware, bootloader, vendor pkgs) comes from
 # nixos-raspberrypi. Modeled on ../../hp/hp5.
 #
 # Deploy onto the running installer SD card:
-#   nixos-rebuild switch --flake .#pi5-1 --target-host root@<pi-ip>
+#   nixos-rebuild switch --flake .#pi4-2 --target-host root@<pi-ip>
 #
 {
-  description = "pi5-1 - Raspberry Pi 5";
+  description = "pi4-2 - Raspberry Pi 4";
 
   nixConfig = {
     extra-substituters = [
@@ -55,8 +55,8 @@
     {
       nixosConfigurations = {
         # The running system. Deploy with:
-        #   nixos-rebuild switch --flake .#pi5-1 --target-host root@<pi-ip>
-        pi5-1 = nixos-raspberrypi.lib.nixosSystem {
+        #   nixos-rebuild switch --flake .#pi4-2 --target-host root@<pi-ip>
+        pi4-2 = nixos-raspberrypi.lib.nixosSystem {
           specialArgs = inputs;
           modules = baseModules;
         };
@@ -64,8 +64,8 @@
         # Same system packaged as a flashable SD-card image.
         # `nixpkgs.buildPlatform` cross-compiles it from x86_64-linux, so it
         # builds without binfmt/QEMU emulation. Build the image with:
-        #   nix build .#nixosConfigurations.pi5-1-sdimage.config.system.build.sdImage
-        pi5-1-sdimage = nixos-raspberrypi.lib.nixosSystem {
+        #   nix build .#nixosConfigurations.pi4-2-sdimage.config.system.build.sdImage
+        pi4-2-sdimage = nixos-raspberrypi.lib.nixosSystem {
           specialArgs = inputs;
           modules = baseModules ++ [
             nixos-raspberrypi.nixosModules.sd-image

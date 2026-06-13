@@ -1,5 +1,5 @@
 #
-# arm/pi5-1/configuration.nix
+# arm/pi3-1/configuration.nix
 #
 
 {
@@ -12,10 +12,8 @@
 
 {
   imports = with nixos-raspberrypi.nixosModules; [
-    # Raspberry Pi 5 hardware support (kernel, firmware, bootloader, dtbs)
-    raspberry-pi-5.base
-    # Recommended: fixes/optimizations for the 16k memory page size
-    raspberry-pi-5.page-size-16k
+    # Raspberry Pi 3 hardware support (kernel, firmware, bootloader, dtbs)
+    raspberry-pi-3.base
 
     ./il8n.nix
     # INSECURE: root SSH via key only, on an isolated lab network
@@ -40,33 +38,22 @@
         "x-systemd.idle-timeout=1min"
       ];
     };
-    # 1 TB Kingston NVMe on PCIe — /nix backing store so kernel
-    # builds aren't I/O-bound on the SD card. neededForBoot=true
-    # makes the mount available in stage-1 before activation reads
-    # service units from /nix/store.
-    "/nix" = {
-      device = "/dev/disk/by-label/NIX_STORE";
-      fsType = "ext4";
-      options = [ "noatime" ];
-      neededForBoot = true;
-    };
   };
 
   # Match the bootloader the installer sd-image already wrote to the card.
-  boot.loader.raspberry-pi.bootloader = "kernel";
+  # Pi 3 uses u-boot (the raspberry-pi-3.base default).
+  boot.loader.raspberry-pi.bootloader = "uboot";
 
   # Series-3 flow_dissector fast-path kernel (xdp2 kernel-patches/
-  # series3-flowdis-fastpath/v1-netdev/). Same Path B overlay as
-  # ~/nixos/hp/hp3/test-kernel/ and ~/nixos/laptops/t/test-kernel/,
-  # but with linux_rpi5 as the base. Default sysctl
-  # net.core.flow_dissector_fastpath=0 so behaviour is unchanged
-  # until an operator opts in. Revert to stock by removing this
-  # block (kernelPackages falls back to rpi-5.base's mkDefault).
+  # series3-flowdis-fastpath/v1-netdev/). Path B overlay against
+  # linux_rpi3 (Cortex-A53 6.12.87). Same shape as the Pi 4 / Pi 5
+  # hosts. Default sysctl net.core.flow_dissector_fastpath=0; revert
+  # to stock by removing this block.
   boot.kernelPackages = pkgs.linuxPackagesFor (
     pkgs.callPackage ./test-kernel { inherit nixos-raspberrypi; }
   );
 
-  networking.hostName = "pi5-1";
+  networking.hostName = "pi3-1";
   networking.networkmanager.enable = false;
 
   time.timeZone = "America/Los_Angeles";
@@ -123,7 +110,7 @@
   services.timesyncd.enable = true;
   services.fstrim.enable = true;
 
-  # mDNS so `pi5-1.local` resolves on the LAN (the installer had this off).
+  # mDNS so `pi3-1.local` resolves on the LAN (the installer had this off).
   services.avahi = {
     enable = true;
     nssmdns4 = true;

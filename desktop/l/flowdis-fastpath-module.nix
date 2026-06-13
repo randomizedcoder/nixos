@@ -9,8 +9,17 @@
 #   - eth + IPv6 + {TCP, UDP}
 #
 # Source: github.com/randomizedcoder/xdp2 branch flow-keys-compat-reorder,
-# kernel-patches/series3-flowdis-fastpath/v1/. The squashed unified patch
-# in this directory is the same 224-line diff (3 commits flattened).
+# kernel-patches/series3-flowdis-fastpath/v1-netdev/. The three patch
+# files in this directory (0001/0002/0003-series3.patch) are byte-
+# identical copies of the canonical send-ready series, the same ones
+# l2 and hp1/hp2/hp3/hp5 apply.
+#
+# NOTE: this replaces the earlier squashed flowdis-fastpath-v1.patch,
+# which touched net/core/flow_dissector.c ONLY and therefore omitted
+# the sysctl gate (net/core/sysctl_net_core.c +
+# include/net/flow_dissector.h). Without the gate there is no
+# net.core.flow_dissector_fastpath sysctl to flip, making the runtime
+# A/B impossible. Patch 0001 below carries the gate.
 #
 # Upstream target is net-next 7.1.0-rc4; the touched code in
 # net/core/flow_dissector.c has been stable for years, so the patch
@@ -44,8 +53,16 @@
   config = lib.mkIf config.services.flowdis-fastpath.enable {
     boot.kernelPatches = [
       {
-        name = "flow_dissector-fastpath-v1";
-        patch = ./flowdis-fastpath-v1.patch;
+        name = "series3-flowdis-fastpath-skeleton";
+        patch = ./0001-series3.patch;
+      }
+      {
+        name = "series3-flowdis-fastpath-ipv4";
+        patch = ./0002-series3.patch;
+      }
+      {
+        name = "series3-flowdis-fastpath-ipv6";
+        patch = ./0003-series3.patch;
       }
     ];
   };

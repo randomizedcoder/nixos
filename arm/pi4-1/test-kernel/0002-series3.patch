@@ -1,0 +1,142 @@
+From 09548fd3f814b04151322e834c1b80fc991be2e5 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Wed, 27 May 2026 16:49:11 -0700
+Subject: [PATCH RFC 2/3] net: flow_dissector: add eth+IPv4+{TCP,UDP} fast-path
+
+Plug the IPv4 stub from the framework patch with a straight-line
+extractor for the common-case packet shape.
+
+The fast-path matches a narrow shape:
+
+- 20-byte IPv4 header. Reject IP options by checking the first
+  byte is 0x45 (version 4, IHL 5).
+- Not a fragment. Reject MF or non-zero fragment offset.
+- TCP or UDP only. Reject other transport protocols.
+
+On a match the fast-path writes the same key slots the slow path
+would write for the standard dissectors:
+
+- key_control: addr_type, thoff, flags
+- key_basic: n_proto, ip_proto
+- key_addrs.v4addrs: src and dst from the IPv4 header
+- key_ports: src and dst u16 ports read at the L4 header
+
+TCP and UDP both place the port pair at offset 0 of the L4
+header, so one __be32 read covers both protocols.
+
+On any miss the function returns false without touching
+target_container. The caller falls back to the slow path.
+
+Cold key slots that the slow path leaves untouched for this
+packet shape (KEY_IP, KEY_TCP, KEY_VLAN, etc.) are not in the
+standard dissector's key list. They stay at the caller's
+pre-memset zero. Output is byte-identical to the slow path on
+the standard dissectors.
+
+Expected effect: about 30 ns/pkt saved on packets that match,
+based on userspace measurements of the matching technique in the
+XDP2 project. The saving comes from skipping the slow-path graph
+walk. Cost on a miss is unchanged: one ethertype switch.
+
+A follow-up selftest will compare fast-path and slow-path output
+byte-by-byte to confirm the byte-identical claim.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ net/core/flow_dissector.c | 74 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 73 insertions(+), 1 deletion(-)
+
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 211fbbf6fb48..545dfbaf1deb 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -1047,13 +1047,85 @@ static struct flow_dissector flow_keys_dissector_symmetric;
+  */
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_fastpath_key);
+ 
++/* The fast-path assumes a 20-byte IPv4 header. The IHL == 5 runtime
++ * check below holds the run-time invariant; this static_assert holds
++ * the compile-time one in case struct iphdr ever grows.
++ */
++static_assert(sizeof(struct iphdr) == 20);
++
+ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 				   struct flow_dissector *flow_dissector,
+ 				   void *target_container,
+ 				   const void *data,
+ 				   int nhoff, int hlen)
+ {
+-	return false;
++	struct flow_dissector_key_addrs *key_addrs;
++	struct flow_dissector_key_control *key_control;
++	struct flow_dissector_key_basic *key_basic;
++	struct flow_dissector_key_ports *key_ports;
++	const struct iphdr *iph;
++	int thoff;
++
++	if (unlikely(hlen - nhoff < (int)sizeof(*iph) + 4))
++		return false;
++
++	iph = (const struct iphdr *)((const u8 *)data + nhoff);
++
++	/* version == 4 and IHL == 5 packed in the first byte. */
++	if (unlikely(*(const u8 *)iph != 0x45))
++		return false;
++
++	if (unlikely(iph->frag_off & htons(IP_MF | IP_OFFSET)))
++		return false;
++
++	if (unlikely(iph->protocol != IPPROTO_TCP &&
++		     iph->protocol != IPPROTO_UDP))
++		return false;
++
++	thoff = nhoff + (int)sizeof(*iph);
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_CONTROL)) {
++		key_control = skb_flow_dissector_target(flow_dissector,
++							FLOW_DISSECTOR_KEY_CONTROL,
++							target_container);
++		key_control->addr_type = FLOW_DISSECTOR_KEY_IPV4_ADDRS;
++		key_control->thoff = (u16)thoff;
++		key_control->flags = 0;
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_BASIC)) {
++		key_basic = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_BASIC,
++						      target_container);
++		key_basic->n_proto = htons(ETH_P_IP);
++		key_basic->ip_proto = iph->protocol;
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_IPV4_ADDRS)) {
++		key_addrs = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_IPV4_ADDRS,
++						      target_container);
++		memcpy(&key_addrs->v4addrs.src, &iph->saddr,
++		       sizeof(key_addrs->v4addrs.src));
++		memcpy(&key_addrs->v4addrs.dst, &iph->daddr,
++		       sizeof(key_addrs->v4addrs.dst));
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_PORTS)) {
++		const __be32 *ports = (const __be32 *)
++			((const u8 *)data + thoff);
++
++		key_ports = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_PORTS,
++						      target_container);
++		key_ports->ports = *ports;
++	}
++
++	return true;
+ }
+ 
+ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+-- 
+2.54.0
+

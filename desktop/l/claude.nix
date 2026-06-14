@@ -21,21 +21,57 @@
 # a CLAUDE_PLAN_FILE env var or a new statusline field would be the clean hook.
 
 let
-  profiles = [ "personal" "siden" "runpod" ];
+  profiles = [ "personal" "runpod" ];
   defaultProfile = "runpod";
 
   # Per-profile model selection — exported as ANTHROPIC_MODEL by claude-use.
   profileModels = {
-    personal = "claude-opus-4-7";
-    siden = "claude-opus-4-7";
-    runpod = "claude-opus-4-7";
+    personal = "claude-opus-4-8";
+    runpod = "claude-opus-4-8";
   };
   defaultModel = profileModels.${defaultProfile};
+
+  # Per-profile GitHub account hint — only used to print a nudge in claude-use
+  # if the profile's gh-profiles dir has not been initialised yet. The actual
+  # account binding comes from `gh auth login` writing into GH_CONFIG_DIR.
+  profileGhUsers = {
+    personal = "randomizedcoder";
+    runpod = "daveseddon-runpod";
+  };
 
   # Generate a bash case statement mapping profile names to model IDs.
   modelCaseArms = lib.concatStringsSep "\n        " (lib.mapAttrsToList
     (name: model: ''${name}) _model="${model}" ;;'')
     profileModels);
+
+  # Same idea for gh usernames (used only for the setup hint message).
+  ghUserCaseArms = lib.concatStringsSep "\n        " (lib.mapAttrsToList
+    (name: user: ''${name}) _gh_user="${user}" ;;'')
+    profileGhUsers);
+
+  # Build example lines for the `claude-use` help text. Generated from the
+  # actual profile list so they stay accurate as profiles are added/removed.
+  maxNameLen = lib.foldl' (acc: p:
+    if builtins.stringLength p > acc then builtins.stringLength p else acc) 0 profiles;
+  padName = p: p + lib.concatStrings (lib.genList (_: " ") (maxNameLen - builtins.stringLength p));
+
+  # One default-mapping example per profile: `claude-use <p>  # claude=<p>, gh=<p> (<user>)`
+  defaultExampleLines = lib.concatMapStringsSep "\n      "
+    (p: let u = profileGhUsers.${p} or "";
+            userStr = if u != "" then " (${u})" else "";
+        in ''echo "  claude-use ${padName p}            # claude=${p}, gh=${p}${userStr}"'')
+    profiles;
+
+  # Cross-combo examples — one line per ordered (claude, gh) pair where they differ.
+  crossExampleLines =
+    let pairs = lib.concatMap (a:
+          lib.concatMap (b: if a == b then [ ] else [ { inherit a b; } ]) profiles
+        ) profiles;
+    in lib.concatMapStringsSep "\n      "
+        (pair: let ub = profileGhUsers.${pair.b} or "";
+                   ubStr = if ub != "" then " (${ub})" else "";
+               in ''echo "  claude-use ${padName pair.a} ${padName pair.b}   # claude=${pair.a}, gh=${pair.b}${ubStr}"'')
+        pairs;
 
   # Which statusline to wire into settings.json. The shell version stays
   # installed either way so they can be compared side-by-side.
@@ -178,12 +214,24 @@ let
     '';
   };
 
-  settingsFile = pkgs.writeText "claude-settings.json" (builtins.toJSON {
-    model = "claude-opus-4-6";
-    enabledPlugins = {
-      "gopls-lsp@claude-plugins-official" = true;
-      "rust-analyzer-lsp@claude-plugins-official" = true;
-    };
+  # Plugins everyone gets. Per-profile extras go in profileExtraPlugins below.
+  # All names resolve against the official marketplace ("@claude-plugins-official").
+  basePlugins = [
+    "gopls-lsp"
+    "rust-analyzer-lsp"
+    "security-guidance"
+  ];
+  profileExtraPlugins = {
+    personal = [ "clangd-lsp" ];
+    runpod = [ ];
+  };
+
+  mkSettingsFile = name: pkgs.writeText "claude-settings-${name}.json" (builtins.toJSON {
+    model = "claude-opus-4-8";
+    enabledPlugins = lib.listToAttrs (map (p: {
+      name = "${p}@claude-plugins-official";
+      value = true;
+    }) (basePlugins ++ (profileExtraPlugins.${name} or [ ])));
     statusLine = {
       type = "command";
       command =
@@ -192,6 +240,10 @@ let
         else "${claude-statusline}/bin/claude-statusline";
     };
   });
+
+  # Fallback for ad-hoc profiles created via claude-use-setup that aren't in
+  # the `profiles` list — they get the base plugin set only.
+  defaultSettingsFile = mkSettingsFile "_default";
 in
 {
   # Both binaries installed so you can benchmark / swap via statuslineImpl.
@@ -204,9 +256,17 @@ in
   programs.bash.initExtra = ''
     claude-use() {
       local profiles_dir="$HOME/.claude/profiles"
+      local gh_profiles_dir="$HOME/.config/gh-profiles"
       local name="''${1:-}"
+      local gh_name="''${2:-$name}"   # gh profile defaults to the claude profile name
 
       if [ -z "$name" ]; then
+        local _active_claude="''${CLAUDE_CONFIG_DIR##*/}"
+        local _active_gh="''${GH_CONFIG_DIR##*/}"
+        echo "Currently active:"
+        echo "  claude profile: ''${_active_claude:-(unset)}    (model: ''${ANTHROPIC_MODEL:-unset})"
+        echo "  gh profile:     ''${_active_gh:-(unset)}"
+        echo ""
         echo "Claude profiles (in $profiles_dir):"
         if [ -d "$profiles_dir" ]; then
           local found=0
@@ -225,13 +285,40 @@ in
           echo "  (profiles dir missing — run 'make' or 'claude-use-setup <name>')"
         fi
         echo ""
-        echo "Usage: claude-use <profile>"
+        echo "gh profiles (in $gh_profiles_dir):"
+        if [ -d "$gh_profiles_dir" ]; then
+          for gdir in "$gh_profiles_dir"/*/; do
+            [ -d "$gdir" ] || continue
+            local g="''${gdir%/}"; g="''${g##*/}"
+            if [ "''${GH_CONFIG_DIR:-}" = "''${gdir%/}" ]; then
+              echo "  * $g (active)"
+            else
+              echo "    $g"
+            fi
+          done
+        fi
+        echo ""
+        echo "Usage:"
+        echo "  claude-use <claude-profile> [<gh-profile>]"
+        echo "  If <gh-profile> is omitted, it defaults to <claude-profile>."
+        echo "  Both args switch only the current shell — other terminals are unaffected."
+        echo ""
+        echo "Default mappings (claude profile == gh profile):"
+        ${defaultExampleLines}
+        echo ""
+        echo "Cross combinations (claude from one account, gh from another):"
+        ${crossExampleLines}
+        echo ""
+        echo "Related commands:"
+        echo "  claude-use-setup <name>   # create a new claude profile + run OAuth login"
+        echo "  gh auth login             # add a github login to the active gh profile"
+        echo "  gh auth status            # show the gh login in the active gh profile"
         return 0
       fi
 
       local profile_dir="$profiles_dir/$name"
       if [ ! -d "$profile_dir" ]; then
-        echo "Error: profile not found: $profile_dir" >&2
+        echo "Error: claude profile not found: $profile_dir" >&2
         echo "Create it with: claude-use-setup $name" >&2
         return 1
       fi
@@ -246,7 +333,44 @@ in
       esac
       export ANTHROPIC_MODEL="$_model"
 
-      echo "Switched to profile: $name (CLAUDE_CONFIG_DIR=$profile_dir, ANTHROPIC_MODEL=$_model)"
+      # Bind gh CLI to a per-profile config dir. The gh profile is independent
+      # from the claude profile so e.g. `claude-use runpod personal` lets you
+      # do runpod-claude work against the personal github account.
+      local _gh_dir="$gh_profiles_dir/$gh_name"
+      mkdir -p "$_gh_dir"
+      chmod 700 "$_gh_dir"
+      export GH_CONFIG_DIR="$_gh_dir"
+
+      local _gh_user=""
+      case "$gh_name" in
+        ${ghUserCaseArms}
+        *) ;;
+      esac
+
+      echo "Switched to profile: $name (gh: $gh_name)"
+      echo "  CLAUDE_CONFIG_DIR=$profile_dir"
+      echo "  ANTHROPIC_MODEL=$_model"
+      echo "  GH_CONFIG_DIR=$_gh_dir"
+      if [ ! -f "$_gh_dir/hosts.yml" ]; then
+        if [ -n "$_gh_user" ]; then
+          echo "  gh: not yet set up — run 'gh auth login' and choose $_gh_user"
+        else
+          echo "  gh: not yet set up — run 'gh auth login'"
+        fi
+      fi
+
+      # Enabled plugins for this profile (from its settings.json).
+      if [ -f "$profile_dir/settings.json" ] && command -v jq >/dev/null 2>&1; then
+        local _had_header=0
+        while IFS= read -r _p; do
+          [ -z "$_p" ] && continue
+          if [ "$_had_header" = 0 ]; then
+            echo "  enabled plugins:"
+            _had_header=1
+          fi
+          echo "    $_p"
+        done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' "$profile_dir/settings.json" 2>/dev/null)
+      fi
     }
 
     claude-use-setup() {
@@ -263,8 +387,10 @@ in
         chmod 700 "$profile_dir"
         echo "Created profile dir: $profile_dir"
       fi
-      # Ensure the profile has the managed settings.json (statusline, etc.)
-      install -m 644 ${settingsFile} "$profile_dir/settings.json"
+      # Ensure the profile has the managed settings.json (statusline, etc.).
+      # Ad-hoc profiles get the base plugin set; profiles listed in nix get
+      # their per-profile settings applied by the activation below.
+      install -m 644 ${defaultSettingsFile} "$profile_dir/settings.json"
 
       export CLAUDE_CONFIG_DIR="$profile_dir"
 
@@ -282,21 +408,28 @@ in
       claude auth login
     }
 
-    # Default profile and model
+    # Default profile, model, and gh config dir
     if [ -z "''${CLAUDE_CONFIG_DIR:-}" ]; then
       export CLAUDE_CONFIG_DIR="$HOME/.claude/profiles/${defaultProfile}"
     fi
     if [ -z "''${ANTHROPIC_MODEL:-}" ]; then
       export ANTHROPIC_MODEL="${defaultModel}"
     fi
+    if [ -z "''${GH_CONFIG_DIR:-}" ]; then
+      export GH_CONFIG_DIR="$HOME/.config/gh-profiles/${defaultProfile}"
+    fi
   '';
 
-  # Create profile directories and deploy settings.json to each
+  # Create profile directories and deploy settings.json to each.
+  # Also pre-create the matching gh-profiles dir so the first `gh auth login`
+  # under that profile lands in the right place.
   home.activation.claudeProfiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${lib.concatMapStringsSep "\n    " (profile: ''
       mkdir -p "$HOME/.claude/profiles/${profile}"
       chmod 700 "$HOME/.claude/profiles/${profile}"
-      install -m 644 ${settingsFile} "$HOME/.claude/profiles/${profile}/settings.json"
+      install -m 644 ${mkSettingsFile profile} "$HOME/.claude/profiles/${profile}/settings.json"
+      mkdir -p "$HOME/.config/gh-profiles/${profile}"
+      chmod 700 "$HOME/.config/gh-profiles/${profile}"
     '') profiles}
   '';
 }

@@ -1,55 +1,75 @@
-# Pi 5 series-3-patched kernel.
+# hp* series-3-patched kernel.
 #
-# Path B (kernelPatches overlay) — same approach as the hp/* and
-# laptops/t test-kernel/ dirs, just with `linux_rpi5` from
-# nixos-raspberrypi as the base instead of pkgs.linuxPackages_latest.
+# Path B (kernelPatches overlay) supersedes the prior Path A
+# (linuxKernel.manualConfig with a custom net-next src + reconciled
+# .config). Rationale captured in the t laptop's test-kernel/
+# default.nix (laptops/t/test-kernel/default.nix); short version:
+# `net/core/flow_dissector.c` has not changed in the hunks the 3
+# series-3 patches touch between 7.0.x and 7.1.0-rc4, so applying
+# them as a kernelPatches overlay against pkgs.linuxPackages_latest
+# is correct and far less elaborate than the manualConfig pattern.
 #
-# Why this works: nixos-raspberrypi's `raspberry-pi-5.base` module
-# sets `boot.kernelPackages = lib.mkDefault linuxPackages_rpi5;`, so
-# we can swap at normal priority. The `linux_rpi5` package itself
-# accepts `kernelPatches` via `.override`, identical to upstream
-# nixpkgs's kernel.
+# Migration history:
+#   - 2026-05-27..28  Path A used for series 3 v1 RFC Phase 1-4
+#                     testing on hp1/hp2/hp3/hp5 (built from
+#                     /home/das/Downloads/net-next at branch
+#                     flowdis-fastpath-rfc, HEAD eeca3eb493b8;
+#                     shipped hp5-kernel.config reconciled to
+#                     7.1.0-rc4 via make olddefconfig).
+#   - 2026-06-04..05  Path B validated end-to-end on t (Comet
+#                     Lake-H), then propagated here. All four hp
+#                     hosts have identical test-kernel/ contents,
+#                     so this single file is byte-identical across
+#                     hp1/hp2/hp3/hp5.
 #
-# Series 3 patches (pinned copies in this directory; identical to the
-# v1-netdev/ files used for hp1/2/3/5 and t):
+# Functional impact of the migration: same 3 patches applied; the
+# base kernel switches from net-next at c0aa5f13826d (7.1.0-rc4) to
+# pkgs.linuxPackages_latest (currently 7.0.10). The patched
+# flow_dissector.c code is byte-identical between the two builds;
+# everything else in the kernel (drivers, scheduler, fs, mm) is the
+# upstream stable 7.0.10 instead of net-next development tip. The
+# Phase 4 macro-test results captured under the 7.1.0-rc4 build
+# remain valid as a one-time data point for the net-next tip; new
+# measurements under this build can be cross-referenced.
 #
-#   net: flow_dissector: add opt-in fast-path entry-point skeleton
-#   net: flow_dissector: add eth+IPv4+{TCP,UDP} fast-path
-#   net: flow_dissector: add eth+IPv6+{TCP,UDP} fast-path
+# Series 3 patches (from xdp2 kernel-patches/series3-flowdis-fastpath/
+# v1-netdev/, pinned copies live in this directory):
 #
-# Risk: the patches were drafted against net-next 7.1.0-rc4 and apply
-# cleanly to linuxPackages_latest 7.0.x. linux_rpi5 currently ships
-# 6.12.87. If a patch context line has drifted in
-# net/core/sysctl_net_core.c, Documentation/admin-guide/sysctl/net.rst,
-# or include/net/flow_dissector.h between 6.12 and 7.0, patch 1 may
-# reject — we'll know at build time. Fallback is a hand-edited
-# 0001-series3.rpi612.patch.
+#   1ddc620812be  net: flow_dissector: add fast-path entry-point skeleton
+#   080196491134  net: flow_dissector: add eth+IPv4+{TCP,UDP} fast-path
+#   eeca3eb493b8  net: flow_dissector: add eth+IPv6+{TCP,UDP} fast-path
 #
-# Revert: change configuration.nix's boot.kernelPackages line back to
-# the default (drop the override). The stock kernel generation stays
+# Revert: change configuration.nix's boot.kernelPackages back to
+# `pkgs.linuxPackages_latest`. The stock kernel generation stays
 # selectable in systemd-boot until garbage collected.
 
 { nixos-raspberrypi
-, pkgs
-, ...
-}:
+, pkgs, ... }:
 
 let
   basePkgs = nixos-raspberrypi.packages.${pkgs.stdenv.hostPlatform.system};
 in
 basePkgs.linux_rpi5.override {
   kernelPatches = basePkgs.linux_rpi5.kernelPatches ++ [
+    # v3 of the series, taken from github.com/randomizedcoder/xdp2
+    # kernel-patches/series3-flowdis-fastpath/v3-namespace/.
+    # Supersedes the prior 6 patches (parent series3 + 3 extensions).
+    # All four ship per-shape sysctls under /proc/sys/net/flow_dissector/.
     {
-      name = "series3-flowdis-fastpath-skeleton";
-      patch = ./0001-series3.patch;
+      name = "v3-flow_dissector-eth-ip";
+      patch = ./0001-v3-eth-ip.patch;
     }
     {
-      name = "series3-flowdis-fastpath-ipv4";
-      patch = ./0002-series3.patch;
+      name = "v3-flow_dissector-vlan";
+      patch = ./0002-v3-vlan.patch;
     }
     {
-      name = "series3-flowdis-fastpath-ipv6";
-      patch = ./0003-series3.patch;
+      name = "v3-flow_dissector-qinq";
+      patch = ./0003-v3-qinq.patch;
+    }
+    {
+      name = "v3-flow_dissector-vxlan-inner-RFC-EXPERIMENT";
+      patch = ./0004-v3-vxlan-inner.patch;
     }
   ];
 }

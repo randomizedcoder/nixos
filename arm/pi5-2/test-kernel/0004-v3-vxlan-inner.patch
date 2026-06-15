@@ -1,4 +1,4 @@
-From bb1b8029b9cc3767fac5d2e90790134db4ce0955 Mon Sep 17 00:00:00 2001
+From d60c5470e46349fd9277dfcab8a8fc89981a6b15 Mon Sep 17 00:00:00 2001
 From: Dave Seddon <dave.seddon.ca@gmail.com>
 Date: Mon, 15 Jun 2026 09:39:50 -0700
 Subject: [PATCH RFC v3 4/4] RFC EXPERIMENT: net: flow_dissector: descend into
@@ -110,7 +110,7 @@ index 6b48103c36e5..73262708277a 100644
  /* struct flow_keys_digest:
   *
 diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
-index 67148b11ac74..3b15a52f9876 100644
+index f89af877dbc8..87a5b71f150a 100644
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
 @@ -13,6 +13,7 @@
@@ -130,7 +130,7 @@ index 67148b11ac74..3b15a52f9876 100644
  
  /* Forward declarations for the per-shape fast-path helpers, anchored
   * at the top of the file. Subsequent patches in this series add new
-@@ -1144,6 +1147,58 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+@@ -1153,6 +1156,58 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
  		key_ports->ports = *ports;
  	}
  
@@ -189,7 +189,7 @@ index 67148b11ac74..3b15a52f9876 100644
  	return true;
  }
  
-@@ -2502,6 +2557,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+@@ -2511,6 +2566,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_set_qinq_key,
  	},

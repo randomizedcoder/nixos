@@ -1,4 +1,4 @@
-From 34ca6f360a46ba090ac11346ccffab710dfe449d Mon Sep 17 00:00:00 2001
+From 74c6ea03a4171f59ab0111aea5422d3deba0c3e4 Mon Sep 17 00:00:00 2001
 From: Dave Seddon <dave.seddon.ca@gmail.com>
 Date: Mon, 15 Jun 2026 09:33:47 -0700
 Subject: [PATCH RFC v3 1/4] net: flow_dissector: opt-in fast-path for eth +
@@ -70,8 +70,8 @@ Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
 ---
  Documentation/admin-guide/sysctl/net.rst |  27 ++-
  include/net/flow_dissector.h             |   8 +
- net/core/flow_dissector.c                | 262 +++++++++++++++++++++++
- 3 files changed, 296 insertions(+), 1 deletion(-)
+ net/core/flow_dissector.c                | 271 +++++++++++++++++++++++
+ 3 files changed, 305 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
 index 0724a793798f..b9bdf2284b7a 100644
@@ -131,10 +131,10 @@ index ced79dc8e856..d5a19fd69853 100644
   *
   * This structure is used to hold a digest of the full flow keys. This is a
 diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
-index 2a98f5fa74eb..aae8d5bd306d 100644
+index 2a98f5fa74eb..ddb4179c99f0 100644
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
-@@ -37,6 +37,32 @@
+@@ -37,6 +37,41 @@
  #endif
  #include <linux/bpf-netns.h>
  
@@ -164,10 +164,19 @@ index 2a98f5fa74eb..aae8d5bd306d 100644
 +				   const void *data,
 +				   int nhoff, int hlen);
 +
++/* Forward declaration: flow_keys_dissector_symmetric is defined later
++ * in this file (it is static, not extern'd through the header). The
++ * fast-path dispatcher's eligibility check at line ~1396 references it
++ * to whitelist the two standard dissectors, so it must be visible at
++ * that earlier point. Tentative-definition redeclaration; the actual
++ * definition with __read_mostly later in the file is the storage.
++ */
++static struct flow_dissector flow_keys_dissector_symmetric;
++
  static void dissector_set_key(struct flow_dissector *flow_dissector,
  			      enum flow_dissector_key_id key_id)
  {
-@@ -1035,6 +1061,209 @@ static bool is_pppoe_ses_hdr_valid(const struct pppoe_hdr *hdr)
+@@ -1035,6 +1070,209 @@ static bool is_pppoe_ses_hdr_valid(const struct pppoe_hdr *hdr)
  	return hdr->ver == 1 && hdr->type == 1 && hdr->code == 0;
  }
  
@@ -377,7 +386,7 @@ index 2a98f5fa74eb..aae8d5bd306d 100644
  /**
   * __skb_flow_dissect - extract the flow_keys struct and return it
   * @net: associated network namespace, derived from @skb if NULL
-@@ -1171,6 +1400,15 @@ bool __skb_flow_dissect(const struct net *net,
+@@ -1171,6 +1409,15 @@ bool __skb_flow_dissect(const struct net *net,
  
  	rcu_read_unlock();
  
@@ -393,7 +402,7 @@ index 2a98f5fa74eb..aae8d5bd306d 100644
  	if (dissector_uses_key(flow_dissector,
  			       FLOW_DISSECTOR_KEY_ETH_ADDRS)) {
  		struct ethhdr *eth = eth_hdr(skb);
-@@ -2096,3 +2334,27 @@ static int __init init_default_flow_dissectors(void)
+@@ -2096,3 +2343,27 @@ static int __init init_default_flow_dissectors(void)
  	return 0;
  }
  core_initcall(init_default_flow_dissectors);

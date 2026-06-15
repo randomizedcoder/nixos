@@ -1,4 +1,4 @@
-From a2d3d4afdf3b80075acd687833624c51cb39f3b1 Mon Sep 17 00:00:00 2001
+From 8504d0dca46b799d78141ed6bf55c97cb04205ad Mon Sep 17 00:00:00 2001
 From: Dave Seddon <dave.seddon.ca@gmail.com>
 Date: Mon, 15 Jun 2026 09:38:13 -0700
 Subject: [PATCH RFC v3 3/4] net: flow_dissector: extend VLAN fast-path to QinQ
@@ -91,7 +91,7 @@ index 22e7ab0153de..6b48103c36e5 100644
  /* struct flow_keys_digest:
   *
 diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
-index 25417d18191a..67148b11ac74 100644
+index 7c11c942417c..f89af877dbc8 100644
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
 @@ -47,6 +47,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_eth_ip_key);
@@ -103,7 +103,7 @@ index 25417d18191a..67148b11ac74 100644
  
  /* Forward declarations for the per-shape fast-path helpers, anchored
   * at the top of the file. Subsequent patches in this series add new
-@@ -1229,27 +1231,47 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+@@ -1238,27 +1240,47 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
  	return true;
  }
  
@@ -157,7 +157,7 @@ index 25417d18191a..67148b11ac74 100644
  		tci_id = skb_vlan_tag_get_id(skb);
  		tci_prio = skb_vlan_tag_get_prio(skb);
  		inner_proto = skb->protocol;
-@@ -1266,10 +1288,9 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
+@@ -1275,10 +1297,9 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
  		nhoff += (int)sizeof(*vlan);
  	}
  
@@ -170,7 +170,7 @@ index 25417d18191a..67148b11ac74 100644
  						     target_container);
  		key_vlan->vlan_id = tci_id;
  		key_vlan->vlan_priority = tci_prio;
-@@ -1293,6 +1314,12 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
+@@ -1302,6 +1323,12 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
  		return flow_dissect_fast_ipv6(skb, flow_dissector,
  					      target_container, data,
  					      nhoff, hlen);
@@ -183,7 +183,7 @@ index 25417d18191a..67148b11ac74 100644
  	default:
  		return false;
  	}
-@@ -1324,7 +1351,7 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+@@ -1333,7 +1360,7 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
  			return false;
  		return flow_dissect_fast_vlan(skb, flow_dissector,
  					      target_container, data,
@@ -192,7 +192,7 @@ index 25417d18191a..67148b11ac74 100644
  	case htons(ETH_P_IP):
  		if (!static_branch_likely(&flow_dissector_eth_ip_key))
  			return false;
-@@ -2418,14 +2445,39 @@ core_initcall(init_default_flow_dissectors);
+@@ -2427,14 +2454,39 @@ core_initcall(init_default_flow_dissectors);
   * /proc/sys/net/flow_dissector/. See Documentation/admin-guide/sysctl/
   * net.rst for the operator-facing description.
   */
@@ -236,7 +236,7 @@ index 25417d18191a..67148b11ac74 100644
  }
  
  static struct ctl_table flow_dissector_sysctl_table[] = {
-@@ -2443,6 +2495,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+@@ -2452,6 +2504,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_set_vlan_key,
  	},

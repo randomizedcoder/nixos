@@ -1,4 +1,4 @@
-From 497a2795551027b4d2029a9c2422d020a413417c Mon Sep 17 00:00:00 2001
+From 3df1846c1604a1033a94ec92c89cd980436d9e84 Mon Sep 17 00:00:00 2001
 From: Dave Seddon <dave.seddon.ca@gmail.com>
 Date: Mon, 15 Jun 2026 09:35:58 -0700
 Subject: [PATCH RFC v3 2/4] net: flow_dissector: add fast-path for single
@@ -96,7 +96,7 @@ index d5a19fd69853..22e7ab0153de 100644
  /* struct flow_keys_digest:
   *
 diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
-index aae8d5bd306d..25417d18191a 100644
+index ddb4179c99f0..7c11c942417c 100644
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
 @@ -45,6 +45,8 @@
@@ -108,7 +108,7 @@ index aae8d5bd306d..25417d18191a 100644
  
  /* Forward declarations for the per-shape fast-path helpers, anchored
   * at the top of the file. Subsequent patches in this series add new
-@@ -1227,6 +1229,75 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+@@ -1236,6 +1238,75 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
  	return true;
  }
  
@@ -184,7 +184,7 @@ index aae8d5bd306d..25417d18191a 100644
  /* Top-level dispatcher: eligibility check (only the two standard
   * dissectors and flag subset) + per-proto switch with per-shape
   * static_branch gating. Each case's branch is a forward not-taken JMP
-@@ -1247,6 +1318,13 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+@@ -1256,6 +1327,13 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
  		return false;
  
  	switch (proto) {
@@ -198,7 +198,7 @@ index aae8d5bd306d..25417d18191a 100644
  	case htons(ETH_P_IP):
  		if (!static_branch_likely(&flow_dissector_eth_ip_key))
  			return false;
-@@ -2340,6 +2418,16 @@ core_initcall(init_default_flow_dissectors);
+@@ -2349,6 +2427,16 @@ core_initcall(init_default_flow_dissectors);
   * /proc/sys/net/flow_dissector/. See Documentation/admin-guide/sysctl/
   * net.rst for the operator-facing description.
   */
@@ -215,7 +215,7 @@ index aae8d5bd306d..25417d18191a 100644
  static struct ctl_table flow_dissector_sysctl_table[] = {
  	{
  		.procname	= "eth_ip",
-@@ -2348,6 +2436,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+@@ -2357,6 +2445,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_do_static_key,
  	},

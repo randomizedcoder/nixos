@@ -71,5 +71,17 @@ basePkgs.linux_rpi5.override {
       name = "v3-flow_dissector-vxlan-inner-RFC-EXPERIMENT";
       patch = ./0004-v3-vxlan-inner.patch;
     }
+    {
+      name = "v4-flow_dissector-pppoe";
+      patch = ./0005-v4-pppoe.patch;
+    }
+    {
+      name = "v4-flow_dissector-mpls-single-label";
+      patch = ./0006-v4-mpls.patch;
+    }
+    {
+      name = "v4-flow_dissector-ipip-family";
+      patch = ./0007-v4-ipip.patch;
+    }
   ];
 }

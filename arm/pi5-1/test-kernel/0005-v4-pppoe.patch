@@ -1,0 +1,214 @@
+From fb20247dd6af84c70d314fa8f3b6c920b59fd3ea Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Tue, 16 Jun 2026 13:14:54 -0700
+Subject: [PATCH 1/3] net: flow_dissector: add fast-path for PPPoE session +
+ IPv{4,6} + TCP/UDP
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds flow_dissect_fast_pppoe() — a straight-line extractor for PPPoE
+session frames (ETH_P_PPP_SES, EtherType 0x8864 per RFC 2516) carrying
+IPv4 or IPv6 inside PPP. Strips the 6-byte pppoe_hdr + 2-byte PPP
+protocol field, writes FLOW_DISSECTOR_KEY_PPPOE (session_id, ppp_proto,
+type) when requested, and tail-calls into the eth_ip fast-path for
+the inner IPv4 or IPv6 + TCP/UDP.
+
+Byte-identical with the slow path's `case htons(ETH_P_PPP_SES)` block
+for the eligible shape (RFC-2516-valid header + PPP_IP / PPP_IPV6 +
+straight-line IP). On any miss — invalid header, PFC-compressed PPP
+proto, PPP_MPLS_UC / PPP_MPLS_MC (defer until MPLS fast-path lands),
+LCP / IPCP / other control frames — returns false so the dispatcher
+falls through to the slow path. Output is exactly what the slow path
+would produce.
+
+Why this matters: PPPoE is the dominant L2 over millions of ISP last-
+mile DSL/FTTH links, and the existing slow-path PPPoE block does a
+__skb_header_pointer + per-field switch on every packet at the
+graph-walk entry. The fast-path saves the walk overhead for the
+common IPv4 / IPv6 inner case while keeping the slow path as the
+escape valve for control / less-common inner protos.
+
+Gated by:
+  - new DEFINE_STATIC_KEY_FALSE(flow_dissector_pppoe_key)
+  - new sysctl /proc/sys/net/flow_dissector/pppoe (default 0)
+  - dispatcher case `htons(ETH_P_PPP_SES)` with
+    `static_branch_likely(&flow_dissector_pppoe_key)` guard
+
+When the sysctl is 0, the dispatcher hits a forward not-taken JMP —
+same per-call cost as the v3 vlan / qinq cases. The new dispatcher
+case also doesn't widen the switch table (it adds one case to a
+switch the compiler can already lower to a jump table on the
+ETH_P_* constants).
+
+Documentation/admin-guide/sysctl/net.rst grows a `pppoe` subsection
+under the existing `/proc/sys/net/flow_dissector/` chapter, between
+qinq and the next chapter, matching the v3-namespace layout.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 18 +++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 84 ++++++++++++++++++++++++
+ 3 files changed, 103 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 18c052446365..99fafa9d339c 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -543,6 +543,24 @@ Open design questions (see the cover letter):
+ 
+ Default: 0
+ 
++pppoe
++~~~~~
++
++PPPoE session frames (RFC 2516, EtherType ``ETH_P_PPP_SES`` 0x8864)
++carrying IPv4 or IPv6 inside PPP. The fast-path strips the 6-byte
++PPPoE session header + 2-byte PPP protocol field, writes
++FLOW_DISSECTOR_KEY_PPPOE (session_id, ppp_proto, type) when the
++dissector requests it, and tail-calls into the eth_ip fast-path for
++the inner IPv4 / IPv6 + TCP/UDP. Byte-identical with the slow path
++for the eligible shape.
++
++Defers to slow path for: PPP_MPLS_UC / PPP_MPLS_MC (until an MPLS
++fast-path lands), PFC-compressed PPP protocol fields, LCP/IPCP/etc.
++control frames, and any malformed PPPoE header (ver != 1, type != 1,
++code != 0).
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 73262708277a..35172d723baa 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -435,6 +435,7 @@ extern struct static_key_false flow_dissector_eth_ip_key;
+ extern struct static_key_false flow_dissector_vlan_key;
+ extern struct static_key_false flow_dissector_qinq_key;
+ extern struct static_key_false flow_dissector_vxlan_inner_key;
++extern struct static_key_false flow_dissector_pppoe_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 87a5b71f150a..96e60348e85a 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -52,6 +52,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_qinq_key);
+ EXPORT_SYMBOL(flow_dissector_qinq_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_vxlan_inner_key);
+ EXPORT_SYMBOL(flow_dissector_vxlan_inner_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_pppoe_key);
++EXPORT_SYMBOL(flow_dissector_pppoe_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -1389,6 +1391,75 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
+ 	}
+ }
+ 
++/* Strip a PPPoE session header (RFC 2516) + the 2-byte PPP protocol
++ * field, write FLOW_DISSECTOR_KEY_PPPOE if requested, then tail-call
++ * into the eth_ip fast-path for PPP_IP / PPP_IPV6 inner.
++ *
++ * Byte-identical with the slow path's `case ETH_P_PPP_SES` block for
++ * the eligible shape; on any miss (invalid header, unsupported inner
++ * PPP proto, malformed packet) returns false so the caller falls
++ * through to the slow path.
++ *
++ * PPP_MPLS_UC / PPP_MPLS_MC defer to slow path until the matching
++ * MPLS fast-path lands. PFC-compressed PPP proto fields (LSB of MSO
++ * set) defer because ppp_proto_is_valid() would reject them.
++ */
++static bool flow_dissect_fast_pppoe(const struct sk_buff *skb,
++				    struct flow_dissector *flow_dissector,
++				    void *target_container,
++				    const void *data,
++				    int nhoff, int hlen)
++{
++	struct flow_dissector_key_pppoe *key_pppoe;
++	const struct {
++		struct pppoe_hdr hdr;
++		__be16 proto;
++	} *hdr;
++	__be16 inner_eth_proto;
++	u16 ppp_proto;
++
++	if (unlikely(hlen - nhoff < (int)sizeof(*hdr)))
++		return false;
++	hdr = (const void *)((const u8 *)data + nhoff);
++	if (!is_pppoe_ses_hdr_valid(&hdr->hdr))
++		return false;
++
++	ppp_proto = ntohs(hdr->proto);
++	switch (ppp_proto) {
++	case PPP_IP:
++		inner_eth_proto = htons(ETH_P_IP);
++		break;
++	case PPP_IPV6:
++		inner_eth_proto = htons(ETH_P_IPV6);
++		break;
++	default:
++		/* MPLS unicast/multicast + everything else (LCP, IPCP,
++		 * compressed PFC, ...) defers to the slow path.
++		 */
++		return false;
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_PPPOE)) {
++		key_pppoe = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_PPPOE,
++						      target_container);
++		key_pppoe->session_id = hdr->hdr.sid;
++		key_pppoe->ppp_proto = htons(ppp_proto);
++		key_pppoe->type = htons(ETH_P_PPP_SES);
++	}
++
++	nhoff += PPPOE_SES_HLEN;
++
++	if (inner_eth_proto == htons(ETH_P_IP))
++		return flow_dissect_fast_ipv4(skb, flow_dissector,
++					      target_container, data,
++					      nhoff, hlen);
++	return flow_dissect_fast_ipv6(skb, flow_dissector,
++				      target_container, data,
++				      nhoff, hlen);
++}
++
+ /* Top-level dispatcher: eligibility check (only the two standard
+  * dissectors and flag subset) + per-proto switch with per-shape
+  * static_branch gating. Each case's branch is a forward not-taken JMP
+@@ -1428,6 +1499,12 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+ 		return flow_dissect_fast_ipv6(skb, flow_dissector,
+ 					      target_container, data,
+ 					      nhoff, hlen);
++	case htons(ETH_P_PPP_SES):
++		if (!static_branch_likely(&flow_dissector_pppoe_key))
++			return false;
++		return flow_dissect_fast_pppoe(skb, flow_dissector,
++					       target_container, data,
++					       nhoff, hlen);
+ 	default:
+ 		return false;
+ 	}
+@@ -2573,6 +2650,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "pppoe",
++		.data		= &flow_dissector_pppoe_key.key,
++		.maxlen		= sizeof(flow_dissector_pppoe_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

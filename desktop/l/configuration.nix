@@ -35,6 +35,9 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      # 2026-06-16: NVIDIA DCGM Prometheus exporter (RTX 3070 metrics).
+      # Scrape job is defined in ./prometheus.nix (dcgm_l + dcgm_l2).
+      ./dcgm-exporter.nix
       # clickhouse
       ./clickhouse-service.nix
       #./docker-compose.nix
@@ -87,7 +90,13 @@
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages; # need to run this old kernel to allow nvidia driver to compile :(
     #kernelPackages = pkgs.linuxPackages;
-    kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
+    # Previous (stable LTS, was 6.18.x). Kept for quick revert if the
+    # newer kernel + nvidia 610 combination misbehaves.
+    #kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
+    # 2026-06-14: experimenting with newer kernel alongside nvidia 610.x
+    # driver (see hardware-nvidia.nix). linuxPackages_latest = 7.0.x at
+    # time of switch. Revert by uncommenting the line above and rebuilding.
+    kernelPackages = pkgs.linuxPackages_latest;
 
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 

@@ -60,6 +60,16 @@
     # GPU monitoring (supports AMD and NVIDIA)
     nvtopPackages.full
 
+    # 2026-06-14: CUDA 12 toolkit system-wide for the Quadro P620.
+    # Pinned to cudaPackages_12 because cudaPackages_13 dropped sm_61
+    # (Pascal). After rebuild: `nvcc --version`, `nvidia-smi`.
+    # nixpkgs metapackage `cudatoolkit` bundles nvcc + libs + samples
+    # (~3 GB); if disk is tight, swap to the per-component picks
+    # below (nvcc + cudart only is ~600 MB).
+    cudaPackages_12.cudatoolkit
+    #cudaPackages_12.cuda_nvcc
+    #cudaPackages_12.cuda_cudart
+
     rdma-core # ibv_devinfo, rdma
     mstflint  # Mellanox firmware tools (mstconfig to allow third-party SFPs)
     pciutils

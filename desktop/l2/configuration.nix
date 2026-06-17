@@ -27,6 +27,15 @@
       # GPU drivers stay imported: kernel-mode-only, no runtime jitter,
       # cheap to leave so the AMD cards probe at boot.
       ./hardware-graphics.nix
+      # 2026-06-14: Quadro P620 (Pascal/GP107) driver. Uses legacy_580
+      # because R585+ dropped Pascal. See ./hardware-nvidia.nix for
+      # why open=false and why no CUDA toolkit is installed by default.
+      ./hardware-nvidia.nix
+      # 2026-06-16: NVIDIA DCGM Prometheus exporter on :9400 so l's
+      # Prometheus can scrape P620 metrics. Tiny systemd service —
+      # safe to leave on in benchmark mode (no daemon polling beyond
+      # the scrape request itself).
+      ./dcgm-exporter.nix
       ./sysctl.nix
       #./wireless_desktop.nix
       ./locale.nix

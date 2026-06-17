@@ -67,13 +67,34 @@ let
 
   selected = models.${modelMode};
 
-  rocmPkgs = import nixpkgs-local {
+  # Previous: built llama-cpp from nixpkgs-local fork at
+  # /home/das/Downloads/nixpkgs. That fork lagged main nixpkgs
+  # (rocm-runtime 7.2.0 vs 7.2.3 in main as of 2026-06-14). The
+  # multi-instance services.llama-cpp.instances module is still
+  # fork-only and remains imported above; only the *package* moves
+  # to main nixpkgs.
+  #rocmPkgs = import nixpkgs-local {
+  #  system = "x86_64-linux";
+  #  config.allowUnfree = true;
+  #  config.rocmSupport = true;
+  #};
+  #cpuPkgs = import nixpkgs-local {
+  #  system = "x86_64-linux";
+  #  config.allowUnfree = true;
+  #};
+  # 2026-06-14: re-import the flake's nixpkgs (via pkgs.path) so
+  # llama-cpp picks up ROCm 7.2.3 from main nixpkgs. NOTE: this
+  # re-import does NOT carry flake.nix's rocm-runtime doorbell-type
+  # overlay — but gfx803 (WX 2100) is masked off below via
+  # ROCR_VISIBLE_DEVICES, so the unpatched HSA path is never hit
+  # by either llama-cpp instance.
+  rocmPkgs = import pkgs.path {
     system = "x86_64-linux";
     config.allowUnfree = true;
     config.rocmSupport = true;
   };
 
-  cpuPkgs = import nixpkgs-local {
+  cpuPkgs = import pkgs.path {
     system = "x86_64-linux";
     config.allowUnfree = true;
   };

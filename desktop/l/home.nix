@@ -37,6 +37,15 @@
     settings = {
       shell-integration-features = "ssh-env";
       term = "xterm-256color";
+
+      # Middle-click paste between two ghostty windows. On Wayland this
+      # routes through the primary selection (wl-primary-selection-unstable-v1):
+      # selecting text writes it to the primary clipboard, middle-click reads
+      # from it. Both knobs set explicitly because ghostty's default has
+      # shifted across versions, and a silent default flip kills this flow.
+      copy-on-select = true;
+      clipboard-write = "allow";
+      clipboard-read = "allow";
     };
   };
   # https://ghostty.zerebos.com/app/import-export

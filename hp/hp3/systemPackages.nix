@@ -33,5 +33,8 @@
     fastfetch
     #
     ffmpeg-full
+    # PPPoE testing for series3-flowdis-fastpath v4 netconf-pppoe.nix
+    ppp
+    rp-pppoe
   ];
 }

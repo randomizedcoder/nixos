@@ -45,5 +45,8 @@
     #linuxPackages.nvidia_x11
     #libGLU
     #libGL
+    # PPPoE testing for series3-flowdis-fastpath v4 netconf-pppoe.nix
+    ppp
+    rp-pppoe
   ];
 }

@@ -87,5 +87,13 @@ basePkgs.linux_rpi5.override {
       name = "v4-flow_dissector-gre-byte-identical";
       patch = ./0008-v4-gre.patch;
     }
+    {
+      name = "v4-flow_dissector-geneve-inner-RFC-EXPERIMENT";
+      patch = ./0009-v4-geneve-inner.patch;
+    }
+    {
+      name = "v4-flow_dissector-gtpu-inner-RFC-EXPERIMENT";
+      patch = ./0010-v4-gtpu-inner.patch;
+    }
   ];
 }

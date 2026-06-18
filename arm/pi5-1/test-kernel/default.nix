@@ -83,5 +83,9 @@ basePkgs.linux_rpi5.override {
       name = "v4-flow_dissector-ipip-family";
       patch = ./0007-v4-ipip.patch;
     }
+    {
+      name = "v4-flow_dissector-gre-byte-identical";
+      patch = ./0008-v4-gre.patch;
+    }
   ];
 }

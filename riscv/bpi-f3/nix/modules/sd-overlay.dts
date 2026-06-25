@@ -1,0 +1,56 @@
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/clock/spacemit,k1-syscon.h>
+
+// NixOS's apply_overlays.py only applies an overlay to a base DTB whose
+// root compatible intersects the overlay's root compatible, so declare
+// the board compatible here (matches k1-bananapi-f3.dts).
+/ {
+  compatible = "bananapi,bpi-f3", "spacemit,k1";
+};
+
+&{/soc/storage-bus} {
+  mmc@d4280000 {
+    compatible = "spacemit,k1-sdhci";
+    reg = <0x0 0xd4280000 0x0 0x200>;
+    clocks = <&syscon_apmu CLK_SDH_AXI>,
+             <&syscon_apmu CLK_SDH0>;
+    clock-names = "core", "io";
+    resets = <&syscon_apmu RESET_SDH_AXI>,
+             <&syscon_apmu RESET_SDH0>;
+    reset-names = "axi", "sdh";
+    interrupts = <99>;
+    bus-width = <4>;
+    // Cap the slot at 12.5 MHz. This microSD slot's 3.3V high-speed path is
+    // marginal: under the dense concurrent-I/O burst at multi-user startup
+    // (udev coldplug + dhcpcd + lldpd + sshd-keygen + the NVMe PCIe probe +
+    // the nvme-autoinstall, all at once) the controller transiently wedges —
+    // I/O errors, an aborted ext4 journal, and sometimes a hard hang needing a
+    // power-cycle. The on-board eMMC (same driver) is fine, so it's specific to
+    // this slot. 25 MHz still wedged on a brand-new high-quality card (verified
+    // 2026-06-22), so we drop to 12.5 MHz for more signal-integrity margin;
+    // it's plenty for boot + a one-time clone. Raise if a board proves stable.
+    max-frequency = <12500000>;
+    // The card-detect line is unreliable here, so force "card present":
+    // without this the controller won't use the slot at all. `broken-cd`
+    // (assume-present + periodic software re-probe) is what the working
+    // baseline used. We briefly tried `non-removable` to stop a spurious
+    // "card removed" on the idle NVMe-root system, but it made the marginal
+    // controller storm continuously under load (spurious 0x01000000 SDHCI
+    // interrupts → unusable console) — so `broken-cd` it is. The on-device
+    // `/boot/firmware` write path is handled separately, not by this.
+    broken-cd;
+    // microSD slot has no write-protect tab; without this the
+    // controller's WP sense reads "protected" and the card mounts
+    // read-only (root then fails). Force it writable.
+    disable-wp;
+    // It's an SD-card slot: not eMMC, not SDIO. no-sdio also avoids the
+    // driver's set_uhs_signaling VDD_180 write to HOST_CONTROL2 that
+    // faulted (only taken when !NO_SDIO); no-mmc skips the eMMC HS400
+    // ops; no-1-8-v keeps it on the 3.3V high-speed path for now.
+    no-mmc;
+    no-sdio;
+    no-1-8-v;
+    status = "okay";
+  };
+};

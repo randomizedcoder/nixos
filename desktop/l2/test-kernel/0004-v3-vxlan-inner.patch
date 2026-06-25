@@ -1,0 +1,208 @@
+From d60c5470e46349fd9277dfcab8a8fc89981a6b15 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Mon, 15 Jun 2026 09:39:50 -0700
+Subject: [PATCH RFC v3 4/4] RFC EXPERIMENT: net: flow_dissector: descend into
+ VXLAN inner flow
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+THIS IS A BEHAVIOUR CHANGE, not a byte-identical fast-path. Gated
+independently of the byte-identical extensions above so operators who
+want them can opt in to one without inheriting the other.
+
+Today's flow_keys_dissector stops at the outer UDP of a VXLAN packet
+(Eth + IPv4 + UDP, dst port 4789). That collapses every inner flow
+between two VTEPs onto a single 5-tuple bucket for cake / fq / fq_codel
+fairness, RPS, RFS, ECMP — bad for east-west traffic in k8s overlay
+deployments.
+
+This patch extends flow_dissect_fast_ipv4 to descend into the VXLAN
+inner Eth + IPv4/IPv6 + TCP/UDP when:
+
+  - the outer is eth + IPv4 + UDP, dst port == IANA_VXLAN_UDP_PORT (4789);
+  - enough bytes remain for udphdr + vxlanhdr + ETH_HLEN;
+  - the flow_dissector_vxlan_inner_key static_branch is enabled (sysctl
+    /proc/sys/net/flow_dissector/vxlan_inner = 1).
+
+On match: set FLOW_DIS_ENCAPSULATION in key_control, then dispatch to
+flow_dissect_fast_ipv4 / _ipv6 on the inner ethertype. The inner pass
+overwrites key_basic / key_addrs / key_ports — same shape as the slow-
+path encap descent in __skb_flow_dissect_gre() etc., but the slow path
+itself does not currently descend for the standard dissector. That
+asymmetry is the source of the byte-identical-contract break.
+
+Open design questions (cover letter):
+
+  - Should this knob live behind a per-netns config (vs the global
+    static_branch this patch uses)? Probably yes for production, but
+    keeping it global for the RFC keeps the patch readable.
+  - Should the slow path grow the same descent so the contract stays
+    "fast-path output == slow-path output"? Or is the behaviour
+    change worth the contract break given the operator benefit in
+    overlay deployments?
+  - VXLAN port discovery is hardcoded to IANA_VXLAN_UDP_PORT (4789).
+    Cilium uses 8472; production needs to consult net->vxlan or
+    similar. This RFC defers that.
+
+Not landable as-is. Posted as a foothold for the discussion.
+
+Verified on the xdp2 testbed pair pi5-1 <-> pi5-2: with vxlan_inner=1,
+the inner-descent body runs and FLOW_DIS_ENCAPSULATION is set, but the
+extra inner work cancels the outer fast-path saving (~zero net CPU
+delta on pi5 VXLAN UDP cells; the operator benefit shows up in the
+hash distribution, which this matrix run did not measure).
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 26 ++++++++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 62 ++++++++++++++++++++++++
+ 3 files changed, 89 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index f470f5382ac5..18c052446365 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -517,6 +517,32 @@ is off).
+ 
+ Default: 0
+ 
++vxlan_inner
++~~~~~~~~~~~
++
++RFC EXPERIMENT. Descends into the VXLAN inner Eth + IPv4/IPv6 +
++TCP/UDP flow for hashing when the outer matches Eth + IPv4 + UDP
++with dst port IANA_VXLAN_UDP_PORT (4789). When enabled, the inner
++5-tuple replaces the outer one in struct flow_keys, and
++key_control->flags gets FLOW_DIS_ENCAPSULATION set.
++
++**This is a behaviour change**, not a byte-identical fast-path. The
++standard flow_keys_dissector stops at outer UDP today; descending
++gives k8s overlays per-inner-flow fairness in cake / fq /
++fib_multipath / RPS, but the hash output for VXLAN packets is no
++longer the same as the slow path. Gated independently of the other
++fast-path knobs so operators who want byte-identical behaviour
++elsewhere can still leave this off.
++
++Open design questions (see the cover letter):
++
++- per-netns vs global VXLAN port discovery (today hardcoded to
++  IANA_VXLAN_UDP_PORT);
++- whether the slow path should grow the same descent so the
++  fast-path / slow-path contract remains invariant.
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 6b48103c36e5..73262708277a 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -434,6 +434,7 @@ extern struct flow_dissector flow_keys_basic_dissector;
+ extern struct static_key_false flow_dissector_eth_ip_key;
+ extern struct static_key_false flow_dissector_vlan_key;
+ extern struct static_key_false flow_dissector_qinq_key;
++extern struct static_key_false flow_dissector_vxlan_inner_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index f89af877dbc8..87a5b71f150a 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -13,6 +13,7 @@
+ #include <net/gre.h>
+ #include <net/pptp.h>
+ #include <net/tipc.h>
++#include <net/vxlan.h>
+ #include <linux/igmp.h>
+ #include <linux/icmp.h>
+ #include <linux/sctp.h>
+@@ -49,6 +50,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_vlan_key);
+ EXPORT_SYMBOL(flow_dissector_vlan_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_qinq_key);
+ EXPORT_SYMBOL(flow_dissector_qinq_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_vxlan_inner_key);
++EXPORT_SYMBOL(flow_dissector_vxlan_inner_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -1153,6 +1156,58 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 		key_ports->ports = *ports;
+ 	}
+ 
++	/* RFC EXPERIMENT: VXLAN inner descent. NOT byte-identical with
++	 * the slow path — the standard flow_keys_dissector stops at
++	 * outer UDP today. Descending changes hashing for VXLAN overlays
++	 * (k8s east-west traffic between VTEPs gets per-inner-flow
++	 * fairness in cake / fq / ECMP). Gated by its own per-shape
++	 * sysctl, independent of the byte-identical knobs above. See the
++	 * vxlan_inner paragraph in net.rst for the operator-facing
++	 * description.
++	 */
++	if (static_branch_unlikely(&flow_dissector_vxlan_inner_key) &&
++	    iph->protocol == IPPROTO_UDP &&
++	    hlen - thoff >= (int)(sizeof(struct udphdr) +
++				  sizeof(struct vxlanhdr) +
++				  ETH_HLEN)) {
++		const __be16 *udp_ports = (const __be16 *)
++			((const u8 *)data + thoff);
++
++		if (udp_ports[1] == htons(IANA_VXLAN_UDP_PORT)) {
++			const struct ethhdr *inner_eth =
++				(const struct ethhdr *)
++				((const u8 *)data + thoff +
++				 sizeof(struct udphdr) +
++				 sizeof(struct vxlanhdr));
++			__be16 inner_proto = inner_eth->h_proto;
++			int inner_nhoff = thoff +
++				sizeof(struct udphdr) +
++				sizeof(struct vxlanhdr) + ETH_HLEN;
++
++			if (dissector_uses_key(flow_dissector,
++					       FLOW_DISSECTOR_KEY_CONTROL)) {
++				key_control = skb_flow_dissector_target(flow_dissector,
++									FLOW_DISSECTOR_KEY_CONTROL,
++									target_container);
++				key_control->flags |= FLOW_DIS_ENCAPSULATION;
++			}
++
++			switch (inner_proto) {
++			case htons(ETH_P_IP):
++				return flow_dissect_fast_ipv4(skb, flow_dissector,
++							      target_container, data,
++							      inner_nhoff, hlen);
++			case htons(ETH_P_IPV6):
++				return flow_dissect_fast_ipv6(skb, flow_dissector,
++							      target_container, data,
++							      inner_nhoff, hlen);
++			}
++			/* Inner ethertype not fast-pathable; fall through
++			 * and keep the outer keys.
++			 */
++		}
++	}
++
+ 	return true;
+ }
+ 
+@@ -2511,6 +2566,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_set_qinq_key,
+ 	},
++	{
++		.procname	= "vxlan_inner",
++		.data		= &flow_dissector_vxlan_inner_key.key,
++		.maxlen		= sizeof(flow_dissector_vxlan_inner_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

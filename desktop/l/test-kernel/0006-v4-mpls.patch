@@ -1,0 +1,204 @@
+From d0d2a89bef1b624845f21f3bbcb2bed57f80a9d8 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Tue, 16 Jun 2026 13:19:00 -0700
+Subject: [PATCH 2/3] net: flow_dissector: add fast-path for single MPLS label
+ + IP
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds flow_dissect_fast_mpls() — straight-line read of one MPLS label
+entry (ETH_P_MPLS_UC 0x8847 / ETH_P_MPLS_MC 0x8848), extracting
+label / TC / TTL / BoS and writing to FLOW_DISSECTOR_KEY_MPLS lse[0]
+when the dissector requests it.
+
+Byte-identical with the slow path's __skb_flow_dissect_mpls() called
+with lse_index=0, bos=1: the slow path returns FLOW_DISSECT_RET_OUT_GOOD
+when BoS is set without descending into the inner packet (MPLS flow
+hashing is on the label stack, not the inner 5-tuple), so this
+fast-path does the same — no IP tail-call.
+
+Multi-label stacks (BoS=0 on the first label) defer to the slow
+path. A depth-2+ variant can land later, mirroring the vlan ->
+qinq staging from the v3-namespace series.
+
+Why this matters: MPLS is the dominant SP backbone L2.5 and the
+existing slow-path traverses an iteration loop per label even when
+the consumer just wants the label-stack flow key. The fast-path
+saves the iteration overhead for the common single-label case while
+keeping the slow path as escape for multi-label and the
+entropy-label case (which can only fire from label 2+ anyway).
+
+Gated by:
+  - new DEFINE_STATIC_KEY_FALSE(flow_dissector_mpls_key)
+  - new sysctl /proc/sys/net/flow_dissector/mpls (default 0)
+  - dispatcher case htons(ETH_P_MPLS_UC) / htons(ETH_P_MPLS_MC) with
+    static_branch_likely(&flow_dissector_mpls_key) guard
+
+When the sysctl is 0, dispatcher cost is one not-taken JMP per
+matching packet — same per-shape pattern as the other v3-namespace
+patches.
+
+Documentation/admin-guide/sysctl/net.rst grows an `mpls` subsection
+under /proc/sys/net/flow_dissector/.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 19 ++++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 76 ++++++++++++++++++++++++
+ 3 files changed, 96 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 99fafa9d339c..f7a0fd5fbe08 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -561,6 +561,25 @@ code != 0).
+ 
+ Default: 0
+ 
++mpls
++~~~~
++
++Single-label MPLS frames (EtherType ``ETH_P_MPLS_UC`` 0x8847 or
++``ETH_P_MPLS_MC`` 0x8848 with bottom-of-stack bit set on the first
++label). The fast-path reads the 4-byte label entry, extracts
++label / TC / TTL / BoS, and writes them to FLOW_DISSECTOR_KEY_MPLS
++lse[0] when requested. Byte-identical with the slow path's
++__skb_flow_dissect_mpls() for lse_index=0, bos=1: the slow path
++returns OUT_GOOD on BoS without descending into the inner packet
++(MPLS hashing is on the label stack, not inner 5-tuple), so this
++fast-path does the same.
++
++Multi-label stacks (BoS=0 on the first label) defer to slow path —
++extending to depth-2 or more is a follow-up, mirroring the
++vlan -> qinq staging the v3-namespace series used.
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 35172d723baa..df1a95fe0c28 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -436,6 +436,7 @@ extern struct static_key_false flow_dissector_vlan_key;
+ extern struct static_key_false flow_dissector_qinq_key;
+ extern struct static_key_false flow_dissector_vxlan_inner_key;
+ extern struct static_key_false flow_dissector_pppoe_key;
++extern struct static_key_false flow_dissector_mpls_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 96e60348e85a..adab0f4a53ab 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -54,6 +54,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_vxlan_inner_key);
+ EXPORT_SYMBOL(flow_dissector_vxlan_inner_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_pppoe_key);
+ EXPORT_SYMBOL(flow_dissector_pppoe_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_mpls_key);
++EXPORT_SYMBOL(flow_dissector_mpls_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -1460,6 +1462,66 @@ static bool flow_dissect_fast_pppoe(const struct sk_buff *skb,
+ 				      nhoff, hlen);
+ }
+ 
++/* Single MPLS label (BoS=1) fast-path. Byte-identical with the slow
++ * path's __skb_flow_dissect_mpls() for lse_index=0 + bos=1: writes
++ * label/tc/ttl/bos to FLOW_DISSECTOR_KEY_MPLS lse[0] when requested,
++ * leaves FLOW_DISSECTOR_KEY_MPLS_ENTROPY untouched (the entropy-label
++ * write only fires for the *next* label after an entropy label, which
++ * by definition doesn't happen at depth 0). The slow-path then
++ * returns OUT_GOOD on bos=1 — i.e. it does NOT descend into the inner
++ * packet for hash purposes; flow_keys is whatever was already written
++ * by the outer dispatch. The fast-path mirrors that "stop here"
++ * behaviour: returns true after the LSE write, no IP tail-call.
++ *
++ * Multi-label stacks (BoS=0 on the first label) defer to slow path
++ * until a depth-2+ variant lands — same staging the v3 vlan / qinq
++ * pair used.
++ */
++static bool flow_dissect_fast_mpls(const struct sk_buff *skb,
++				   struct flow_dissector *flow_dissector,
++				   void *target_container,
++				   const void *data,
++				   int nhoff, int hlen)
++{
++	struct flow_dissector_key_mpls *key_mpls;
++	struct flow_dissector_mpls_lse *lse;
++	const struct mpls_label *hdr;
++	u32 entry, label, bos;
++
++	if (unlikely(hlen - nhoff < (int)sizeof(*hdr)))
++		return false;
++	hdr = (const struct mpls_label *)((const u8 *)data + nhoff);
++	entry = ntohl(hdr->entry);
++	bos = (entry & MPLS_LS_S_MASK) >> MPLS_LS_S_SHIFT;
++
++	/* Multi-label stack: defer. */
++	if (!bos)
++		return false;
++
++	/* Slow path's early-out at __skb_flow_dissect_mpls top: if
++	 * neither MPLS nor MPLS_ENTROPY is requested, the parse returns
++	 * OUT_GOOD without writing. Our path produces the same
++	 * observable output (no MPLS-key writes) by skipping the write
++	 * block via dissector_uses_key — no need for an explicit
++	 * early-out.
++	 */
++	label = (entry & MPLS_LS_LABEL_MASK) >> MPLS_LS_LABEL_SHIFT;
++
++	if (dissector_uses_key(flow_dissector, FLOW_DISSECTOR_KEY_MPLS)) {
++		key_mpls = skb_flow_dissector_target(flow_dissector,
++						     FLOW_DISSECTOR_KEY_MPLS,
++						     target_container);
++		lse = &key_mpls->ls[0];
++		lse->mpls_ttl = (entry & MPLS_LS_TTL_MASK) >> MPLS_LS_TTL_SHIFT;
++		lse->mpls_bos = bos;
++		lse->mpls_tc = (entry & MPLS_LS_TC_MASK) >> MPLS_LS_TC_SHIFT;
++		lse->mpls_label = label;
++		dissector_set_mpls_lse(key_mpls, 0);
++	}
++
++	return true;
++}
++
+ /* Top-level dispatcher: eligibility check (only the two standard
+  * dissectors and flag subset) + per-proto switch with per-shape
+  * static_branch gating. Each case's branch is a forward not-taken JMP
+@@ -1505,6 +1567,13 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+ 		return flow_dissect_fast_pppoe(skb, flow_dissector,
+ 					       target_container, data,
+ 					       nhoff, hlen);
++	case htons(ETH_P_MPLS_UC):
++	case htons(ETH_P_MPLS_MC):
++		if (!static_branch_likely(&flow_dissector_mpls_key))
++			return false;
++		return flow_dissect_fast_mpls(skb, flow_dissector,
++					      target_container, data,
++					      nhoff, hlen);
+ 	default:
+ 		return false;
+ 	}
+@@ -2657,6 +2726,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "mpls",
++		.data		= &flow_dissector_mpls_key.key,
++		.maxlen		= sizeof(flow_dissector_mpls_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

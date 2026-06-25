@@ -1,0 +1,222 @@
+From 32607b7ae687b230683728ace6d95969006479c5 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Thu, 18 Jun 2026 14:16:00 -0700
+Subject: [PATCH 2/2] net: flow_dissector: RFC EXPERIMENT: descend into GTP-U
+ inner flow
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds GTP-U-inner-descent fast-path block inside flow_dissect_fast_ipv4,
+companion to the vxlan_inner and geneve_inner RFC EXPERIMENT patches.
+Fires when:
+
+  - flow_dissector_gtpu_inner_key is on
+  - iph->protocol == IPPROTO_UDP
+  - outer UDP dst port == GTP1U_PORT (2152)
+  - GTPv1 (version=1 in the flags byte high bits)
+  - PT=1 (GTP, not GTP' charging)
+  - flags low-3 == 0 (no GTP1_F_NPDU, no GTP1_F_SEQ, no GTP1_F_EXTHDR
+    — i.e. exactly 8 bytes of GTP-U header)
+  - type == 0xFF (G-PDU: subscriber user data; control-plane messages
+    have other type codes)
+
+When all conditions match, skips the 8-byte GTP-U header, detects
+inner IPv4 vs IPv6 from the first nibble of the inner packet (since
+GTP-U carries naked IP without an inner Ethernet header — unlike
+VXLAN/Geneve TEB), sets FLOW_DIS_ENCAPSULATION, and tail-calls into
+the inner IPv4 or IPv6 fast-path.
+
+**Not byte-identical with the slow path** — same posture as
+vxlan_inner and geneve_inner. The standard flow_keys_dissector
+stops at outer UDP today; descending gives 5G UPF / 4G S-GW/PGW
+deployments per-subscriber-flow fairness instead of the all-to-one
+NIC queue that outer-UDP-only hashing produces. The hash output for
+GTP-U packets is no longer the same as the slow path. Operators
+keep this off for byte-identical contracts, on for per-subscriber
+fairness.
+
+Defers to slow path: GTPv0, GTP' (PT=0), G-PDU type other than 0xFF,
+GTP-U with any optional fields, GTP-U over IPv6 outer.
+
+Gated by:
+  - new DEFINE_STATIC_KEY_FALSE(flow_dissector_gtpu_inner_key)
+  - new sysctl /proc/sys/net/flow_dissector/gtpu_inner (default 0)
+
+Cost when off: one not-taken forward JMP, same as other *_inner
+gates.
+
+Documentation/admin-guide/sysctl/net.rst grows a `gtpu_inner`
+subsection under /proc/sys/net/flow_dissector/.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 26 ++++++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 80 ++++++++++++++++++++++++
+ 3 files changed, 107 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 9f4bc5c97ce7..69f51cc8f250 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -650,6 +650,32 @@ Geneve-over-IPv6 outer (only IPv4 outer is in the v4 fast subset).
+ 
+ Default: 0
+ 
++gtpu_inner
++~~~~~~~~~~
++
++RFC EXPERIMENT. Descends into the GTP-U inner IPv4/IPv6 + TCP/UDP
++flow for hashing when the outer matches Eth + IPv4 + UDP with dst
++port ``GTP1U_PORT`` (2152), GTPv1 PT=1, no optional fields (no
++N-PDU, no sequence, no extension headers), and type=0xFF (G-PDU,
++i.e. subscriber user data — control-plane messages defer to slow
++path). When enabled, the inner subscriber 5-tuple replaces the
++outer UDP one and key_control->flags gets FLOW_DIS_ENCAPSULATION.
++
++**This is a behaviour change**, not a byte-identical fast-path.
++Mobile-core deployments (5G UPF, 4G S-GW/PGW) using cake / fq /
++fib_multipath / RPS get per-subscriber-flow fairness instead of
++all-subscribers-to-one-NIC-queue hashing on the outer UDP. The
++hash output for GTP-U packets is no longer the same as the slow
++path. Same operator-facing posture as the other ``*_inner`` knobs;
++gated independently of the byte-identical fast-paths.
++
++Defers to slow path for: GTPv0 (legacy), GTP' (charging, PT=0),
++G-PDU type other than 0xFF (control-plane messages),
++GTP-U with extension headers / N-PDU / sequence flags set,
++GTP-U over IPv6 outer.
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 25472428bff6..ac9c22352837 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -440,6 +440,7 @@ extern struct static_key_false flow_dissector_mpls_key;
+ extern struct static_key_false flow_dissector_ipip_key;
+ extern struct static_key_false flow_dissector_gre_key;
+ extern struct static_key_false flow_dissector_geneve_inner_key;
++extern struct static_key_false flow_dissector_gtpu_inner_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index fc887673b931..41c874ffd57b 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -15,6 +15,7 @@
+ #include <net/tipc.h>
+ #include <net/vxlan.h>
+ #include <net/geneve.h>
++#include <net/gtp.h>
+ #include <linux/igmp.h>
+ #include <linux/icmp.h>
+ #include <linux/sctp.h>
+@@ -63,6 +64,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_gre_key);
+ EXPORT_SYMBOL(flow_dissector_gre_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_geneve_inner_key);
+ EXPORT_SYMBOL(flow_dissector_geneve_inner_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_gtpu_inner_key);
++EXPORT_SYMBOL(flow_dissector_gtpu_inner_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -1315,6 +1318,76 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 		}
+ 	}
+ 
++	/* RFC EXPERIMENT: GTP-U inner descent. Like vxlan_inner /
++	 * geneve_inner: NOT byte-identical with the slow path. Mobile
++	 * core (5G UPF, 4G S-GW/PGW) deployments hash on outer UDP
++	 * today; descending gives per-subscriber inner-flow fairness in
++	 * cake / fq / fib_multipath / RPS.
++	 *
++	 * Fast subset:
++	 *   - GTP-U over UDP dst port GTP1U_PORT (2152)
++	 *   - GTPv1 (PT=1, version=1 in the flags byte)
++	 *   - flags low-3 == 0 (no GTP1_F_NPDU, F_SEQ, F_EXTHDR)
++	 *   - type == 0xff (G-PDU: subscriber user data)
++	 *
++	 * In that subset the GTP-U header is exactly 8 bytes
++	 * (sizeof(struct gtp1_header)) and the inner IP starts
++	 * immediately after — no inner Ethernet header (GTP-U carries
++	 * naked IP, unlike VXLAN/Geneve TEB).
++	 *
++	 * Inner v4 vs v6 is detected from the first nibble of the
++	 * inner packet (IP version field).
++	 */
++	if (static_branch_unlikely(&flow_dissector_gtpu_inner_key) &&
++	    iph->protocol == IPPROTO_UDP &&
++	    hlen - thoff >= (int)(sizeof(struct udphdr) +
++				  sizeof(struct gtp1_header) +
++				  (int)sizeof(struct iphdr))) {
++		const __be16 *udp_ports = (const __be16 *)
++			((const u8 *)data + thoff);
++
++		if (udp_ports[1] == htons(GTP1U_PORT)) {
++			const struct gtp1_header *gtp = (const struct gtp1_header *)
++				((const u8 *)data + thoff +
++				 sizeof(struct udphdr));
++			const u8 ver = gtp->flags >> 5;
++			const u8 pt  = (gtp->flags >> 4) & 0x1;
++			const u8 low3 = gtp->flags & GTP1_F_MASK;
++
++			/* GTPv1 (ver=1), PT=1 (GTP not GTP'),
++			 * no optional fields, G-PDU.
++			 */
++			if (ver == 1 && pt == 1 && low3 == 0 &&
++			    gtp->type == 0xff) {
++				int inner_nhoff = thoff +
++					sizeof(struct udphdr) +
++					sizeof(struct gtp1_header);
++				const u8 *inner = (const u8 *)data + inner_nhoff;
++				u8 inner_ver = *inner >> 4;
++
++				if (dissector_uses_key(flow_dissector,
++						       FLOW_DISSECTOR_KEY_CONTROL)) {
++					key_control = skb_flow_dissector_target(flow_dissector,
++										FLOW_DISSECTOR_KEY_CONTROL,
++										target_container);
++					key_control->flags |= FLOW_DIS_ENCAPSULATION;
++				}
++
++				switch (inner_ver) {
++				case 4:
++					return flow_dissect_fast_ipv4(skb, flow_dissector,
++								      target_container, data,
++								      inner_nhoff, hlen);
++				case 6:
++					return flow_dissect_fast_ipv6(skb, flow_dissector,
++								      target_container, data,
++								      inner_nhoff, hlen);
++				}
++				/* Unknown inner IP version; fall through. */
++			}
++		}
++	}
++
+ 	return true;
+ }
+ 
+@@ -3014,6 +3087,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "gtpu_inner",
++		.data		= &flow_dissector_gtpu_inner_key.key,
++		.maxlen		= sizeof(flow_dissector_gtpu_inner_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

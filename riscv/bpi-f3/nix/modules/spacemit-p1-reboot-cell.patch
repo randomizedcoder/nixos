@@ -1,0 +1,30 @@
+mfd: simple-mfd-i2c: register the spacemit-p1-reboot cell
+
+The SpacemiT P1 PMIC is the only thing on the BPI-F3 that can actually
+reset (or power off) the SoC from Linux: the vendor OpenSBI does not
+implement the SBI System-Reset (SRST) extension (the kernel logs only
+the IPI + RFENCE extensions at boot), so `reboot`/`poweroff` have no
+firmware path and just hang at "reboot: Restarting system".
+
+The kernel already ships the PMIC reset driver
+(drivers/power/reset/spacemit-p1-reboot.c, POWER_RESET_SPACEMIT_P1=y),
+which registers restart + power-off handlers that poke PWR_CTRL2 on the
+P1. But it binds to a "spacemit-p1-reboot" platform device, and the MFD
+core (simple-mfd-i2c) only registers the regulator and rtc cells for
+"spacemit,p1" — so the driver never probes and no handler is installed.
+
+Register the reboot cell so the driver binds. With this, `reboot` and
+`poweroff` work via the PMIC (a real cold reset), which is essential for
+operating the board remotely. Upstream-shaped; can be dropped once the
+cell list is fixed in a newer kernel.
+
+--- a/drivers/mfd/simple-mfd-i2c.c
++++ b/drivers/mfd/simple-mfd-i2c.c
+@@ -107,6 +107,7 @@
+ static const struct mfd_cell spacemit_p1_cells[] = {
+ 	{ .name = "spacemit-p1-regulator", },
+ 	{ .name = "spacemit-p1-rtc", },
++	{ .name = "spacemit-p1-reboot", },
+ };
+
+ static const struct simple_mfd_data spacemit_p1 = {

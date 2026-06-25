@@ -69,11 +69,11 @@
       # netns/routing/firewall so nordlayer can't disrupt the host.
       # Reach it via `ssh -J vpn-jump@127.0.0.1:2222 user@remote.vpn`.
       ./nordlayer-sandbox.nix
-      # Series-3 flow_dissector fast-path: applies the 3 canonical gated
-      # patches (0001/0002/0003-series3.patch) as a kernelPatches overlay
-      # on l's stock NVIDIA-compatible kernel, so l can run the symmetric
-      # A/B against l2. Enabled below (services.flowdis-fastpath.enable).
-      ./flowdis-fastpath-module.nix
+      # Series-3 flow_dissector fast-path: SUPERSEDED 2026-06-21. The old
+      # 3-patch flowdis-fastpath-module.nix (no per-shape sysctls) is
+      # replaced by the v3-namespace 10-patch series via ./test-kernel/,
+      # matching hp1/hp2/hp3/hp5/l2 so the Phase H orchestrator can flip
+      # net.flow_dissector.<shape> for its A/B. See boot.kernelPackages below.
     ];
 
   boot = {
@@ -96,7 +96,11 @@
     # 2026-06-14: experimenting with newer kernel alongside nvidia 610.x
     # driver (see hardware-nvidia.nix). linuxPackages_latest = 7.0.x at
     # time of switch. Revert by uncommenting the line above and rebuilding.
-    kernelPackages = pkgs.linuxPackages_latest;
+    # 2026-06-21: v3-namespace 10-patch flow_dissector kernel (see
+    # ./test-kernel/default.nix), mirroring hp5/l2. Base is still
+    # linuxPackages_latest (7.0.x) so the NVIDIA module rebuilds against
+    # the same version. Revert: restore `pkgs.linuxPackages_latest` here.
+    kernelPackages = pkgs.linuxPackagesFor (pkgs.callPackage ./test-kernel {});
 
     #boot.kernelPackages = pkgs.linuxPackages_rpi4
 
@@ -508,11 +512,10 @@
   # pair (Pair #4, see xdp2 docs/physical-testbed.md §21).
   # ===================================================================
 
-  # Apply the gated series-3 flow_dissector patches to l's stock kernel
-  # so net.core.flow_dissector_fastpath exists and the A/B can flip it.
-  # Keeps pkgs.linuxPackages (NVIDIA-compatible) — the patch touches
-  # only flow_dissector.c / sysctl_net_core.c, no net-next needed.
-  services.flowdis-fastpath.enable = true;
+  # Series-3 flow_dissector fast-path is now applied via the v3-namespace
+  # 10-patch ./test-kernel/ overlay (see boot.kernelPackages above), which
+  # ships per-shape sysctls under net.flow_dissector.*. The old
+  # services.flowdis-fastpath.enable path is retired (2026-06-21).
 
   # xdp2 physical-testbed in GENERATOR-LITE mode. Unlike the dedicated
   # hp/l2 hosts, l is a daily-driver desktop: keep mitigations on, keep

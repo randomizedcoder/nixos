@@ -96,7 +96,9 @@ Host vpn-jump
   ControlMaster no
   ControlPath none
 
-# RunPod test host behind the NordLayer VPN.
+# PROD fleet jump host behind the NordLayer VPN. Every prod-fleet ssh
+# (Host 100.* below) forwards through it. Dev uses dev-runpod-jump instead
+# (see the DEV fleet block below).
 Host runpod-jump
   Hostname 44.197.169.91
   User ubuntu
@@ -140,32 +142,25 @@ Host dev-runpod-jump
   ControlMaster no
   ControlPath none
 
-# RunPod dev internal targets reachable through the dev-runpod-jump host.
-# Listed before the 100.* wildcard so these specific IPs match first.
+# ── DEV fleet ───────────────────────────────────────────────────────────
+# Prod and dev are DIFFERENT reachability domains (verified 2026-07-01):
+#   prod : vpn-jump -> runpod-jump      , sshpower@:2009 (host-daemon, root),
+#          key id_rsa_runpod            -> "Host 100.*" below (the default).
+#   dev  : vpn-jump -> dev-runpod-jump  , rp_das@:22 (real sshd, non-root),
+#          key id_ed25519_runpod        -> THIS block.
+# They share the 100.64.0.0/10 overlay ADDRESSING, but reachability is
+# partitioned by jump: the prod jump can't reach the dev 100.65.0.x segment,
+# and the dev jump reaches it. The 100.65.0.0/24 segment is EXCLUSIVELY dev
+# (0 prod hosts, ~116 dev), so route the whole /24 to the dev jump here. This
+# must sit BEFORE "Host 100.*" (first-match-wins) so dev IPs don't fall
+# through to the prod wildcard.
 #
-# Two ways to reach these four hosts:
-#   1. Default (real sshd):     ssh 100.65.0.149   → rp_das@host:22
-#   2. Legacy sshpower:2009:    ssh sshpower@100.65.0.149 → sshpower@host:2009
-#
-# The Match block runs FIRST (ssh_config is first-match-wins per
-# directive), so when User=sshpower it locks Port=2009 + the dev RSA
-# key before the Host block can set the rp_das/22 defaults. With no
-# sshpower@ prefix, Match doesn't fire and the Host block's
-# rp_das/22/ed25519 defaults apply.
-Match host 100.65.0.149,100.65.0.150,100.65.0.151,100.65.0.152 user sshpower
-  Port 2009
-  IdentityFile ~/.ssh/id_rsa_runpod_dev
-  IdentitiesOnly yes
-  ProxyJump vpn-jump,dev-runpod-jump
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
-  LogLevel ERROR
-  # sshpower:2009 forwards into many container backends — multiplexing
-  # on the IP would pin to one container and break the others.
-  ControlMaster no
-  ControlPath none
-
-Host 100.65.0.149 100.65.0.150 100.65.0.151 100.65.0.152
+# NOTE 1: the 4 dev "DummyBox" hosts on 100.65.12.x share that /24 with prod
+#         and answer via the PROD jump, so they intentionally use "Host 100.*"
+#         below, not this block.
+# NOTE 2: assumes 100.65.0.0/24 stays dev-only; if a prod host ever lands
+#         there it would mis-route to the dev jump.
+Host 100.65.0.*
   User rp_das
   Port 22
   IdentityFile ~/.ssh/id_ed25519_runpod
@@ -174,10 +169,7 @@ Host 100.65.0.149 100.65.0.150 100.65.0.151 100.65.0.152
   StrictHostKeyChecking no
   UserKnownHostsFile /dev/null
   LogLevel ERROR
-  # Re-enable connection multiplexing for these real-sshd hosts. The
-  # broader Host 100.* block sets ControlMaster/ControlPath to off
-  # because the sshpower:2009 path can't multiplex across containers;
-  # these four targets are a normal sshd:22 so multiplexing works.
+  # All dev hosts here are real sshd:22, so multiplexing is safe/beneficial.
   ControlMaster auto
   ControlPath /run/user/$(id -u)/ssh/master-%n-%r@%h:%p
 
@@ -188,14 +180,15 @@ Host 100.65.0.149 100.65.0.150 100.65.0.151 100.65.0.152
 # (ssh uses the first-specified of ProxyCommand/ProxyJump); when the master is
 # down the exec test returns non-zero, this block is skipped, and the
 # "Host 100.*" ProxyJump applies — so nothing breaks when no master is up.
-# The 4 dev IPs are excluded (they use the dev-runpod-jump path, not this
-# prod SOCKS master). socat is provided by home.nix.
-Match host 100.*,!100.65.0.149,!100.65.0.150,!100.65.0.151,!100.65.0.152 exec "ss -Htln 'sport = :1080' | grep -q ."
+# The dev /24 (100.65.0.*) is excluded — it uses the dev-runpod-jump block
+# above, not this prod SOCKS master. socat is provided by home.nix.
+Match host 100.*,!100.65.0.* exec "ss -Htln 'sport = :1080' | grep -q ."
   ProxyCommand socat - SOCKS4A:127.0.0.1:%h:%p,socksport=1080
 
-# RunPod internal targets reachable through the runpod-jump host
-# (CGNAT 100.64.0.0/10 overlay). Long-form ssh command for any arbitrary
-# RunPod IP — equivalent to what this block does, no config needed:
+# PROD fleet — the default for every 100.x overlay IP (CGNAT 100.64.0.0/10),
+# reached via runpod-jump as sshpower@:2009. NOTE: the dev /24 (100.65.0.*) is
+# diverted to the dev jump by the "Host 100.65.0.*" block above, which matches
+# first; everything else here is prod. Long-form equivalent of this block:
 #   ssh -J vpn-jump,runpod-jump -i ~/.ssh/id_rsa_runpod -o IdentitiesOnly=yes \\
 #       -o StrictHostKeyChecking=no -p 2009 sshpower@<IP>
 # With this block: ssh 100.65.25.46 (or, with a master up, via SOCKS).

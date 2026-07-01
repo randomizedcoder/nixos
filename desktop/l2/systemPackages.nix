@@ -37,6 +37,7 @@
 
     # Network testing and performance tools
     iperf2
+    iperf3  # series-3 flow_dissector test orchestrators drive iperf3
     flent
     netperf
     ethtool

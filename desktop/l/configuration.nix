@@ -273,6 +273,15 @@
   '';
 
   services.openssh.enable = true;
+  # Allow root self-login by key (PermitRootLogin defaults to
+  # "prohibit-password", i.e. key-only). Needed so the series-3
+  # flow_dissector test orchestrators can drive l as the generator via
+  # `ssh root@l` — same mechanism/key as l2 and the hp fleet. Password
+  # auth is intentionally left at its default here (NOT disabled) since
+  # l is the daily-driver desktop.
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
+  ];
   # programs.ssh.extraConfig = ''
   # Host hp4.home
   #   PubkeyAcceptedKeyTypes ssh-ed25519

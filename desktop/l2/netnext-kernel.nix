@@ -33,5 +33,10 @@ linuxPackagesFor (linux_testing.override {
     version = "7.2-rc1";
     modDirVersion = "7.2.0-rc1";
     src = netNextSeries4;
+    # nixpkgs' linux_testing (7.1-rc7) structured config requests a few
+    # options net-next 7.2-rc1 removed/renamed (CRYPTO_DRBG_CTR/HASH,
+    # RANDOM_KMALLOC_CACHES). Tolerate the "unused option" mismatch — the
+    # kernel falls back to its own defaults for them.
+    ignoreConfigErrors = true;
   };
 })

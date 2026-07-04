@@ -30,7 +30,10 @@
       # 2026-06-14: Quadro P620 (Pascal/GP107) driver. Uses legacy_580
       # because R585+ dropped Pascal. See ./hardware-nvidia.nix for
       # why open=false and why no CUDA toolkit is installed by default.
-      ./hardware-nvidia.nix
+      # Disabled for the net-next 7.2-rc1 kernel: nvidia legacy_580 fails to
+      # build against it (gcc-15 + newer kernel: implicit strncpy). l2's
+      # compute is AMD ROCm (llama); re-enable when nvidia supports 7.2.
+      #./hardware-nvidia.nix
       # 2026-06-16: NVIDIA DCGM Prometheus exporter on :9400 so l's
       # Prometheus can scrape P620 metrics. Tiny systemd service —
       # safe to leave on in benchmark mode (no daemon polling beyond
@@ -67,7 +70,9 @@
       #./hostapd-multi.nix
       #./network-optimization.nix
       # BBRv3 congestion control from L4S team
-      ./bbr3-module.nix
+      # Disabled for net-next 7.2-rc1: the L4STeam BBRv3 out-of-tree source
+      # doesn't build against it. Re-enable with an updated L4STeam rev.
+      #./bbr3-module.nix
       # Multi-queue CAKE (cake_mq) - now included in kernel 7.x
       #./mq-cake-module.nix
       # CPU and IRQ optimization modules — superseded by xdp2.testbed
@@ -383,7 +388,7 @@
   # };
 
   # BBRv3 congestion control from L4S team (out-of-tree module)
-  services.bbr3.enable = true;
+  # services.bbr3.enable = true;  # disabled: won't build on net-next 7.2-rc1
 
   # Multi-queue CAKE (cake_mq) qdisc - backported from net-next/Linux 7.0
   #services.mqCake.enable = true;

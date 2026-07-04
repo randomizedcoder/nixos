@@ -76,10 +76,10 @@
       #./systemd-slices.nix  # WiFi AP slices, not needed currently
       ./kernel-params.nix
       #./monitoring.nix
-      # llama-cpp + fan2go disabled during kernel testing. Re-enable
-      # both (and the inline lact/amdgpu.opencl/fan2go switches below)
-      # to restore the LLM inference role.
-      #./llama-service.nix
+      # llama-cpp re-enabled (LLM inference role restored). fan2go left
+      # disabled (separate Corsair fan-control concern, not required for
+      # inference — amdgpu manages GPU fans by default).
+      ./llama-service.nix
       #./fan2go.nix
       # NIC configuration — Mellanox ports are now owned by xdp2.testbed.
       ./network-interfaces.nix
@@ -107,13 +107,14 @@
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages;
     #kernelPackages = pkgs.linuxPackages_latest;
-    # Series-3 flow_dissector fast-path patches applied as a
-    # kernelPatches overlay on top of linuxPackages_latest. Same
-    # mechanism hp1/hp2/hp3/hp5 use — see ./test-kernel/default.nix
-    # for the 3 patches and the rationale. Revert to
-    # `pkgs.linuxPackages_latest` to restore the stock kernel.
-    kernelPackages = pkgs.linuxPackagesFor
-      (pkgs.callPackage ./test-kernel {});
+    # net-next v7.2-rc1 + the series4 flow_dissector fast-path framework
+    # (12 patches, baked into src via the series4-send branch). Built by
+    # overriding linux_testing so nixpkgs' config machinery is reused —
+    # see ./netnext-kernel.nix. Supersedes the earlier ./test-kernel
+    # (stable 7.0.12 + series-3 patches) so we test on the real net-next
+    # base the patches target. Revert to `pkgs.callPackage ./test-kernel {}`
+    # (wrapped in linuxPackagesFor) or `pkgs.linuxPackages_latest`.
+    kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
     # # Enable mac80211 debugfs for WiFi AQM tuning
     # kernelPatches = [{
@@ -291,14 +292,16 @@
      enableSSHSupport = true;
   };
 
-  # GPU compute stack disabled during kernel testing — re-enable
-  # alongside ./llama-service.nix and ./fan2go.nix imports above.
+  # GPU compute stack re-enabled alongside ./llama-service.nix — the ROCm
+  # OpenCL runtime + /opt/rocm/hip symlink are required for the MI50/W5700
+  # inference instances. lact (GPU control daemon) and fan2go (Corsair fan
+  # control) stay off: neither is required for inference.
   #
   # services.lact.enable = true;                # LACT GPU Control Daemon
-  # hardware.amdgpu.opencl.enable = true;       # ROCm OpenCL for MI50 (gfx906)
-  # systemd.tmpfiles.rules = [                  # AMD ROCm /opt/rocm/hip symlink
-  #   "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
-  # ];
+  hardware.amdgpu.opencl.enable = true;         # ROCm OpenCL for MI50 (gfx906)
+  systemd.tmpfiles.rules = [                    # AMD ROCm /opt/rocm/hip symlink
+    "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
+  ];
   # hardware.fan2go.enable = true;              # Corsair Commander PRO fan control
 
   # xdp2 physical-testbed: CPU isolation, IRQ pinning, NIC tuning,

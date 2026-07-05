@@ -30,4 +30,8 @@
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+
+  # Fast boot: do not block network-online.target on the DHCP lease;
+  # dhcpcd backgrounds and acquires the lease asynchronously.
+  networking.dhcpcd.wait = "background";
 }

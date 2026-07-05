@@ -257,18 +257,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-local": {
-      "locked": {
-        "lastModified": 1780843417,
-        "narHash": "sha256-EkMbmhjME8O8R7uc9St8Vif3MOqkZvt9YSUQFuIw5Oo=",
-        "path": "/home/das/Downloads/nixpkgs",
-        "type": "path"
-      },
-      "original": {
-        "path": "/home/das/Downloads/nixpkgs",
-        "type": "path"
-      }
-    },
     "nixpkgs-regression": {
       "locked": {
         "lastModified": 1643052045,
@@ -291,7 +279,6 @@
         "home-manager": "home-manager",
         "nix-custom": "nix-custom",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-local": "nixpkgs-local",
         "tsf-sync": "tsf-sync",
         "xdp2": "xdp2"
       }

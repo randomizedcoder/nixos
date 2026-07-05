@@ -9,8 +9,10 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     #nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
 
-    # Local nixpkgs for testing llama-cpp module
-    nixpkgs-local.url = "path:/home/das/Downloads/nixpkgs";
+    # (removed) nixpkgs-local: the llama-cpp *packages* now come from main
+    # nixpkgs (via pkgs.path in llama-service.nix), and the multi-instance
+    # services.llama-cpp module is vendored locally as
+    # ./llama-cpp-multi-instance.nix — so no fork checkout is needed.
 
     # Custom nix with build telemetry
     nix-custom.url = "path:/home/das/Downloads/nix";
@@ -51,7 +53,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-local, disko, home-manager, nix-custom, tsf-sync, xdp2, ... }@inputs:
+  outputs = { self, nixpkgs, disko, home-manager, nix-custom, tsf-sync, xdp2, ... }@inputs:
     let
       system = "x86_64-linux";
 
@@ -114,7 +116,7 @@
 
           inherit system;
 
-          specialArgs = { inherit nixpkgs-local inputs; };
+          specialArgs = { inherit inputs; };
 
           modules = [
             disko.nixosModules.disko

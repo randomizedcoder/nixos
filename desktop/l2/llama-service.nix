@@ -6,10 +6,13 @@
 #   llama-cpp-w5700   - W5700 (ROCm gfx1010, 8GB), port 8096
 #   llama-cpp-cpu-1..4 - CPU-only, ports 8091-8094
 #
-# GPU device mapping (rocm-smi):
-#   Device 0 (Node 2): WX 2100 (display only, 2GB) - not used
-#   Device 1 (Node 3): W5700 (gfx1010, 8GB)  - ROCR_VISIBLE_DEVICES=1
-#   Device 2 (Node 1): MI50 (gfx906, 32GB)   - ROCR_VISIBLE_DEVICES=2
+# GPU device mapping (rocm-smi) — updated 2026-07-04:
+#   Under kernel 7.2-rc1 the WX 2100 (gfx803) is no longer enumerated by the
+#   ROCm runtime, so indices collapsed. ROCm now sees only two devices:
+#   Device 0: W5700 (gfx1010, 8GB, PCI 0000:44:00.0)  - ROCR_VISIBLE_DEVICES=0
+#   Device 1: MI50  (gfx906, 32GB, PCI 0000:63:00.0)  - ROCR_VISIBLE_DEVICES=1
+#   (Previously WX2100=0, W5700=1, MI50=2. The old indices below pointed the
+#   MI50 service at a non-existent index 2 -> "no ROCm-capable device" -> CPU.)
 #
 # Note: RTX 3070 (CUDA) is on machine l, not l2
 #
@@ -21,10 +24,10 @@
 #   journalctl -u llama-cpp-mi50 -f
 #   journalctl -u llama-cpp-w5700 -f
 #
-# To update the local repo
-# nix flake update nixpkgs-local
+# Packages come from main nixpkgs (pkgs.path). The multi-instance module is
+# vendored at ./llama-cpp-multi-instance.nix — no nixpkgs-local fork needed.
 
-{ config, lib, pkgs, nixpkgs-local, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   #
@@ -113,8 +116,12 @@ let
     };
   }) (lib.range 1 4));
 in {
+  # Replace mainline's single-instance services.llama-cpp with the vendored
+  # multi-instance module (copied from the old nixpkgs fork; self-contained
+  # NixOS glue, no fork packages/patches). The llama-cpp *packages* come from
+  # main nixpkgs via pkgs.path above.
   disabledModules = [ "services/misc/llama-cpp.nix" ];
-  imports = [ "${nixpkgs-local}/nixos/modules/services/misc/llama-cpp.nix" ];
+  imports = [ ./llama-cpp-multi-instance.nix ];
 
   services.llama-cpp.instances = {
 
@@ -132,7 +139,7 @@ in {
       openFirewall = true;
 
       inherit (selected.large) hfRepo hfFile;
-      environment.ROCR_VISIBLE_DEVICES = "2";
+      environment.ROCR_VISIBLE_DEVICES = "1";
     };
 
     # W5700: 8GB VRAM — uses "small" model from selected mode
@@ -149,7 +156,7 @@ in {
       openFirewall = true;
 
       inherit (selected.small) hfRepo hfFile;
-      environment.ROCR_VISIBLE_DEVICES = "1";
+      environment.ROCR_VISIBLE_DEVICES = "0";
     };
 
   } // cpuInstances;

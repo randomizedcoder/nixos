@@ -38,7 +38,11 @@
       # Prometheus can scrape P620 metrics. Tiny systemd service —
       # safe to leave on in benchmark mode (no daemon polling beyond
       # the scrape request itself).
-      ./dcgm-exporter.nix
+      # Disabled 2026-07-05: l2 has no NVIDIA GPU (AMD/ROCm cards only; the
+      # RTX is on l), so dcgm-exporter fails on libnvidia-ml.so and
+      # crash-loops (auto-restart), making switch-to-configuration exit
+      # non-zero. Re-enable if an NVIDIA GPU is added to l2.
+      #./dcgm-exporter.nix
       ./sysctl.nix
       #./wireless_desktop.nix
       ./locale.nix
@@ -137,8 +141,9 @@
     ];
 
     kernelModules = [
-      "bnxt_en"      # Ethernet
-      "bnxt_re"      # RoCEv2 RDMA provider
+      # Broadcom BCM57416 removed/abandoned 2026-07-05 — no card to bind to.
+      # "bnxt_en"      # Ethernet
+      # "bnxt_re"      # RoCEv2 RDMA provider
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
       "sch_dualpi2"  # DualPI2 L4S AQM packet scheduler (available in kernel 6.17+)

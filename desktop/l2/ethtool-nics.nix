@@ -112,24 +112,21 @@
 let
   # NIC configurations: interface name -> settings
   nicConfigs = {
-    # Intel X710 (i40e driver) - 10GbE SFP+
-    enp35s0f0np0 = {
-      description = "Intel X710 port 0";
-      ringRx = 8160;
-      ringTx = 8160;
-      channels = 8;
-      offload = [ "rx-udp-gro-forwarding on" ];
-    };
-    enp35s0f1np1 = {
-      description = "Intel X710 port 1";
-      ringRx = 8160;
-      ringTx = 8160;
-      channels = 8;
-      offload = [ "rx-udp-gro-forwarding on" ];
-    };
+    # Mellanox ConnectX-4 Lx (mlx5) ports enp35s0f0np0 / enp35s0f1np1
+    # are tuned by the xdp2 physical-testbed module
+    # (xdp2-nic-tune-<ifname>.service) — see xdp2.testbed in
+    # configuration.nix. Do not also declare them here; conflicting
+    # ethtool oneshots would race on the same interface.
 
-    # Intel 82599ES (ixgbe driver) - 10GbE SFI/SFP+
-    # Names pinned by udev-nic-names.nix using MAC address
+    # Intel 82599ES (ixgbe driver) - 10GbE SFI/SFP+  -- CARD NOT INSTALLED
+    # Commented out 2026-07-05: the 82599 is not currently in l2. Each
+    # ethtool-ixgbe{0,1}.service bindsTo the absent
+    # sys-subsystem-net-devices-ixgbe{0,1}.device and is ordered
+    # `before network.target`, so each waited the full 90s device timeout and
+    # stalled network-online.target / multi-user (~90s of every boot). The card
+    # is only used by mq-cake-test.nix (also disabled). Re-enable when the 82599
+    # is reinstalled (also uncomment ./udev-nic-names.nix + ./network-interfaces.nix).
+    /*
     ixgbe0 = {
       description = "Intel 82599ES port 0 (DUT ingress)";
       ringRx = 8192;
@@ -160,6 +157,7 @@ let
         "flow-type tcp4 dst-port 139 action -1"   # NetBIOS
       ];
     };
+    */
 
     # Broadcom BCM57416 NetXtreme-E (bnxt_en driver) - 10GbE RDMA
     # Card physically removed due to high idle temps (87°C causing fan noise)

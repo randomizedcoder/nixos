@@ -85,10 +85,12 @@
       #./systemd-slices.nix  # WiFi AP slices, not needed currently
       ./kernel-params.nix
       #./monitoring.nix
-      # llama-cpp re-enabled (LLM inference role restored). fan2go left
-      # disabled (separate Corsair fan-control concern, not required for
-      # inference — amdgpu manages GPU fans by default).
-      ./llama-service.nix
+      # llama-cpp DISABLED 2026-07-06: the AMD GPU inference services
+      # (llama-cpp-mi50 / llama-cpp-w5700) were crash-looping with a GPF in
+      # libamdhip64 (ROCm/HIP) on the net-next 7.2-rc1 kernel, hanging amdgpu
+      # and tripping the sp5100_tco hardware watchdog → reboot loop (~7 min).
+      # Re-enable once the ROCm/amdgpu stack is stable on this kernel.
+      # ./llama-service.nix
       #./fan2go.nix
       # NIC configuration — Mellanox ports are now owned by xdp2.testbed.
       ./network-interfaces.nix

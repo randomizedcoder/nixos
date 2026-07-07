@@ -61,8 +61,9 @@
   # and the xdp2 repo at kernel-patches/test-kernel/ for the build
   # derivation, rationale, and post-boot test plan. Restore the line
   # above after testing is complete.
-  boot.kernelPackages = pkgs.linuxPackagesFor
-    (pkgs.callPackage ./test-kernel {});
+  # series4 net-next kernel (series4-rfc-tail-v2), replacing ./test-kernel
+  # for the flow_dissector fast-path perf A/B. See ./netnext-kernel.nix.
+  boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
   # for the option reference and trade-offs. hp3 mirrors hp5's "dut"

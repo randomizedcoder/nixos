@@ -1,99 +1,72 @@
-# hp* series-3-patched kernel.
+# pi5 test-kernel: series4 byte-identical-descent set (patches 0001-0013 of
+# kernel-patches/series4-flowdis-fastpath/) applied onto linux_rpi5 6.18 to
+# validate the submission's flow_dissector code on ARM aarch64 / a 6.x base.
 #
-# Path B (kernelPatches overlay) supersedes the prior Path A
-# (linuxKernel.manualConfig with a custom net-next src + reconciled
-# .config). Rationale captured in the t laptop's test-kernel/
-# default.nix (laptops/t/test-kernel/default.nix); short version:
-# `net/core/flow_dissector.c` has not changed in the hunks the 3
-# series-3 patches touch between 7.0.x and 7.1.0-rc4, so applying
-# them as a kernelPatches overlay against pkgs.linuxPackages_latest
-# is correct and far less elaborate than the manualConfig pattern.
-#
-# Migration history:
-#   - 2026-05-27..28  Path A used for series 3 v1 RFC Phase 1-4
-#                     testing on hp1/hp2/hp3/hp5 (built from
-#                     /home/das/Downloads/net-next at branch
-#                     flowdis-fastpath-rfc, HEAD eeca3eb493b8;
-#                     shipped hp5-kernel.config reconciled to
-#                     7.1.0-rc4 via make olddefconfig).
-#   - 2026-06-04..05  Path B validated end-to-end on t (Comet
-#                     Lake-H), then propagated here. All four hp
-#                     hosts have identical test-kernel/ contents,
-#                     so this single file is byte-identical across
-#                     hp1/hp2/hp3/hp5.
-#
-# Functional impact of the migration: same 3 patches applied; the
-# base kernel switches from net-next at c0aa5f13826d (7.1.0-rc4) to
-# pkgs.linuxPackages_latest (currently 7.0.10). The patched
-# flow_dissector.c code is byte-identical between the two builds;
-# everything else in the kernel (drivers, scheduler, fs, mm) is the
-# upstream stable 7.0.10 instead of net-next development tip. The
-# Phase 4 macro-test results captured under the 7.1.0-rc4 build
-# remain valid as a one-time data point for the net-next tip; new
-# measurements under this build can be cross-referenced.
-#
-# Series 3 patches (from xdp2 kernel-patches/series3-flowdis-fastpath/
-# v1-netdev/, pinned copies live in this directory):
-#
-#   1ddc620812be  net: flow_dissector: add fast-path entry-point skeleton
-#   080196491134  net: flow_dissector: add eth+IPv4+{TCP,UDP} fast-path
-#   eeca3eb493b8  net: flow_dissector: add eth+IPv6+{TCP,UDP} fast-path
-#
-# Revert: change configuration.nix's boot.kernelPackages back to
-# `pkgs.linuxPackages_latest`. The stock kernel generation stays
-# selectable in systemd-boot until garbage collected.
-
-{ nixos-raspberrypi
-, pkgs, ... }:
-
+# All flow_dissector.c hunks apply cleanly across 6.x<->7.2-rc1 (patch absorbs
+# the line offsets), incl. the byte-identical vxlan/geneve/gtpu descents.
+# EXCLUDED on 6.x:
+#   0014 FOU/GUE  - its net/ipv4/fou_core.c hook hunk (RCU-list registration)
+#                   differs between 6.18 and 7.2-rc1 (a fou-module change,
+#                   outside the stable flow_dissector code); validated on
+#                   x86/riscv net-next + KUnit instead.
+#   0015 KUnit    - test-only; already 53/53 on x86 UML.
+{ nixos-raspberrypi, pkgs, ... }:
 let
   basePkgs = nixos-raspberrypi.packages.${pkgs.stdenv.hostPlatform.system};
 in
 basePkgs.linux_rpi5.override {
   kernelPatches = basePkgs.linux_rpi5.kernelPatches ++ [
-    # v3 of the series, taken from github.com/randomizedcoder/xdp2
-    # kernel-patches/series3-flowdis-fastpath/v3-namespace/.
-    # Supersedes the prior 6 patches (parent series3 + 3 extensions).
-    # All four ship per-shape sysctls under /proc/sys/net/flow_dissector/.
     {
-      name = "v3-flow_dissector-eth-ip";
-      patch = ./0001-v3-eth-ip.patch;
+      name = "s4-0001-gate-BPF-program-lookup-behind";
+      patch = ./series4/v1-0001-net-flow_dissector-gate-BPF-program-lookup-behind.patch;
     }
     {
-      name = "v3-flow_dissector-vlan";
-      patch = ./0002-v3-vlan.patch;
+      name = "s4-0002-opt-in-fast-path-for-eth-IPv-4";
+      patch = ./series4/v1-0002-net-flow_dissector-opt-in-fast-path-for-eth-IPv-4.patch;
     }
     {
-      name = "v3-flow_dissector-qinq";
-      patch = ./0003-v3-qinq.patch;
+      name = "s4-0003-add-fast-path-for-single-Eth-V";
+      patch = ./series4/v1-0003-net-flow_dissector-add-fast-path-for-single-Eth-V.patch;
     }
     {
-      name = "v3-flow_dissector-vxlan-inner-RFC-EXPERIMENT";
-      patch = ./0004-v3-vxlan-inner.patch;
+      name = "s4-0004-extend-VLAN-fast-path-to-QinQ";
+      patch = ./series4/v1-0004-net-flow_dissector-extend-VLAN-fast-path-to-QinQ-.patch;
     }
     {
-      name = "v4-flow_dissector-pppoe";
-      patch = ./0005-v4-pppoe.patch;
+      name = "s4-0005-add-fast-path-for-PPPoE-sessio";
+      patch = ./series4/v1-0005-net-flow_dissector-add-fast-path-for-PPPoE-sessio.patch;
     }
     {
-      name = "v4-flow_dissector-mpls-single-label";
-      patch = ./0006-v4-mpls.patch;
+      name = "s4-0006-add-fast-path-for-single-MPLS";
+      patch = ./series4/v1-0006-net-flow_dissector-add-fast-path-for-single-MPLS-.patch;
     }
     {
-      name = "v4-flow_dissector-ipip-family";
-      patch = ./0007-v4-ipip.patch;
+      name = "s4-0007-add-fast-path-for-IP-in-IP-fam";
+      patch = ./series4/v1-0007-net-flow_dissector-add-fast-path-for-IP-in-IP-fam.patch;
     }
     {
-      name = "v4-flow_dissector-gre-byte-identical";
-      patch = ./0008-v4-gre.patch;
+      name = "s4-0008-add-byte-identical-fast-path-f";
+      patch = ./series4/v1-0008-net-flow_dissector-add-byte-identical-fast-path-f.patch;
     }
     {
-      name = "v4-flow_dissector-geneve-inner-RFC-EXPERIMENT";
-      patch = ./0009-v4-geneve-inner.patch;
+      name = "s4-0009-per-shape-counters-proc-net-fl";
+      patch = ./series4/v1-0009-net-flow_dissector-per-shape-counters-proc-net-fl.patch;
     }
     {
-      name = "v4-flow_dissector-gtpu-inner-RFC-EXPERIMENT";
-      patch = ./0010-v4-gtpu-inner.patch;
+      name = "s4-0010-bound-fast-path-tunnel-recursi";
+      patch = ./series4/v1-0010-net-flow_dissector-bound-fast-path-tunnel-recursi.patch;
+    }
+    {
+      name = "s4-0011-descend-into-VXLAN-inner-flow";
+      patch = ./series4/v1-0011-net-flow_dissector-descend-into-VXLAN-inner-flow.patch;
+    }
+    {
+      name = "s4-0012-descend-into-Geneve-inner-flow";
+      patch = ./series4/v1-0012-net-flow_dissector-descend-into-Geneve-inner-flow.patch;
+    }
+    {
+      name = "s4-0013-descend-into-GTP-U-inner-flow";
+      patch = ./series4/v1-0013-net-flow_dissector-descend-into-GTP-U-inner-flow.patch;
     }
   ];
 }

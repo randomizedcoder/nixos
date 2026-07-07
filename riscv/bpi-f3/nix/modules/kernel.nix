@@ -1,16 +1,42 @@
 # Kernel + initrd for the Banana Pi BPI-F3 (SpacemiT K1).
 #
-# Mainline kernel from nixpkgs (no custom-kernel machinery — the K1 SoC support
-# and the BPI-F3 DTS are upstream), with the SpacemiT K1 drivers forced on since
-# nixpkgs' generated config does not necessarily enable them.
+# 2026-07-06: net-next v7.2-rc1 + the series4 flow_dissector fast-path framework
+# (series4-rfc-tail-v2: 15 landable patches incl. the 5 UDP-tunnel inner
+# descents now byte-identical + KUnit, plus the auto-enable RFC), mirroring l2 —
+# the RISC-V data point for series4. Built by overriding nixpkgs linux_testing so
+# the config machinery is reused; the SpacemiT K1 drivers are still force-on via
+# structuredExtraConfig (all K1 symbols confirmed present in 7.2-rc1). Cross-
+# compiled x86_64 -> riscv64. All gates default off.
 { lib, pkgs, ... }:
+let
+  netNextSeries4 = builtins.fetchGit {
+    url = "file:///home/das/Downloads/net-next";
+    ref = "series4-rfc-tail-v2";
+    rev = "a208f86be2ce6dc7e38c240386b30c92417d859e";
+  };
+in
 {
   boot = {
-    kernelPackages = pkgs.linuxPackages_latest;
+    kernelPackages = pkgs.linuxPackagesFor (pkgs.linux_testing.override {
+      argsOverride = {
+        version = "7.2-rc1";
+        modDirVersion = "7.2.0-rc1";
+        src = netNextSeries4;
+        # linux_testing's structured config requests a few options net-next
+        # 7.2-rc1 dropped (CRYPTO_DRBG_CTR/HASH, RANDOM_KMALLOC_CACHES).
+        ignoreConfigErrors = true;
+      };
+    });
 
     # Storage/clock/pinctrl/serial built in (=yes) so the board reaches its rootfs
     # without relying on initrd module ordering. Symbol names verified against the
-    # mainline riscv defconfig.
+    # mainline riscv defconfig (all still present in net-next 7.2-rc1).
+    #
+    # The old spacemit-p1-reboot-cell.patch is DROPPED: net-next 7.2-rc1
+    # registers the "spacemit-p1-reboot" MFD cell upstream (see
+    # drivers/mfd/simple-mfd-i2c.c spacemit_p1_cells[]), so reboot/poweroff work
+    # without the local patch. The series-3 flow_dissector patches are DROPPED
+    # too: series4 (series4-rfc-tail-v2) is baked into the net-next src above.
     kernelPatches = [
       {
         name = "spacemit-k1";
@@ -40,32 +66,6 @@
           SPACEMIT_K1_EMAC = module;
         };
       }
-      {
-        # Make `reboot`/`poweroff` actually reset the board. The vendor OpenSBI
-        # has no SBI System-Reset (SRST) extension, so Linux's only working
-        # reset path is the P1 PMIC driver (POWER_RESET_SPACEMIT_P1, builtin) —
-        # but the MFD core doesn't register its cell, so it never binds. This
-        # adds the cell. See the patch header for the full rationale.
-        name = "spacemit-p1-reboot-cell";
-        patch = ./spacemit-p1-reboot-cell.patch;
-      }
-
-      # series-3 flow_dissector fast-path: the same 10 v3/v4 patches carried by
-      # the x86 (hp*/l/l2) and ARM (pi5) test hosts, applied here to make the
-      # BPI-F3 a RISC-V data point. The patches touch only arch-independent code
-      # (net/core/flow_dissector.c, include/net/flow_dissector.h, sysctl_net_core.c,
-      # docs) — riscv has arch/riscv/kernel/jump_label.c so the static-key gates
-      # work — and ship per-shape sysctls under /proc/sys/net/flow_dissector/.
-      { name = "v3-flow_dissector-eth-ip";              patch = ./flowdis/0001-v3-eth-ip.patch; }
-      { name = "v3-flow_dissector-vlan";                patch = ./flowdis/0002-v3-vlan.patch; }
-      { name = "v3-flow_dissector-qinq";                patch = ./flowdis/0003-v3-qinq.patch; }
-      { name = "v3-flow_dissector-vxlan-inner-RFC-EXPERIMENT"; patch = ./flowdis/0004-v3-vxlan-inner.patch; }
-      { name = "v4-flow_dissector-pppoe";               patch = ./flowdis/0005-v4-pppoe.patch; }
-      { name = "v4-flow_dissector-mpls-single-label";   patch = ./flowdis/0006-v4-mpls.patch; }
-      { name = "v4-flow_dissector-ipip-family";         patch = ./flowdis/0007-v4-ipip.patch; }
-      { name = "v4-flow_dissector-gre-byte-identical";  patch = ./flowdis/0008-v4-gre.patch; }
-      { name = "v4-flow_dissector-geneve-inner-RFC-EXPERIMENT"; patch = ./flowdis/0009-v4-geneve-inner.patch; }
-      { name = "v4-flow_dissector-gtpu-inner-RFC-EXPERIMENT";  patch = ./flowdis/0010-v4-gtpu-inner.patch; }
     ];
 
     initrd = {

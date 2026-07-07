@@ -1,0 +1,198 @@
+From 21ec32a66678e5eb4fdb3d619b6eadbabc85d69b Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Mon, 6 Jul 2026 09:33:53 -0700
+Subject: [PATCH net-next v1 00/15] net: flow_dissector: opt-in byte-identical fast paths + tunnel inner descent
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+__skb_flow_dissect() parses packet headers with a generic protocol-graph
+parser. This series adds an opt-in, static-branch-gated, straight-line
+fast path for the packet shapes that dominate real deployments. Each
+shape has its own gate under /proc/sys/net/flow_dissector/, every gate is
+disabled by default, and when a gate is off the added cost is one
+not-taken branch per dissect.
+
+The series is byte-identical by contract: for any packet, the fast path
+either writes exactly the flow_keys bytes the slow path would have
+written, or it returns false and the slow path runs. That contract is
+enforced in-tree by a KUnit equivalence suite (patch 15).
+
+Patch 1 stands slightly apart: it is a small win for the existing path --
+today every dissect takes rcu_read_lock() and does two dependent
+rcu_dereference() loads to look for a netns BPF flow dissector program
+even when none is attached anywhere; a static key (mirroring
+bpf_sk_lookup_enabled) skips all of it in the common no-program case.
+
+Patches 2-8 are the byte-identical common shapes (eth+IPv4/IPv6 x
+TCP/UDP, VLAN, QinQ, PPPoE, single MPLS, IP-in-IP, plain GRE). Patch 9
+adds per-shape counters (/proc/net/flow_dissector_stats); patch 10 bounds
+the fast-path tunnel recursion at MAX_FLOW_DISSECT_HDRS.
+
+Tunnel inner-flow descent (patches 11-14)
+-----------------------------------------
+For VXLAN / Geneve / GTP-U / FOU / GUE the dissector stops at the outer
+UDP header today, so every hash-based consumer (RSS, RPS, ECMP, bonding,
+tc-flower, aRFS) sees the *outer* tunnel identity, not the inner flow.
+All inner flows between a pair of tunnel endpoints collapse onto a single
+hash bucket. GTP-U is the sharpest case -- no outer source-port entropy
+at all, and it is the mobile-core data path where millions of subscriber
+flows ride one tunnel between two endpoints.
+
+Patches 11-14 add opt-in inner descent, each behind its own default-off
+gate (net.flow_dissector.{vxlan,geneve,gtpu,gue,fou}_inner). Unlike an
+earlier RFC posting of this idea, the descents are now byte-identical:
+the slow path grows the same descent (__skb_flow_dissect_udp_encap()) as
+the fast path (flow_dissect_fast_udp_inner()), so the fast and slow paths
+never disagree. The only behaviour change is versus today's
+non-descending default, and it happens only when an operator turns a gate
+on -- a deliberate, per-tunnel-type choice, because it changes skb->hash
+for that traffic. The KUnit suite covers the descents the same way it
+covers the byte-identical shapes: with the descent gate pinned on it
+dissects each tunnelled packet through the fast path and through the slow
+path and memcmp()s the result (patch 15).
+
+FOU and GUE (patch 14) are Tom Herbert's UDP encapsulations. Unlike
+VXLAN/Geneve/GTP-U they have no well-known UDP port, so a packet cannot
+be recognised from the wire alone; the dissector consults the per-netns
+FOU table, reached from the built-in dissector through a small registered
+ops hook (the fou module is tristate). GUE is self-describing; direct FOU
+carries its inner protocol in that table rather than on the wire.
+
+CPU for the descents is ~net-zero (the inner work cancels the outer
+saving); the value is the inner-flow hash distribution/identity, and it
+holds for IPv4 and IPv6 inner flows and underlays.
+
+Performance summary
+-------------------
+Measured across 3 ISAs and 8 microarchitectures, with N=3 replicates
+in-kernel and byte-identical verification per shape.
+
+Reduction in dissector CPU cost (isolated per-shape microbench, all
+fast-paths compiled in; range across the 7 measurable uarches):
+
+      eth_ip    -4.7% .. -31.6%   (isolated eth+IPv4+TCP: -47% .. -55%)
+      vlan     -18.1% .. -38.5%
+      qinq     -16.1% .. -39.8%
+      pppoe     -8.6% .. -28.0%
+      mpls      -6.7% .. -15.0%
+      ipip     -36.8% .. -47.0%   (largest; slow path re-parses inner IP)
+      gre       byte-identical descent family (~ipip)
+
+The tunnel inner descents (patches 11-14) are ~net-zero CPU; their value
+is the flow distribution above, not a cycle saving.
+
+Isolated eth + IPv4 + TCP, userspace A/B (same source compiled two
+ways), nanoseconds per packet, lower is better:
+
+    x86 Zen 2  (Threadripper PRO 3945WX)   12.4 -> 6.6   -47%
+    x86 Skylake (Core i9-10885H)           10.6 -> 5.6   -47%
+    x86 Haswell (Celeron 2955U)            35.9 -> 18.0  -50%
+    ARM Cortex-A53                        119.0 -> 61.3  -48%
+    ARM Cortex-A72                         42.4 -> 19.1  -55%
+    ARM Cortex-A76                         19.4 -> 9.3   -52%
+    RISC-V SpacemiT X60                    98.2 -> 49.3  -50%
+
+The fast path executes about half as many instructions per dissect,
+consistent across three ISAs / eight microarchitectures; the relative
+reduction is largest on in-order cores. IPv6 uses the same gate and is
+byte-identical (x86 -39%, RISC-V -25%).
+
+flow_keys -> skb->hash is the canonical flow identity consumed by ~50
+call sites: ECMP/multipath, RSS, RPS/RFS, bonding/LAG, tc-flower, aRFS.
+Everything that spreads or classifies a flow derives from it, so the
+per-dissect saving applies to all of them at once.
+
+Relationship to the BPF flow dissector
+--------------------------------------
+The fast path is invoked strictly after the netns BPF flow dissector
+hook in __skb_flow_dissect(): if a program is attached and returns any
+verdict other than BPF_FLOW_DISSECTOR_CONTINUE, the function returns
+before flow_dissect_fast() is reached. Attached BPF dissectors therefore
+always take precedence, and a system running one sees bit-for-bit
+unchanged behaviour from this series (patch 1 additionally makes its
+program lookup cheaper for everyone else). Dissects fully handled by a
+BPF program are deliberately not counted in
+/proc/net/flow_dissector_stats (patch 9).
+
+Maintenance burden: why two paths won't diverge
+-----------------------------------------------
+The slow path remains the single source of semantic truth and the fast
+path is verified against it, not vice versa. Three layers enforce that:
+
+  1. The eligibility gate: only the two standard dissectors and a flag
+     subset ever enter flow_dissect_fast(); custom tc-flower dissector
+     instances are structurally unaffected.
+  2. Every shape is a default-off static branch: a kernel with gates off
+     executes the not-taken-branch slow path only.
+  3. The KUnit equivalence suite (patch 15) dissects a corpus of
+     eligible shapes, tunnel descents, deliberate fast-path misses,
+     truncations at every byte boundary, and skb-mode entry conditions
+     through both paths and memcmp()s the resulting struct flow_keys.
+     Future divergence is a failing test, not a silent behaviour change.
+
+The test earns its place: during development it caught real divergences
+the out-of-tree A/B harness had missed -- the MPLS fast path skipping the
+slow path's out_good terminal writes, the 4in6 descent not reproducing
+the outer-IPv6 residue, and (for the descents) the VXLAN/Geneve/GTP-U
+fast path failing to set FLOW_DIS_ENCAPSULATION because the inner leaf
+zeroed it. All fixed in this posting.
+
+Robustness and safety limits
+----------------------------
+The fast path descends into IP-in-IP, GRE and (patches 11-14) UDP tunnels
+by recursion. The slow path bounds header descents at
+MAX_FLOW_DISSECT_HDRS; patch 10 gives the fast path the same bound, and
+the UDP-tunnel descents route through a shared helper that carries it
+too, so a crafted overlay-in-overlay chain falls back to the slow path at
+the same depth rather than driving one C stack frame per ~20 bytes of
+linear header. The KUnit suite covers the tunnel-bound boundary (a nested
+VXLAN chain past the cap), the non-linear-skb fallback, and a seeded
+fuzzer as a general guard.
+
+A separate RFC thread proposes an adaptive auto-enable controller built
+on the patch-9 counters (it manages only the byte-identical shape gates;
+the descent gates are never auto-managed, since enabling them changes
+hashing and must stay a deliberate operator action).
+
+Testing: 3 ISAs / 8 uarches (x86 Zen1/Zen2/Skylake/Haswell, ARM
+Cortex-A53/A72/A76, RISC-V X60), N=3 in-kernel replicates, in-tree KUnit
+(patch 15) and out-of-tree A/B. Supporting data (flow-distribution study,
+per-shape/per-arch matrix, break-even derivation):
+https://github.com/randomizedcoder/xdp2 , under perf-results/ .
+
+Dave Seddon (15):
+  net: flow_dissector: gate BPF program lookup behind a static key
+  net: flow_dissector: opt-in fast-path for eth + IPv{4,6} + {TCP,UDP}
+  net: flow_dissector: add fast-path for single Eth+VLAN+IP+TCP/UDP
+  net: flow_dissector: extend VLAN fast-path to QinQ (depth-2)
+  net: flow_dissector: add fast-path for PPPoE session + IPv{4,6} +
+    TCP/UDP
+  net: flow_dissector: add fast-path for single MPLS label + IP
+  net: flow_dissector: add fast-path for IP-in-IP family (IPIP / 4in6 /
+    6in4)
+  net: flow_dissector: add byte-identical fast-path for plain GRE inner
+  net: flow_dissector: per-shape counters +
+    /proc/net/flow_dissector_stats
+  net: flow_dissector: bound fast-path tunnel recursion
+  net: flow_dissector: descend into VXLAN inner flow
+  net: flow_dissector: descend into Geneve inner flow
+  net: flow_dissector: descend into GTP-U inner flow
+  net: flow_dissector: descend into FOU/GUE inner flow
+  net: flow_dissector: add KUnit fast/slow path equivalence tests
+
+ Documentation/admin-guide/sysctl/net.rst |  268 +++-
+ include/linux/skbuff.h                   |    1 +
+ include/net/flow_dissector.h             |   60 +
+ kernel/bpf/net_namespace.c               |   17 +-
+ net/Kconfig                              |   12 +
+ net/core/Makefile                        |    1 +
+ net/core/flow_dissector.c                | 1840 +++++++++++++++++++++-
+ net/core/flow_dissector_test.c           | 1448 +++++++++++++++++
+ net/ipv4/fou_core.c                      |   48 +-
+ 9 files changed, 3639 insertions(+), 56 deletions(-)
+ create mode 100644 net/core/flow_dissector_test.c
+
+-- 
+2.54.0
+

@@ -69,6 +69,12 @@
       # netns/routing/firewall so nordlayer can't disrupt the host.
       # Reach it via `ssh -J vpn-jump@127.0.0.1:2222 user@remote.vpn`.
       ./nordlayer-sandbox.nix
+      # Sandboxed NFB Consulting LADC AnyConnect VPN (OpenConnect) in its own
+      # systemd-nspawn container (10.98.0.0/24). Coexists with nordlayer above.
+      # Connect with `expect ~/.ssh/nfb-vpn-connect.exp`; then reach NFB devices
+      # via `ssh 10.201.10.x` / `ssh <alias>` (ProxyJump nfb-vpn). See
+      # ~/Downloads/nfb-ladc-asa01/NFB_VPN_Container_Setup.md.
+      ./nfb-vpn-sandbox.nix
       # Series-3 flow_dissector fast-path: SUPERSEDED 2026-06-21. The old
       # 3-patch flowdis-fastpath-module.nix (no per-shape sysctls) is
       # replaced by the v3-namespace 10-patch series via ./test-kernel/,

@@ -9,8 +9,14 @@
 {
   imports = [
     ./claude.nix
-    # SSH client config: ~/.ssh/config generator + ControlPath tmpfs dir.
+    # SSH client config: ~/.ssh/config generator + ControlPath tmpfs dir +
+    # personal/local hosts and the default `Host *` block. The generator splices
+    # in `local.sshExtraConfig`, which the two modules below contribute to.
     ./home-ssh-config.nix
+    # RunPod fleet jump hosts (dev+prod) via the NordLayer sandbox + fleet-socks.
+    ./home-ssh-config-runpod.nix
+    # NFB LADC VPN jump host + device/serial aliases.
+    ./home-ssh-config-nfb.nix
   ];
   # Ghostty configuration
   #

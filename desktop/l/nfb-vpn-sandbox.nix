@@ -40,26 +40,60 @@ let
   # the veth address 10.98.0.2 directly, like the nordlayer `vpn-jump`).
   jumpPort = 2223;
 
+  # Networks routed through the tunnel after connect. We authenticate via the
+  # MNC-LADC group (LOCAL auth) rather than NFB-LADC (RADIUS-first, which rejects
+  # the locally-defined account — see NFB_VPN_Container_Setup.md §2.4). MNC-LADC's
+  # split-tunnel only pushes 10.10.250.0/24, so we add the rest of the NFB-LADC
+  # split-tunnel set by hand. MNC-LADCPolicy has no vpn-filter, so the ASA still
+  # forwards these (verified: con01 10.201.10.134 reachable this way).
+  # When dseddon is added to RADIUS (or NFB-LADC is set local-first), switch
+  # --authgroup back to NFB-LADC and this route list becomes unnecessary.
+  nfbRoutes = [
+    "10.201.10.0/24"   # Management LAN — con01 + all devices in devices.txt
+    "10.204.10.0/24"   # Hyper-V
+    "10.207.10.0/24"   # iSCSI
+    "10.208.10.0/24"   # Hyper-V live migration / heartbeat
+    "10.220.10.0/24"   # LADC-LAN
+    # 10.10.250.0/24 is already pushed by MNC-LADC's own split-tunnel.
+  ];
+
   # ── connect / disconnect helpers baked into the container ───────────────
-  # nfb-connect prompts for the password interactively (no --passwd-on-stdin)
-  # so the host-side expect script can answer the "Password:" prompt. Backgrounds
-  # openconnect on success.
+  # nfb-connect reads the password from stdin (--passwd-on-stdin); the host-side
+  # driver pipes it in. We do NOT use openconnect's interactive "Password:"
+  # prompt: over a PTY it hangs with this ASA's two-form auth, whereas a plain
+  # stdin pipe is reliable. openconnect backgrounds on success; we then add the
+  # supplemental routes above. (No `exec` — the script keeps running to add them.)
   nfb-connect = pkgs.writeShellScriptBin "nfb-connect" ''
     set -eu
     VPN_USER="''${1:-}"
     if [ -z "$VPN_USER" ]; then
-      echo "usage: nfb-connect <vpn-username>   (openconnect will prompt for the password)" >&2
+      echo "usage: nfb-connect <vpn-username>   (password is read from stdin)" >&2
       exit 2
     fi
-    exec sudo ${pkgs.openconnect}/bin/openconnect \
+    sudo ${pkgs.openconnect}/bin/openconnect \
       --protocol=anyconnect \
       --background \
       --pid-file=/run/openconnect.pid \
       --script=${pkgs.vpnc-scripts}/bin/vpnc-script \
       --servercert pin-sha256:aNfEKIY9ehZZezYXwvUGYf+9OtI4K4LNlcqRfGPfDn8= \
-      --authgroup=NFB-LADC \
+      --authgroup=MNC-LADC \
       --user="$VPN_USER" \
+      --passwd-on-stdin \
       ladcvpn.nfbconsulting.com
+
+    # openconnect --background has daemonised; wait for tun0, then add the
+    # supplemental NFB routes (MNC-LADC only pushes 10.10.250.0/24 itself).
+    for _ in $(${pkgs.coreutils}/bin/seq 1 20); do
+      ${pkgs.iproute2}/bin/ip link show tun0 >/dev/null 2>&1 && break
+      sleep 0.5
+    done
+    for net in ${lib.concatStringsSep " " nfbRoutes}; do
+      if sudo ${pkgs.iproute2}/bin/ip route replace "$net" dev tun0; then
+        echo "nfb-connect: routed $net via tun0"
+      else
+        echo "nfb-connect: WARNING could not add route $net" >&2
+      fi
+    done
   '';
 
   nfb-disconnect = pkgs.writeShellScriptBin "nfb-disconnect" ''

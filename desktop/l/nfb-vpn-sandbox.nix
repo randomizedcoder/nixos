@@ -53,8 +53,15 @@ let
     "10.204.10.0/24"   # Hyper-V
     "10.207.10.0/24"   # iSCSI
     "10.208.10.0/24"   # Hyper-V live migration / heartbeat
-    "10.220.10.0/24"   # LADC-LAN
+    "10.220.10.0/24"   # LADC-LAN (default VLAN)
+    "10.201.11.0/24"   # ASA management interface
+    "10.33.0.0/24"     # LADC-Seddon
+    "10.35.0.0/24"     # Seddon-MGMT
+    "20.200.10.0/24"   # LADC-MNC-DMZ
     # 10.10.250.0/24 is already pushed by MNC-LADC's own split-tunnel.
+    # These are all ASA-connected subnets; MNC-LADCPolicy has no vpn-filter, so
+    # the ASA forwards them. A route that the ASA won't NAT-exempt simply won't
+    # pass traffic — adding it is harmless.
   ];
 
   # ── connect / disconnect helpers baked into the container ───────────────

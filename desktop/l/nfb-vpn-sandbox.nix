@@ -77,6 +77,13 @@ let
       echo "usage: nfb-connect <vpn-username>   (password is read from stdin)" >&2
       exit 2
     fi
+    # Redirect openconnect's output to a temp log which we then unlink: with
+    # --background the daemon inherits stdout/stderr, and if those are the ssh
+    # channel the caller (`ssh nfb-connect`) blocks until the daemon exits. Auth
+    # happens in the foreground, so a failure still sets a non-zero exit code and
+    # the log captures the reason.
+    log=$(${pkgs.coreutils}/bin/mktemp)
+    set +e
     sudo ${pkgs.openconnect}/bin/openconnect \
       --protocol=anyconnect \
       --background \
@@ -86,7 +93,17 @@ let
       --authgroup=MNC-LADC \
       --user="$VPN_USER" \
       --passwd-on-stdin \
-      ladcvpn.nfbconsulting.com
+      ladcvpn.nfbconsulting.com >"$log" 2>&1
+    rc=$?
+    set -e
+    if [ "$rc" -ne 0 ]; then
+      echo "nfb-connect: openconnect failed (rc=$rc):" >&2
+      cat "$log" >&2 || true
+      rm -f "$log"
+      exit 1
+    fi
+    ${pkgs.gnugrep}/bin/grep -E "Configured as|Established DTLS" "$log" || true
+    rm -f "$log"
 
     # openconnect --background has daemonised; wait for tun0, then add the
     # supplemental NFB routes (MNC-LADC only pushes 10.10.250.0/24 itself).

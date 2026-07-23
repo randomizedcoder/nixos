@@ -77,12 +77,19 @@ in
     #     degraded it replies "I do not have the capability to perform this task".
     #   - llama3.1:8b: TOOL-CALLS and completes the task (e2e-live PASS — wrote and
     #     compiled a C program on the MI50). So it is the reliable choice today.
-    # Net: with ollama + OpenAI-compat, stick to llama-family. To actually exploit
-    # the 32GB for agent work, the untested candidates are mistral-small:24b
-    # (mistral tool-format, fits with room) or llama3.3:70b at a quant that fits
-    # (~q3, tight). Or teach agent-seddon to speak ollama's native /api/chat.
+    # Net: with ollama + OpenAI-compat, stick to a model whose tool format ollama
+    # translates — llama-family OR mistral. Tested against this service:
+    #   - mistral-small:24b — tool-calls fine, and writes CORRECT code. Given a
+    #     "wordcount.py + sample + run it" task it produced a working script;
+    #     llama3.1:8b on the same task wrote a syntactically broken regex and
+    #     failed. Loads 41/41 layers on the MI50 (~18.5GB), so it fits with room.
+    #     This is the one that actually earns the 32GB card. e2e-live PASSes.
+    #   - llama3.1:8b — tool-calls + passes e2e-live, but too weak for real code
+    #     (breaks on anything non-trivial). Kept as a small/fast fallback.
+    # mistral-small is first so it is the default the agent picks.
     loadModels = [
-      "llama3.1:8b" # 4.9GB — verified tool-calling + task completion on the MI50
+      "mistral-small:24b" # ~14GB — capable agent model; writes correct code
+      "llama3.1:8b" # 4.9GB — small/fast fallback (weak on real tasks)
       # Embeddings — feeds agent-seddon's Embedder seam.
       "nomic-embed-text:latest" # 0.3GB
     ];

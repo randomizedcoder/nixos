@@ -1,0 +1,304 @@
+From 2209b55ce7638b935500ca72972bfe743fadc1ae Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Tue, 7 Jul 2026 17:52:21 -0700
+Subject: [PATCH net-next v1 03/15] net: flow_dissector: add fast-path for VLAN
+ and QinQ + IP + TCP/UDP
+
+Extension of the parent series covering the VLAN-tagged shapes: a
+single ETH_P_8021Q or ETH_P_8021AD tag, or two stacked tags (the
+canonical QinQ S-tag + C-tag), in front of IPv4/IPv6 + TCP/UDP. Adds
+flow_dissect_fast_vlan() that consumes the tag(s) and dispatches to
+the existing flow_dissect_fast_ipv4 / _ipv6 helpers on the inner
+ethertype.
+
+  - What this covers. VLAN-tagged Eth (8021Q or 8021AD, depth 1 or
+    2) + IPv4 or IPv6 (per parent's shape constraints) + TCP/UDP.
+    Both hardware-stripped (TCI in skb metadata, inner ethertype in
+    skb->protocol; only ever the outermost tag) and in-band (4-byte
+    vlan_hdr at data + nhoff) tag forms.
+
+  - Keys written. Outer tag: FLOW_DISSECTOR_KEY_VLAN (vlan_id /
+    vlan_priority / vlan_tpid / vlan_eth_type); inner tag (depth 1):
+    FLOW_DISSECTOR_KEY_CVLAN, mirroring the slow-path's
+    MAX -> VLAN -> CVLAN state machine. Bumps
+    FLOW_DISSECTOR_KEY_NUM_OF_VLANS when requested by the dissector.
+    Byte-identical with the slow path. Past depth 2 the helper
+    returns false (defers to the slow path).
+
+  - Gates. Two static keys, each with its own sysctl:
+    DEFINE_STATIC_KEY_FALSE(flow_dissector_vlan_key)
+    (/proc/sys/net/flow_dissector/vlan) gates entry at depth 0, and
+    DEFINE_STATIC_KEY_FALSE(flow_dissector_qinq_key)
+    (/proc/sys/net/flow_dissector/qinq) gates the depth-1 tag.
+    Defaults 0; off has no behaviour change beyond one extra
+    not-taken JMP in the dispatcher switch.
+
+  - Sibling-key handling. The two gates are coupled in their proc
+    handlers: writing qinq=1 auto-enables the vlan key (QinQ extends
+    VLAN; depth-0 entry is gated by vlan), and writing vlan=0 clears
+    the qinq key (depth-2 cannot fire when the outer entry is off).
+    Reads always reflect the underlying key state.
+
+  - Cost. On a miss, one ethertype switch + the static_branch test.
+    On a hit, ~3-5 ns added to the IPv4/IPv6 fast-path body per tag
+    consumed, while the slow-path's per-tag handling (state-machine
+    transition + proto_again rewind) is skipped -- net saving
+    ~30 ns/skb on the single-VLAN shape and ~50 ns/skb on QinQ.
+
+Verified byte-identical by the KUnit equivalence suite. Isolated
+dissector cost on the allshapes microbench (all fast paths compiled
+in, range across 7 measured microarchitectures): vlan -18.1%..-38.5%,
+qinq -16.1%..-39.8% -- see the cover letter's performance summary.
+
+Assisted-by: Claude:claude-fable-5 sparse
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst |  31 +++++
+ include/net/flow_dissector.h             |   2 +
+ net/core/flow_dissector.c                | 147 +++++++++++++++++++++++
+ 3 files changed, 180 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index d184e279103a..67abfe5c8d51 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -485,6 +485,37 @@ when this is 0.
+ 
+ Default: 0
+ 
++vlan
++~~~~
++
++Single 802.1Q or 802.1AD tagged frames over Eth + IPv4/IPv6 +
++TCP/UDP. Handles both the hardware-stripped form (tag in skb
++metadata, inner ethertype in skb->protocol) and the in-band form
++(4-byte vlan_hdr at data + nhoff). Writes FLOW_DISSECTOR_KEY_VLAN
++and bumps FLOW_DISSECTOR_KEY_NUM_OF_VLANS when those keys are
++requested by the dissector. Byte-identical with the slow path for
++the eligible shape; defers on any miss (QinQ defers; see the qinq
++sysctl).
++
++Default: 0
++
++qinq
++~~~~
++
++Lifts the vlan fast-path's depth limit from 1 to 2 so two stacked
++802.1AD / 802.1Q tags (canonical QinQ S-tag + C-tag, or two stacked
++802.1Q tags) are also fast-pathed. Outer tag is written to
++FLOW_DISSECTOR_KEY_VLAN, inner to FLOW_DISSECTOR_KEY_CVLAN, mirroring
++the slow-path's MAX → VLAN → CVLAN state machine. Byte-identical
++with the slow path for the eligible shape.
++
++Auto-toggle: writing qinq=1 also enables vlan (QinQ extends VLAN;
++the depth-0 entry of the helper is gated by the vlan key). Writing
++vlan=0 also clears qinq (depth-2 cannot fire when the outer entry
++is off).
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 7d513a6cbb55..4f36f3889a28 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -429,6 +429,8 @@ extern struct flow_dissector flow_keys_basic_dissector;
+  * /proc/sys/net/flow_dissector/<shape>. All default off.
+  */
+ extern struct static_key_false flow_dissector_eth_ip_key;
++extern struct static_key_false flow_dissector_vlan_key;
++extern struct static_key_false flow_dissector_qinq_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 8bd356ab97a7..f614d92792cf 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -42,6 +42,10 @@
+  */
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_eth_ip_key);
+ EXPORT_SYMBOL(flow_dissector_eth_ip_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_vlan_key);
++EXPORT_SYMBOL(flow_dissector_vlan_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_qinq_key);
++EXPORT_SYMBOL(flow_dissector_qinq_key);
+ 
+ /* IPv4 version/IHL byte of an option-less header: version 4, IHL 5. */
+ #define FLOW_DIS_IPV4_VIHL_NOOPT	0x45
+@@ -1241,6 +1245,93 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+ 	return true;
+ }
+ 
++/* Strip up to two 802.1Q/802.1AD tags: outer tag ->
++ * FLOW_DISSECTOR_KEY_VLAN, inner -> _CVLAN, mirroring the slow path's
++ * MAX -> VLAN -> CVLAN state machine; more than two tags defer.
++ * Depth 0 is gated by the vlan key, depth >= 1 by the qinq key (the
++ * qinq sysctl also flips vlan on -- see the proc_handlers).
++ */
++static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
++				   struct flow_dissector *flow_dissector,
++				   void *target_container,
++				   const void *data,
++				   __be16 proto, int nhoff, int hlen,
++				   int vlan_depth)
++{
++	struct flow_dissector_key_num_of_vlans *key_nvs;
++	struct flow_dissector_key_vlan *key_vlan;
++	enum flow_dissector_key_id vlan_key;
++	__be16 inner_proto;
++	__be16 saved_tpid;
++	u16 tci_prio;
++	u16 tci_id;
++
++	if (vlan_depth >= 1 &&
++	    !static_branch_unlikely(&flow_dissector_qinq_key))
++		return false;
++	if (vlan_depth >= 2)
++		return false;
++
++	vlan_key = vlan_depth == 0 ?
++		   FLOW_DISSECTOR_KEY_VLAN :
++		   FLOW_DISSECTOR_KEY_CVLAN;
++	saved_tpid = proto;
++
++	/* HW-stripped tag is only ever the outermost. */
++	if (vlan_depth == 0 && skb && skb_vlan_tag_present(skb)) {
++		tci_id = skb_vlan_tag_get_id(skb);
++		tci_prio = skb_vlan_tag_get_prio(skb);
++		inner_proto = skb->protocol;
++	} else {
++		const struct vlan_hdr *vlan;
++
++		if (unlikely(hlen - nhoff < (int)sizeof(*vlan)))
++			return false;
++		vlan = (const struct vlan_hdr *)((const u8 *)data + nhoff);
++		tci_id = ntohs(vlan->h_vlan_TCI) & VLAN_VID_MASK;
++		tci_prio = (ntohs(vlan->h_vlan_TCI) &
++			    VLAN_PRIO_MASK) >> VLAN_PRIO_SHIFT;
++		inner_proto = vlan->h_vlan_encapsulated_proto;
++		nhoff += (int)sizeof(*vlan);
++	}
++
++	if (dissector_uses_key(flow_dissector, vlan_key)) {
++		key_vlan = skb_flow_dissector_target(flow_dissector,
++						     vlan_key,
++						     target_container);
++		key_vlan->vlan_id = tci_id;
++		key_vlan->vlan_priority = tci_prio;
++		key_vlan->vlan_tpid = saved_tpid;
++		key_vlan->vlan_eth_type = inner_proto;
++	}
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_NUM_OF_VLANS)) {
++		key_nvs = skb_flow_dissector_target(flow_dissector,
++						    FLOW_DISSECTOR_KEY_NUM_OF_VLANS,
++						    target_container);
++		key_nvs->num_of_vlans++;
++	}
++
++	switch (inner_proto) {
++	case htons(ETH_P_IP):
++		return flow_dissect_fast_ipv4(skb, flow_dissector,
++					      target_container, data,
++					      nhoff, hlen);
++	case htons(ETH_P_IPV6):
++		return flow_dissect_fast_ipv6(skb, flow_dissector,
++					      target_container, data,
++					      nhoff, hlen);
++	case htons(ETH_P_8021Q):
++	case htons(ETH_P_8021AD):
++		return flow_dissect_fast_vlan(skb, flow_dissector,
++					      target_container, data,
++					      inner_proto, nhoff, hlen,
++					      vlan_depth + 1);
++	default:
++		return false;
++	}
++}
++
+ /* Top-level dispatcher: eligibility check (only the two standard
+  * dissectors and flag subset) + per-proto switch with per-shape
+  * static_branch gating. Each case's branch is a forward not-taken JMP
+@@ -1269,6 +1360,13 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+ 		return false;
+ 
+ 	switch (proto) {
++	case htons(ETH_P_8021Q):
++	case htons(ETH_P_8021AD):
++		if (!static_branch_unlikely(&flow_dissector_vlan_key))
++			return false;
++		return flow_dissect_fast_vlan(skb, flow_dissector,
++					      target_container, data,
++					      proto, nhoff, hlen, 0);
+ 	case htons(ETH_P_IP):
+ 		if (!static_branch_unlikely(&flow_dissector_eth_ip_key))
+ 			return false;
+@@ -2368,6 +2466,41 @@ static int __init init_default_flow_dissectors(void)
+ core_initcall(init_default_flow_dissectors);
+ 
+ /* Per-shape fast-path sysctls under /proc/sys/net/flow_dissector/. */
++/* proc_handler for net.flow_dissector.vlan. Writes of 0 also clear
++ * flow_dissector_qinq_key — QinQ depth-2 is meaningless when the
++ * outer single-VLAN gate is off, so the slow path would have to
++ * handle every VLAN-tagged packet anyway.
++ */
++static int proc_set_vlan_key(const struct ctl_table *table, int write,
++			     void *buffer, size_t *lenp, loff_t *ppos)
++{
++	int ret;
++
++	ret = proc_do_static_key(table, write, buffer, lenp, ppos);
++	if (ret == 0 && write &&
++	    !static_branch_unlikely(&flow_dissector_vlan_key) &&
++	    static_branch_unlikely(&flow_dissector_qinq_key))
++		static_branch_disable(&flow_dissector_qinq_key);
++	return ret;
++}
++
++/* proc_handler for net.flow_dissector.qinq. Writes of 1 also enable
++ * flow_dissector_vlan_key — QinQ extends the VLAN fast-path to depth
++ * 2; it cannot fire when the depth-0 entry is gated off.
++ */
++static int proc_set_qinq_key(const struct ctl_table *table, int write,
++			     void *buffer, size_t *lenp, loff_t *ppos)
++{
++	int ret;
++
++	ret = proc_do_static_key(table, write, buffer, lenp, ppos);
++	if (ret == 0 && write &&
++	    static_branch_unlikely(&flow_dissector_qinq_key) &&
++	    !static_branch_unlikely(&flow_dissector_vlan_key))
++		static_branch_enable(&flow_dissector_vlan_key);
++	return ret;
++}
++
+ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 	{
+ 		.procname	= "eth_ip",
+@@ -2376,6 +2509,20 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "vlan",
++		.data		= &flow_dissector_vlan_key.key,
++		.maxlen		= sizeof(flow_dissector_vlan_key),
++		.mode		= 0644,
++		.proc_handler	= proc_set_vlan_key,
++	},
++	{
++		.procname	= "qinq",
++		.data		= &flow_dissector_qinq_key.key,
++		.maxlen		= sizeof(flow_dissector_qinq_key),
++		.mode		= 0644,
++		.proc_handler	= proc_set_qinq_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

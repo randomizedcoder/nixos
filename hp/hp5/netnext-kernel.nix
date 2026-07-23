@@ -1,13 +1,13 @@
 # netnext-kernel.nix
 #
 # net-next v7.2-rc1 (base b73bc9ca3686) + the series4 flow_dissector fast-path
-# framework, baked into the source via the `series4-rfc-tail-v2` branch of the
-# local net-next tree. 16 commits: 7 byte-identical fast-paths (eth_ip/vlan/
-# qinq/pppoe/mpls/ipip/gre), per-shape counters + /proc/net/flow_dissector_stats,
-# bounded tunnel recursion, the 5 UDP-tunnel inner descents (vxlan/geneve/gtpu/
-# fou/gue) now byte-identical (slow path grows the same descent) + KUnit
-# equivalence, and the adaptive auto-enable RFC on top
-# (net.flow_dissector.auto + auto_window_packets).
+# framework, baked into the source via the `series5-a` branch (STATE A: 11-patch byte-identical fast-path series) of the
+# local net-next tree. 16 commits = the 15-patch v3 submission series (7
+# byte-identical fast-paths with vlan+qinq folded, counters, bounded
+# recursion, 4 descent patches incl. fou/gue, KUnit 61 tests, Documentation)
+# + the adaptive auto-enable RFC on top (net.flow_dissector.auto +
+# auto_window_packets). v3 adds VXLAN I-flag + Geneve OAM validation and the
+# static_branch_unlikely hint fixes.
 #
 # Built by overriding nixpkgs `linux_testing` (7.1-rc7) so nixpkgs' kernel-
 # config machinery is reused instead of shipping a raw .config — only the src
@@ -19,15 +19,15 @@
 # makes it a clean A/B against the same net-next base.
 #
 # Update the rev when the series4-rfc-tail-v2 branch moves:
-#   cd ~/Downloads/net-next && git rev-parse series4-rfc-tail-v2
+#   cd ~/Downloads/net-next && git rev-parse series4-rfc-tail-v3
 
 { linux_testing, linuxPackagesFor }:
 
 let
   netNextSeries4 = builtins.fetchGit {
     url = "file:///home/das/Downloads/net-next";
-    ref = "series4-rfc-tail-v2";
-    rev = "a208f86be2ce6dc7e38c240386b30c92417d859e";
+    ref = "series5-a";
+    rev = "c9908e2809c0fd6c29a0ca054e4d90c3988fe959";
   };
 in
 linuxPackagesFor (linux_testing.override {

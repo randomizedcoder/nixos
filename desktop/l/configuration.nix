@@ -48,6 +48,8 @@
       ./nginx.nix
       # llama-cpp CUDA on RTX 3070
       ./llama-service.nix
+      # ollama CUDA on the same RTX 3070, :11434 — tool-calling models for agents
+      ./ollama-service.nix
       ./below.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix

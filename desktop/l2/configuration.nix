@@ -92,6 +92,14 @@
       # Re-enable once the ROCm/amdgpu stack is stable on this kernel.
       # ./llama-service.nix
       #./fan2go.nix
+      # agent-seddon remote seam fleet — opens the gRPC gateway port for l.
+      ./agent-seam.nix
+      # "gpu-stable" boot specialisation: a stable-kernel boot entry, kept as a
+      # spare. NOTE it turned out unnecessary — the GPU wedge was the faulty W5700,
+      # not the kernel; with that card removed the MI50 works on net-next.
+      ./gpu-stable.nix
+      # ollama serving the MI50 (32GB) over Vulkan on :11434.
+      ./ollama-service.nix
       # NIC configuration — Mellanox ports are now owned by xdp2.testbed.
       ./network-interfaces.nix
       ./ethtool-nics.nix
@@ -110,7 +118,11 @@
       enable = true;
       consoleMode = "max";
       memtest86.enable = true;
-      configurationLimit = 20;
+      # /boot is a 511M ESP. net-next and the gpu-stable (6.18) specialisation each
+      # carry a large kernel+initrd, so 20 generations overflowed it (bootloader
+      # install failed with ENOSPC). 5 keeps the current + recent rollbacks and
+      # fits comfortably.
+      configurationLimit = 5;
     };
 
     loader.efi.canTouchEfiVariables = true;

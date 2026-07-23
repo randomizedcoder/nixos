@@ -58,6 +58,15 @@
     clinfo
     lact
 
+    # Vulkan diagnostics + the Vulkan-backed ollama for the MI50 (gfx906).
+    # gfx906 left ROCm official support at 5.7; ROCm 7.2.3 SIGSEGVs at HIP
+    # getDeviceKernel on it, and ollama-rocm rejects gfx906 at runtime regardless.
+    # The Vulkan path (RADV) drives the DRM render node directly, never loading
+    # libamdhip64, so it sidesteps both failures. `vulkaninfo` confirms RADV sees
+    # the card; `ollama` here is the Vulkan build. See ollama-service.nix.
+    vulkan-tools # vulkaninfo
+    ollama-vulkan
+
     # GPU monitoring (supports AMD and NVIDIA)
     nvtopPackages.full
 

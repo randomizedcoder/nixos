@@ -1,7 +1,7 @@
 # Kernel + initrd for the Banana Pi BPI-F3 (SpacemiT K1).
 #
 # 2026-07-06: net-next v7.2-rc1 + the series4 flow_dissector fast-path framework
-# (series4-rfc-tail-v2: 15 landable patches incl. the 5 UDP-tunnel inner
+# (series4-rfc-tail-v3: the 15-patch v3 submission series incl. the 5 UDP-tunnel inner
 # descents now byte-identical + KUnit, plus the auto-enable RFC), mirroring l2 —
 # the RISC-V data point for series4. Built by overriding nixpkgs linux_testing so
 # the config machinery is reused; the SpacemiT K1 drivers are still force-on via
@@ -11,8 +11,8 @@
 let
   netNextSeries4 = builtins.fetchGit {
     url = "file:///home/das/Downloads/net-next";
-    ref = "series4-rfc-tail-v2";
-    rev = "a208f86be2ce6dc7e38c240386b30c92417d859e";
+    ref = "series5-a";
+    rev = "c9908e2809c0fd6c29a0ca054e4d90c3988fe959";
   };
 in
 {

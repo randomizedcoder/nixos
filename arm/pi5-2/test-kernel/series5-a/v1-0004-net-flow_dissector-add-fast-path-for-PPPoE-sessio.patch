@@ -1,7 +1,7 @@
-From 6798b1ed9238a57b2c781b1e32ab0484bdabc35b Mon Sep 17 00:00:00 2001
+From 987a5f10c010bfd3e21b8ae92243b55cd8c87c34 Mon Sep 17 00:00:00 2001
 From: Dave Seddon <dave.seddon.ca@gmail.com>
 Date: Tue, 16 Jun 2026 13:14:54 -0700
-Subject: [PATCH net-next v1 05/15] net: flow_dissector: add fast-path for
+Subject: [PATCH net-next v1 04/11] net: flow_dissector: add fast-path for
  PPPoE session + IPv{4,6} + TCP/UDP
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -33,30 +33,31 @@ Gated by:
   - new DEFINE_STATIC_KEY_FALSE(flow_dissector_pppoe_key)
   - new sysctl /proc/sys/net/flow_dissector/pppoe (default 0)
   - dispatcher case `htons(ETH_P_PPP_SES)` with
-    `static_branch_likely(&flow_dissector_pppoe_key)` guard
+    `static_branch_unlikely(&flow_dissector_pppoe_key)` guard
 
 When the sysctl is 0, the dispatcher hits a forward not-taken JMP —
-same per-call cost as the v3 vlan / qinq cases. The new dispatcher
+same per-call cost as the vlan / qinq cases. The new dispatcher
 case also doesn't widen the switch table (it adds one case to a
 switch the compiler can already lower to a jump table on the
 ETH_P_* constants).
 
 Documentation/admin-guide/sysctl/net.rst grows a `pppoe` subsection
 under the existing `/proc/sys/net/flow_dissector/` chapter, between
-qinq and the next chapter, matching the v3-namespace layout.
+qinq and the next chapter, matching the existing per-shape layout.
 
+Assisted-by: Claude:claude-fable-5 sparse smatch
 Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
 ---
- Documentation/admin-guide/sysctl/net.rst | 18 +++++
+ Documentation/admin-guide/sysctl/net.rst | 18 ++++++
  include/net/flow_dissector.h             |  1 +
- net/core/flow_dissector.c                | 84 ++++++++++++++++++++++++
- 3 files changed, 103 insertions(+)
+ net/core/flow_dissector.c                | 76 ++++++++++++++++++++++++
+ 3 files changed, 95 insertions(+)
 
 diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
-index 67abfe5c8d51..b5402a9d5392 100644
+index 824f4b735caa..1096e6ddca39 100644
 --- a/Documentation/admin-guide/sysctl/net.rst
 +++ b/Documentation/admin-guide/sysctl/net.rst
-@@ -516,6 +516,24 @@ is off).
+@@ -516,6 +516,24 @@ the outer entry is off).
  
  Default: 0
  
@@ -82,10 +83,10 @@ index 67abfe5c8d51..b5402a9d5392 100644
  ----------------------------------------------------------
  
 diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
-index 6b48103c36e5..c792de78a2cb 100644
+index 4f36f3889a28..df85162959cc 100644
 --- a/include/net/flow_dissector.h
 +++ b/include/net/flow_dissector.h
-@@ -434,6 +434,7 @@ extern struct flow_dissector flow_keys_basic_dissector;
+@@ -431,6 +431,7 @@ extern struct flow_dissector flow_keys_basic_dissector;
  extern struct static_key_false flow_dissector_eth_ip_key;
  extern struct static_key_false flow_dissector_vlan_key;
  extern struct static_key_false flow_dissector_qinq_key;
@@ -94,34 +95,26 @@ index 6b48103c36e5..c792de78a2cb 100644
  /* struct flow_keys_digest:
   *
 diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
-index f6947a0af1b0..c116b47b8f58 100644
+index f614d92792cf..8c38d5a1e245 100644
 --- a/net/core/flow_dissector.c
 +++ b/net/core/flow_dissector.c
-@@ -49,6 +49,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_vlan_key);
+@@ -46,6 +46,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_vlan_key);
  EXPORT_SYMBOL(flow_dissector_vlan_key);
  DEFINE_STATIC_KEY_FALSE(flow_dissector_qinq_key);
  EXPORT_SYMBOL(flow_dissector_qinq_key);
 +DEFINE_STATIC_KEY_FALSE(flow_dissector_pppoe_key);
 +EXPORT_SYMBOL(flow_dissector_pppoe_key);
  
- /* Forward declarations for the per-shape fast-path helpers, anchored
-  * at the top of the file. Subsequent patches in this series add new
-@@ -1344,6 +1346,75 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
+ /* IPv4 version/IHL byte of an option-less header: version 4, IHL 5. */
+ #define FLOW_DIS_IPV4_VIHL_NOOPT	0x45
+@@ -1332,6 +1334,67 @@ static bool flow_dissect_fast_vlan(const struct sk_buff *skb,
  	}
  }
  
-+/* Strip a PPPoE session header (RFC 2516) + the 2-byte PPP protocol
-+ * field, write FLOW_DISSECTOR_KEY_PPPOE if requested, then tail-call
-+ * into the eth_ip fast-path for PPP_IP / PPP_IPV6 inner.
-+ *
-+ * Byte-identical with the slow path's `case ETH_P_PPP_SES` block for
-+ * the eligible shape; on any miss (invalid header, unsupported inner
-+ * PPP proto, malformed packet) returns false so the caller falls
-+ * through to the slow path.
-+ *
-+ * PPP_MPLS_UC / PPP_MPLS_MC defer to slow path until the matching
-+ * MPLS fast-path lands. PFC-compressed PPP proto fields (LSB of MSO
-+ * set) defer because ppp_proto_is_valid() would reject them.
++/* PPPoE session (RFC 2516) + 2-byte PPP protocol: write
++ * FLOW_DISSECTOR_KEY_PPPOE if requested, then tail-call the eth_ip
++ * fast-path for PPP_IP / PPP_IPV6. Anything else (PFC-compressed
++ * protocol, LCP, MPLS) defers.
 + */
 +static bool flow_dissect_fast_pppoe(const struct sk_buff *skb,
 +				    struct flow_dissector *flow_dissector,
@@ -182,12 +175,12 @@ index f6947a0af1b0..c116b47b8f58 100644
  /* Top-level dispatcher: eligibility check (only the two standard
   * dissectors and flag subset) + per-proto switch with per-shape
   * static_branch gating. Each case's branch is a forward not-taken JMP
-@@ -1383,6 +1454,12 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+@@ -1379,6 +1442,12 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
  		return flow_dissect_fast_ipv6(skb, flow_dissector,
  					      target_container, data,
  					      nhoff, hlen);
 +	case htons(ETH_P_PPP_SES):
-+		if (!static_branch_likely(&flow_dissector_pppoe_key))
++		if (!static_branch_unlikely(&flow_dissector_pppoe_key))
 +			return false;
 +		return flow_dissect_fast_pppoe(skb, flow_dissector,
 +					       target_container, data,
@@ -195,7 +188,7 @@ index f6947a0af1b0..c116b47b8f58 100644
  	default:
  		return false;
  	}
-@@ -2533,6 +2610,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+@@ -2523,6 +2592,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_set_qinq_key,
  	},

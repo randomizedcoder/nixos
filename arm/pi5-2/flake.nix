@@ -22,7 +22,7 @@
   };
 
   inputs = {
-    nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
+    nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/develop";
 
     # Keep home-manager's nixpkgs in lockstep with the one nixos-raspberrypi
     # pins, so we get cache hits and avoid version skew.

@@ -1,0 +1,196 @@
+From fb6e3ffc5b1ddac551aa51d3068d0947bc1fec45 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Thu, 9 Jul 2026 21:29:13 -0700
+Subject: [PATCH net-next v1 12/15] net: flow_dissector: descend into GTP-U
+ inner flow
+
+Opt-in, off by default, byte-identical between the fast and slow paths.
+Mobile-core deployments (5G UPF, 4G S-GW/PGW) hash on the outer UDP
+today, collapsing every subscriber flow between two tunnel endpoints
+onto one 5-tuple bucket -- the sharpest case, since GTP-U has no outer
+source-port entropy.
+
+Both paths grow the same descent for the common G-PDU case:
+
+  - flow_dissect_fast_ipv4() descends when the outer is eth + IPv4 +
+    UDP, dst port == GTP1U_PORT (2152), GTPv1 PT=1, no optional fields,
+    type 0xff (G-PDU). GTP-U carries naked inner IP (no inner
+    Ethernet), so the inner version nibble picks v4/v6 and the inner
+    goes through the shared flow_dissect_fast_udp_inner() tail.
+  - __skb_flow_dissect_udp_encap() grows the matching slow-path descent
+    and re-enters the loop, bounded by skb_flow_dissect_allowed().
+
+Kept out of the descended set on both paths (outer keys retained, so
+fast == slow holds): GTPv0, GTP' (PT=0), type != 0xff (control plane),
+extension-header / N-PDU / sequence variants, and GTP-U over IPv6
+outer. Covered by the KUnit equivalence suite.
+
+CPU is ~net-zero; the operator benefit is per-subscriber hash spread.
+
+Assisted-by: Claude:claude-fable-5 sparse
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 26 ++++++++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 61 +++++++++++++++++++++++-
+ 3 files changed, 87 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 3c3319bb229f..1dd895d14b12 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -641,6 +641,32 @@ handled).
+ 
+ Default: 0
+ 
++gtpu_inner
++~~~~~~~~~~
++
++Descends into the GTP-U inner IPv4/IPv6 + TCP/UDP flow for hashing
++when the outer matches Eth + IPv4 + UDP with dst port ``GTP1U_PORT``
++(2152), GTPv1 PT=1, no optional fields (no N-PDU, no sequence, no
++extension headers), and type=0xFF (G-PDU, i.e. subscriber user data;
++control-plane messages keep the outer keys). When enabled, the inner
++subscriber 5-tuple replaces the outer UDP one and key_control->flags
++gets FLOW_DIS_ENCAPSULATION.
++
++**Enabling this changes hashing** for GTP-U traffic. Mobile-core
++deployments (5G UPF, 4G S-GW/PGW) using cake / fq / fib_multipath /
++RPS get per-subscriber-flow fairness instead of all-subscribers-to-
++one-NIC-queue hashing on the outer UDP. Because it changes the hash
++it is off by default and gated independently; once on it is
++byte-identical between the fast and slow paths (the slow path grows
++the same descent).
++
++Kept out of the descended set on both paths (outer keys retained):
++GTPv0 (legacy), GTP' (charging, PT=0), G-PDU type other than 0xFF,
++GTP-U with extension headers / N-PDU / sequence flags set, and GTP-U
++over IPv6 outer.
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 778f31e6e3bc..81d970d8ca69 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -437,6 +437,7 @@ extern struct static_key_false flow_dissector_ipip_key;
+ extern struct static_key_false flow_dissector_gre_key;
+ extern struct static_key_false flow_dissector_vxlan_inner_key;
+ extern struct static_key_false flow_dissector_geneve_inner_key;
++extern struct static_key_false flow_dissector_gtpu_inner_key;
+ 
+ /* Per-shape counters for /proc/net/flow_dissector_stats.
+  * occurrences[]: shape seen by the slow path (the eligible-fraction
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index d2c396edbb12..b417463f2610 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -68,6 +68,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_vxlan_inner_key);
+ EXPORT_SYMBOL(flow_dissector_vxlan_inner_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_geneve_inner_key);
+ EXPORT_SYMBOL(flow_dissector_geneve_inner_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_gtpu_inner_key);
++EXPORT_SYMBOL(flow_dissector_gtpu_inner_key);
+ 
+ /* Per-cpu, summed on read via /proc/net/flow_dissector_stats.
+  * occurrences[]: shape handled by the slow path (with the gate off,
+@@ -267,6 +269,47 @@ flow_dissect_geneve_inner_ok(const void *data, int thoff, int hlen, u8 family,
+ 	return true;
+ }
+ 
++#define GTP1_HDR_VERSION	GENMASK(7, 5)
++#define GTP1_HDR_PT		BIT(4)
++#define GTP1_MSG_GPDU		0xff
++
++static __always_inline bool
++flow_dissect_gtpu_inner_ok(const void *data, int thoff, int hlen, u8 family,
++			   __be16 *inner_proto, int *inner_nhoff)
++{
++	const struct gtp1_header *gtp;
++	const __be16 *udp_ports;
++	int nhoff;
++	u8 ver;
++
++	if (family != AF_INET)
++		return false;
++	if (hlen - thoff < (int)(sizeof(struct udphdr) +
++				 sizeof(struct gtp1_header) +
++				 sizeof(struct iphdr)))
++		return false;
++	udp_ports = (const __be16 *)((const u8 *)data + thoff);
++	if (udp_ports[1] != htons(GTP1U_PORT))
++		return false;
++	gtp = (const struct gtp1_header *)
++		((const u8 *)data + thoff + sizeof(struct udphdr));
++	/* GTPv1, PT=1 (GTP, not GTP'), no optional fields, G-PDU. The
++	 * header is then exactly 8 bytes with naked inner IP behind it
++	 * (no inner Ethernet); the version nibble picks v4 vs v6.
++	 */
++	if (FIELD_GET(GTP1_HDR_VERSION, gtp->flags) != 1 ||
++	    !(gtp->flags & GTP1_HDR_PT) || (gtp->flags & GTP1_F_MASK) ||
++	    gtp->type != GTP1_MSG_GPDU)
++		return false;
++	nhoff = thoff + sizeof(struct udphdr) + sizeof(struct gtp1_header);
++	ver = *((const u8 *)data + nhoff) >> 4;
++	if (ver != 4 && ver != 6)
++		return false;
++	*inner_proto = ver == 4 ? htons(ETH_P_IP) : htons(ETH_P_IPV6);
++	*inner_nhoff = nhoff;
++	return true;
++}
++
+ /* Try the UDP-tunnel descents on an outer UDP header at @thoff. A
+  * packet the classifiers accept but the inner fast path cannot handle
+  * defers, because the slow path will descend into it.
+@@ -291,6 +334,10 @@ flow_dissect_fast_udp_tunnels(const struct sk_buff *skb,
+ 	    flow_dissect_geneve_inner_ok(data, thoff, hlen, family,
+ 					 &inner_proto, &inner_nhoff))
+ 		goto descend;
++	if (static_branch_unlikely(&flow_dissector_gtpu_inner_key) &&
++	    flow_dissect_gtpu_inner_ok(data, thoff, hlen, family,
++				       &inner_proto, &inner_nhoff))
++		goto descend;
+ 	return FAST_TUNNEL_NONE;
+ 
+ descend:
+@@ -2043,6 +2090,10 @@ static bool __skb_flow_dissect_udp_encap(const struct sk_buff *skb,
+ 	    flow_dissect_geneve_inner_ok(data, thoff, hlen, family,
+ 					 &inner_proto, &inner_nhoff))
+ 		goto descend;
++	if (static_branch_unlikely(&flow_dissector_gtpu_inner_key) &&
++	    flow_dissect_gtpu_inner_ok(data, thoff, hlen, family,
++				       &inner_proto, &inner_nhoff))
++		goto descend;
+ 	return false;
+ 
+ descend:
+@@ -2729,7 +2780,8 @@ bool __skb_flow_dissect(const struct net *net,
+ 	    !(flags & (FLOW_DISSECTOR_F_STOP_BEFORE_ENCAP |
+ 		       FLOW_DISSECTOR_F_STOP_AT_ENCAP)) &&
+ 	    (static_branch_unlikely(&flow_dissector_vxlan_inner_key) ||
+-	     static_branch_unlikely(&flow_dissector_geneve_inner_key)) &&
++	     static_branch_unlikely(&flow_dissector_geneve_inner_key) ||
++	     static_branch_unlikely(&flow_dissector_gtpu_inner_key)) &&
+ 	    __skb_flow_dissect_udp_encap(skb, key_control, data, &proto, &nhoff,
+ 					 hlen,
+ 					 proto == htons(ETH_P_IP) ? AF_INET :
+@@ -3310,6 +3362,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "gtpu_inner",
++		.data		= &flow_dissector_gtpu_inner_key.key,
++		.maxlen		= sizeof(flow_dissector_gtpu_inner_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static const char * const flow_dissector_shape_names[FLOW_DISSECTOR_SHAPE__MAX] = {
+-- 
+2.54.0
+

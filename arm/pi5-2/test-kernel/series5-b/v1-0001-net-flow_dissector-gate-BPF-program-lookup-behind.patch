@@ -1,7 +1,7 @@
-From 9457e3b1c9e65d37f17aa1853cdcf205f17c9d7f Mon Sep 17 00:00:00 2001
+From 0f85270601a1708da2050100b3e858f485455c4a Mon Sep 17 00:00:00 2001
 From: Dave Seddon <dave.seddon.ca@gmail.com>
 Date: Sun, 5 Jul 2026 17:06:05 -0700
-Subject: [PATCH net-next v1 01/15] net: flow_dissector: gate BPF program
+Subject: [PATCH net-next v1 01/11] net: flow_dissector: gate BPF program
  lookup behind a static key
 
 __skb_flow_dissect() takes rcu_read_lock(), resolves the netns from
@@ -38,7 +38,7 @@ when a program can actually be attached.
 With the key disabled this removes the rcu_read_lock/unlock pair, the
 netns resolution, and both run_array loads from the per-packet path.
 
-Assisted-by: Claude:claude-fable-5 sparse
+Assisted-by: Claude:claude-fable-5 sparse smatch
 Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
 ---
  include/linux/skbuff.h     |   1 +

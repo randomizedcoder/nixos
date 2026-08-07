@@ -38,10 +38,11 @@
 
     # flow_dissector_ebpf — loadable eBPF flow dissectors + a NixOS module
     # (services.flow-dissector-ebpf) that attaches a per-shape dissector to
-    # the flow_dissector hook as a systemd service. Branch ref while PR #3 is
-    # in review; retarget to main (or a tag) after it merges.
+    # the flow_dissector hook as a systemd service. Tracks main now that the
+    # systemd-persistence work has merged (was pinned to add-systemd-persistence
+    # during review).
     flow-dissector-ebpf = {
-      url = "github:randomizedcoder/flow_dissector_ebpf/add-systemd-persistence";
+      url = "github:randomizedcoder/flow_dissector_ebpf";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # hyprland.url = "github:hyprwm/Hyprland";

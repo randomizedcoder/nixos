@@ -86,8 +86,10 @@
 
     # -- DEV fleet -----------------------------------------------------------
     # Prod and dev are DIFFERENT reachability domains (verified 2026-07-01):
-    #   prod : vpn-jump -> runpod-jump      , sshpower@:2009 (host-daemon, root),
-    #          key id_rsa_runpod            -> "Host 100.*" below (the default).
+    #   prod : vpn-jump -> runpod-jump      , rp_das@:22 (real sshd, non-root +
+    #          key id_ed25519_runpod          passwordless sudo) -> "Host 100.*"
+    #                                         below (the default). Legacy daemon
+    #                                         path sshpower@:2009 via rp-daemon.
     #   dev  : vpn-jump -> dev-runpod-jump  , rp_das@:22 (real sshd, non-root),
     #          key id_ed25519_runpod        -> THIS block.
     # They share the 100.64.0.0/10 overlay ADDRESSING, but reachability is
@@ -128,16 +130,28 @@
       ProxyCommand socat - SOCKS4A:127.0.0.1:%h:%p,socksport=1080
 
     # PROD fleet -- the default for every 100.x overlay IP (CGNAT 100.64.0.0/10),
-    # reached via runpod-jump as sshpower@:2009. NOTE: the dev /24 (100.65.0.*) is
-    # diverted to the dev jump by the "Host 100.65.0.*" block above, which matches
-    # first; everything else here is prod. Long-form equivalent of this block:
-    #   ssh -J vpn-jump,runpod-jump -i ~/.ssh/id_rsa_runpod -o IdentitiesOnly=yes \\
-    #       -o StrictHostKeyChecking=no -p 2009 sshpower@<IP>
+    # reached via runpod-jump as rp_das@:22 (the host's REAL sshd, non-root +
+    # passwordless sudo), matching the dev block above. This replaced the old
+    # sshpower@:2009 Go-daemon sshd (interactive-only: no scp / tunnels / agent
+    # forwarding) once das's id_ed25519_runpod.pub was rolled out for rp_das on
+    # the fleet (2026-07-24). NOTE: the dev /24 (100.65.0.*) is diverted to the
+    # dev jump by the "Host 100.65.0.*" block above, which matches first;
+    # everything else here is prod. Long-form equivalent of this block:
+    #   ssh -J vpn-jump,runpod-jump -i ~/.ssh/id_ed25519_runpod -o IdentitiesOnly=yes \\
+    #       -o StrictHostKeyChecking=no -l rp_das <IP>
     # With this block: ssh 100.65.25.46 (or, with a master up, via SOCKS).
+    #
+    # FALLBACK: the id_ed25519_runpod key is on the "vast majority" but not ALL
+    # hosts (see runpod/fleet-snapshots rp-das-audit). A host that answers
+    # "Permission denied (publickey)" or lacks rp_das is still reachable via the
+    # legacy sshpower@:2009 Go-daemon -- use rp-daemon <IP> (PATH wrapper
+    # defined in home.packages below). To revert the whole fleet to the daemon,
+    # swap the four commented "legacy Go-daemon" lines back in below.
     Host 100.*
-      User sshpower
-      Port 2009
-      IdentityFile ~/.ssh/id_rsa_runpod
+      User rp_das
+      Port 22
+      IdentityFile ~/.ssh/id_ed25519_runpod
+      # legacy Go-daemon sshd (fallback via rp-daemon): User sshpower / Port 2009 / IdentityFile ~/.ssh/id_rsa_runpod
       IdentitiesOnly yes
       ProxyJump vpn-jump,runpod-jump
       StrictHostKeyChecking no
@@ -167,6 +181,34 @@
       StrictHostKeyChecking no
       UserKnownHostsFile /dev/null
       LogLevel ERROR
+
+    # -- Hive DC -------------------------------------------------------------
+    # Hive datacenter bastion. PUBLIC IP, reached DIRECTLY from l -- NOT through
+    # the NordLayer VPN (verified 2026-07-22: 63.141.33.1:22 is open direct).
+    # Identifies as "runpod-bastion"; authenticates as runpod@ with the runpod
+    # ed25519 key. It is the gateway into the Hive private net (10.2.5.0/24).
+    #   ssh hivejump
+    Host hivejump
+      Hostname 63.141.33.1
+      User runpod
+      IdentityFile ~/.ssh/id_ed25519_runpod
+      IdentitiesOnly yes
+      StrictHostKeyChecking accept-new
+
+    # Hive private-net host, reached by chaining through hivejump (above):
+    #   l -> hivejump (runpod@63.141.33.1) -> root@10.2.5.148
+    # Long-form equivalent: ssh -J hivejump root@10.2.5.148
+    # With this block:      ssh 10.2.5.148
+    # NOTE: root@10.2.5.148 accepts publickey ONLY. As of 2026-07-22 none of
+    # das's keys are in its authorized_keys -- add id_ed25519_runpod.pub to
+    # /root/.ssh/authorized_keys on the target (out-of-band) for this to auth.
+    # To cover the whole segment, widen the pattern to "Host 10.2.5.*".
+    Host 10.2.5.148
+      User root
+      IdentityFile ~/.ssh/id_ed25519_runpod
+      IdentitiesOnly yes
+      ProxyJump hivejump
+      StrictHostKeyChecking accept-new
   '';
 
   # fleet-socks-up / fleet-socks-down -- lifecycle for the SOCKS master that
@@ -198,6 +240,33 @@
         else
           echo "fleet-socks: not running"
         fi
+      '';
+    })
+
+    # rp-daemon -- reach a prod host over the LEGACY Go-daemon sshd
+    # (sshpower@:2009, key id_rsa_runpod) instead of the default real sshd
+    # (rp_das@:22, "Host 100.*" above). Use it for the minority of hosts that
+    # don't have das's id_ed25519_runpod key for rp_das (they answer :22 with
+    # "Permission denied (publickey)"). The daemon is INTERACTIVE-ONLY: it
+    # ignores an ssh exec request and always hands back an interactive shell, so
+    # a passed command hangs (this is why the fleet collector drives it with
+    # expect). Use it for an interactive shell; we force a pty (-tt).
+    #   rp-daemon 100.65.10.159            # interactive root shell on the daemon
+    (writeShellApplication {
+      name = "rp-daemon";
+      text = ''
+        if [ "$#" -lt 1 ]; then
+          echo "usage: rp-daemon <100.x-ip> [command...]" >&2
+          exit 2
+        fi
+        host=$1; shift
+        exec ssh -tt -p 2009 -l sshpower -i ~/.ssh/id_rsa_runpod \
+          -o IdentitiesOnly=yes \
+          -o ProxyJump=vpn-jump,runpod-jump \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -o LogLevel=ERROR \
+          "$host" "$@"
       '';
     })
   ];

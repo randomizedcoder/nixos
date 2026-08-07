@@ -188,8 +188,10 @@ in
           # the option name and writing it as `UseDNS` collides on the
           # generated sshd_config dedup check.
 
-          # Kerberos auth isn't used here; skip negotiating it.
-          GSSAPIAuthentication      = false;
+          # Kerberos auth isn't used here. GSSAPIAuthentication intentionally
+          # not set: nixpkgs' openssh is built without GSSAPI/Kerberos, so
+          # emitting the option makes sshd's config check reject it
+          # ("Bad configuration option"). It's off anyway.
         };
       };
       users.users.root.openssh.authorizedKeys.keys = [ jumpAuthorizedKey ];

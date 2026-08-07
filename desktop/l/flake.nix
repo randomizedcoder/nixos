@@ -35,6 +35,15 @@
       url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # flow_dissector_ebpf — loadable eBPF flow dissectors + a NixOS module
+    # (services.flow-dissector-ebpf) that attaches a per-shape dissector to
+    # the flow_dissector hook as a systemd service. Branch ref while PR #3 is
+    # in review; retarget to main (or a tag) after it merges.
+    flow-dissector-ebpf = {
+      url = "github:randomizedcoder/flow_dissector_ebpf/add-systemd-persistence";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # hyprland.url = "github:hyprwm/Hyprland";
     # hyprland-plugins = {
     #   url = "github:hyprwm/hyprland-plugins";
@@ -46,7 +55,7 @@
   #outputs = { self, nixpkgs, home-manager, hyprland, ... }:
   #outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-pcp, home-manager, ... }:
   #outputs = { self, nixpkgs, nixpkgs-local, nixpkgs-onnx, nixpkgs-obs, home-manager, ... }:
-  outputs = inputs@{ self, nixpkgs, home-manager, agenix, xdp2, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, agenix, xdp2, flow-dissector-ebpf, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -81,6 +90,10 @@
           # for the 25 GbE l <-> l2 pair. Options set in configuration.nix
           # (xdp2.testbed generator-lite profile).
           xdp2.nixosModules.physical-testbed
+          # flow_dissector_ebpf: services.flow-dissector-ebpf (enabled in
+          # configuration.nix) attaches the eth_ip eBPF dissector as a
+          # systemd service.
+          flow-dissector-ebpf.nixosModules.default
           # PCP module from local nixpkgs-pcp
           #(nixpkgs-pcp + "/nixos/modules/services/monitoring/pcp.nix")
           #{ nixpkgs.overlays = [ (final: prev: {

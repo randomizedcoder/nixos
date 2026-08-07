@@ -12,20 +12,20 @@
 #   $out/share/                   — polkit rules, desktop entries, completions, man pages
 #
 # Updating:
-#   1. Bump `version` below to whatever `dpkg-deb -I <new .deb>` reports for `Version:`.
-#   2. Compute the new SRI hash:
-#        nix-prefetch-url --type sha256 \
-#          https://downloads.nordlayer.com/linux/latest/debian/latest/nordlayer_latest_amd64.deb
-#        nix hash convert --to sri --hash-algo sha256 <output-from-above>
+#   1. Fetch the apt Packages index (the source of truth for version + hash):
+#        https://downloads.nordlayer.com/linux/latest/debian/dists/stable/main/binary-amd64/Packages
+#   2. In the `nordlayer` stanza, read `Version:` and `SHA256:`. Bump `version` below to match;
+#      the `url` tracks it automatically via `${version}`.
+#   3. Convert the hex SHA256 to SRI and paste into `hash`:
+#        nix hash convert --to sri --hash-algo sha256 <sha256-hex-from-Packages>
 #      (Or set `hash = lib.fakeHash;`, run `nix build`, copy the expected hash from the
 #      error message.)
-#   3. Paste the resulting `sha256-...` into the `hash` attribute below.
 #
-# Why no versioned URL: NordLayer does not publish public versioned download URLs
-# (the apt-pool paths return 403 via Cloudflare). `latest` is the only public URL,
-# so the SRI `hash` IS our integrity check — Nix refuses to use the file if its
-# sha256 doesn't match, which means any silent re-publish by upstream will surface
-# as a build failure rather than a silent binary swap.
+# Why the versioned pool URL: NordLayer serves stable, versioned .debs at
+# `.../debian/pool/main/nordlayer_<version>_amd64.deb` (reachable — the earlier belief that these
+# 403'd via Cloudflare was wrong). We pin that instead of the moving `latest` URL so an upstream
+# release can never silently swap our .deb mid-`nix build`; a new release is now a deliberate
+# `version` + `hash` bump. The SRI `hash` remains the integrity check either way.
 
 { stdenv
 , lib
@@ -38,12 +38,12 @@
 
 stdenv.mkDerivation rec {
   pname = "nordlayer";
-  version = "3.5.0";
+  version = "3.5.1";
 
   src = fetchurl {
-    url = "https://downloads.nordlayer.com/linux/latest/debian/latest/nordlayer_latest_amd64.deb";
+    url = "https://downloads.nordlayer.com/linux/latest/debian/pool/main/nordlayer_${version}_amd64.deb";
     # sha256 of the .deb at the URL above. See header for update procedure.
-    hash = "sha256-de0NTrtBVNo+rHqB1AUdfDHVoA+2r9RnbncHPlNLo+U=";
+    hash = "sha256-qDWf5s7jRUcmfyEOdKlq7Lu2uOrmZVT4M7zoEq2D4O8=";
   };
 
   nativeBuildInputs = [ dpkg autoPatchelfHook makeWrapper ];

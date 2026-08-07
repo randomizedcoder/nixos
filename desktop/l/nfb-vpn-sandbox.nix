@@ -220,7 +220,9 @@ in
           PermitRootLogin              = "yes";
           PasswordAuthentication       = false;
           KbdInteractiveAuthentication = false;
-          GSSAPIAuthentication         = false;
+          # GSSAPIAuthentication intentionally not set: nixpkgs' openssh is
+          # built without GSSAPI/Kerberos, so emitting the option makes sshd's
+          # config check reject it ("Bad configuration option"). It's off anyway.
         };
       };
       users.users.root.openssh.authorizedKeys.keys = [ jumpAuthorizedKey ];

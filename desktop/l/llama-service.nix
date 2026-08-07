@@ -54,14 +54,14 @@ in {
   services.llama-cpp = {
     enable = true;
     package = cudaPkgs.llama-cpp;
-    host = "0.0.0.0";
-    port = 8090;
     openFirewall = true;
-    extraFlags = [
-      "--hf-repo" selected.hfRepo
-      "--hf-file" selected.hfFile
-      "--flash-attn" "on"
-      "--metrics"
-    ];
+    settings = {
+      host = "0.0.0.0";
+      port = 8090;
+      hf-repo = selected.hfRepo;
+      hf-file = selected.hfFile;
+      flash-attn = "on";
+      metrics = true;
+    };
   };
 }

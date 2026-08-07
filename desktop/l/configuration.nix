@@ -84,6 +84,15 @@
       # net.flow_dissector.<shape> for its A/B. See boot.kernelPackages below.
     ];
 
+  # eBPF flow dissector: attach the basic eth+IP+TCP/UDP fast path as a
+  # systemd service (flow-dissector-eth_ip.service). This box runs a lot of
+  # plain eth+IP+TCP/UDP, so eth_ip is the right shape. Module comes from the
+  # flow-dissector-ebpf flake input; verifies that repo's NixOS module.
+  services.flow-dissector-ebpf = {
+    enable = true;
+    shapes = [ "eth_ip" ];
+  };
+
   boot = {
 
     loader.systemd-boot = {
@@ -161,6 +170,10 @@
     extraModprobeConfig = ''
       options kvm_intel nested=1
       options v4l2loopback devices=1 video_nr=1 card_label="v4l2loopback" exclusive_caps=1
+      # Bluetooth dongle (TP-Link RTL8761BU, 2357:0604) was being powered down by
+      # USB autosuspend, killing the MX Vertical mouse until a physical replug
+      # (dmesg showed the adapter re-enumerating + reloading rtl8761bu_fw.bin).
+      options btusb enable_autosuspend=0
     '';
     # https://github.com/v4l2loopback/v4l2loopback#options
   };
@@ -229,6 +242,17 @@
   networking.hostName = "l";
 
   time.timeZone = "America/Los_Angeles";
+
+  # Bluetooth (TP-Link RTL8761BU dongle -> Logitech MX Vertical mouse). Was
+  # previously running on implicit GNOME/BlueZ defaults; make it explicit.
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+    settings.General = {
+      # Faster/robust reconnection for HID peripherals (mouse).
+      FastConnectable = true;
+    };
+  };
 
   services.udev.packages = [ pkgs.gnome-settings-daemon ];
   # services.udev.packages = [ pkgs.gnome.gnome-settings-daemon ];

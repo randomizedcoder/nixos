@@ -89,16 +89,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1786053257,
+        "lastModified": 1786053378,
         "narHash": "sha256-Y8aMrci22Py1Q35BzkTbwHsrX4spqpFSBNMaMWNI7ts=",
         "owner": "randomizedcoder",
         "repo": "flow_dissector_ebpf",
-        "rev": "1e9be5b0f95f7575b25b4823bfce565de4278fd4",
+        "rev": "481f2276ee9dad27bcd58ca4a5cb30920ce44fc6",
         "type": "github"
       },
       "original": {
         "owner": "randomizedcoder",
-        "ref": "add-systemd-persistence",
         "repo": "flow_dissector_ebpf",
         "type": "github"
       }

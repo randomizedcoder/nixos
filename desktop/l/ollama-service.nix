@@ -1,167 +1,109 @@
 #
-# ollama
-#
-# HIP_VISIBLE_DEVICES=GPU-0e54792172da5eeb OLLAMA_CONTEXT_LENGTH=131072 ollama serve
+# ollama — LLM inference on l's RTX 3070 (CUDA, 8GB)
 #
 # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/ollama.nix
 #
-
-#sudo rocm-smi --showmeminfo vram 2>&1 && echo && journalctl -u ollama --since "5 minutes ago" 2>&1 | grep -iE "(gpu|rocm|hip|memory|gfx|found|detect|vram)" | head -20
+# ⚠ THEY DO NOT COEXIST ON THIS CARD. llama-service.nix runs llama.cpp against
+# the same 3070 and holds its model resident PERMANENTLY — measured at 6.3GiB of
+# the 7.7GiB total, leaving 1.3GiB. Ollama then loads entirely into system RAM:
+#
+#   load_tensors: offloaded 0/33 layers to GPU
+#   load_tensors:   CPU_Mapped model buffer size = 4685.30 MiB
+#
+# It still answers correctly, just far slower, and nothing announces the
+# downgrade. Ollama unloading after OLLAMA_KEEP_ALIVE does not help — it is
+# llama.cpp that never lets go.
+#
+# So pick one owner for the GPU:
+#   - agent / tool-calling work  -> disable services.llama-cpp, let ollama have it
+#   - llama.cpp on :8090         -> expect ollama here to be a CPU workload
+# Longer term the answer is l2's 32GB MI50, once its ROCm stack is stable.
+#
+#   systemctl status ollama
+#   ollama list
+#   curl http://localhost:11434/api/tags
+#
+# NOTE: this file was previously written for the MI50 (32GB, ROCm) and pinned
+# HIP_VISIBLE_DEVICES to it. That card now lives in l2, so the config was both
+# orphaned (never imported) and wrong for this machine — every model it listed
+# (codellama:34b, qwen2.5-coder:32b, llama3-groq-tool-use:70b-q2_K at 26GB)
+# needs several times the VRAM l actually has. Rewritten for the 3070.
 
 { config, lib, pkgs, ... }:
 
 let
-  mi50euid = "GPU-0e54792172da5eeb";
-  # Context length determines how much text the model can "see" at once
-  # KV cache memory scales linearly with context: 128k ≈ 14GB, 192k ≈ 21GB, 256k ≈ 28GB
-  # With 32GB VRAM: 128k works for most models, but 32b+ models (19GB) barely fit
-  # Native limits: llama3.2=128k, codellama=16-100k, qwen2.5-coder=32-128k
-  ctxLength = toString 131072; # 128k
-
-in {
-
-  services.open-webui = {
-    enable = true;
-    port = 8086; # default 8080
-  };
-  # https://github.com/open-webui/open-webui
-  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/open-webui.nix
-
+  # KV-cache sizing, not a preference. llama3.1:8b Q4_K_M is ~4.9GB resident.
+  # Its KV cache costs ~128KB/token (32 layers x 8 KV heads x 128 dim x 2 x fp16),
+  # so 16k tokens ~= 2GB and the pair fits in 8GB with headroom. 32k would need
+  # ~4GB and push the total past the card, forcing a partial CPU offload that is
+  # dramatically slower. Raise this only alongside a smaller model.
+  ctxLength = toString 16384;
+in
+{
   services.ollama = {
-
     enable = true;
-    host = "[::]";
-    #port = 11434; # default
-    #port = 11435;
 
-    # acceleration option was removed - use package instead
-    # See: https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/misc/ollama.nix
-    package = pkgs.ollama-rocm;
+    # RTX 3070 = NVIDIA/CUDA. The `acceleration` option was removed upstream;
+    # the package selects the backend now. (l also has an AMD card, but it drives
+    # the display — ollama-cuda simply will not see it.)
+    package = pkgs.ollama-cuda;
+
+    # Reachable from the LAN so l2 (and any other host) can use this endpoint.
+    # There is NO authentication on this port — it is an open inference endpoint
+    # for anyone who can route to it. That is consistent with llama-cpp on :8090,
+    # and acceptable only because this is a private lab network.
+    host = "0.0.0.0";
+    # port = 11434;  # default
+    openFirewall = true;
 
     environmentVariables = {
-      HIP_VISIBLE_DEVICES = mi50euid;
       OLLAMA_CONTEXT_LENGTH = ctxLength;
+      # Unload after 5 minutes idle so the GPU is free for llama-cpp on :8090
+      # rather than being held by a model nobody is using.
+      OLLAMA_KEEP_ALIVE = "5m";
+      # 8GB fits exactly one 7-8B model at a time; letting ollama try to keep two
+      # resident causes thrashing instead of an honest queue.
+      OLLAMA_MAX_LOADED_MODELS = "1";
       # OLLAMA_DEBUG = "1";
-      # AMD_LOG_LEVEL = "3";
     };
 
-    # https://github.com/ollama/ollama/blob/main/docs/troubleshooting.md#amd-gpu-discovery
-
-
-    # sudo systemctl status ollama-model-loader.service
-    # sudo systemctl restart ollama-model-loader.service
-
-    # ollama list
-
+    # Pulled in the background by ollama-model-loader.service on activation.
+    #
+    # THE SELECTION RULE IS VRAM. This card has 7.7GiB usable. A Q4 7-8B model is
+    # ~4-5GB and fits; anything above ~6GB does not, and ollama silently falls
+    # back to CPU rather than failing — you get correct answers at a fraction of
+    # the speed, with nothing in the log saying "this is now a CPU workload"
+    # except an `offloaded 0/33 layers to GPU` line.
+    #
+    # Measured 2026-07-22: 176GB of models were on disk here, 9 of 15 too big to
+    # run on this card (codellama:34b 19.1GB, qwen2.5-coder:32b 19.9GB,
+    # llama3-groq-tool-use:70b-q2_K 26.4GB, deepseek-r1:32b 19.9GB, …). Those are
+    # MI50-era leftovers from when this file targeted a 32GB card. They belong on
+    # l2, not here.
+    #
+    # NOTE `loadModels` only PULLS; it never removes. Declaring a short list does
+    # not reclaim the disk taken by models pulled under an older config — that
+    # still needs an imperative `ollama rm <name>`, as the module has no prune.
     loadModels = [
-      "gpt-oss:latest"
-      #https://ollama.com/library/nemotron-3-nano
-      "nemotron-3-nano:latest"
-      "nomic-embed-text:latest"
-      "codellama:34b"
-      #"codellama:13b"
-      #"codellama:7b"
-      #"llama3.2:latest"
-      #"llama3.2:3b"                     # https://ollama.com/library/llama3.2
-      #"llama4:latest" # too big!
-      #"gpt-oss:20b"
-      #"deepseek-r1:32b"
-      #"deepseek-r1:1.5b"
-      "llama3-groq-tool-use:70b-q2_K"
-      "qwen2.5-coder:32b"
-      "qwen3-coder:30b"
-      "gpt-oss:20b" # https://ollama.com/library/gpt-oss
-      #"gemini-3-flash-preview:latest" # https://ollama.com/library/gemini-3-flash-preview
+      # Verified doing real tool calls end-to-end with agent-seddon. That property
+      # is the whole point and it is NOT implied by a model advertising `tools`:
+      # qwen2.5-coder:7b advertises tool support and, tested twice, emitted
+      # tool-call-shaped JSON as prose instead — the agent then finishes with a
+      # confident answer and an empty directory. Verify any substitute on a task
+      # whose result you can actually check.
+      "llama3.1:latest" # 4.9GB — the default for agent work
+      # Small + fast, for latency-sensitive or trivial calls.
+      "llama3.2:3b" # 2.0GB
+      # Embeddings — feeds agent-seddon's Embedder seam, which otherwise falls
+      # back to dependency-free feature hashing.
+      "nomic-embed-text:latest" # 0.3GB
     ];
 
-    # https://github.com/ollama/ollama/tree/main?tab=readme-ov-file#model-library
-    # https://ollama.com/library
-    #
-    # https://www.marktechpost.com/2025/07/31/top-local-llms-for-coding-2025/
-    #
-    # https://ollama.com/library/codellama
-    # https://www.hardware-corner.net/llm-database/CodeLlama/
-    #
-    # https://ollama.com/library/llama3.2
-    #
-    # https://ollama.com/library/gpt-oss
-    #
-    # https://ollama.com/library/deepseek-r1
-    #
-    # https://ollama.com/library/llama3-groq-tool-use/tags
-    #
-    # https://ollama.com/library/qwen2.5-coder
-    #
-    # [das@l:~/nixos]$ ollama list
-    # NAME                       ID              SIZE      MODIFIED
-    # nomic-embed-text:latest    0a109f422b47    274 MB    20 hours ago
-    # codellama:latest           8fdf8f752f6e    3.8 GB    26 hours ago
-    # qwq:latest                 009cb3f08d74    19 GB     2 days ago
-    # llama3.1:latest            46e0c10c039e    4.9 GB    2 days ago
-    # llama3.2:latest            a80c4f17acd5    2.0 GB    2 days ago
-    # phi4-mini:latest           78fad5d182a7    2.5 GB    2 days ago
-    # phi4:latest                ac896e5b8b34    9.1 GB    2 days ago
-
+    # Deliberately NOT declared, and why. Re-add on a host with the VRAM:
+    #   qwen2.5-coder:32b, qwen3-coder:30b, codellama:34b, deepseek-r1:32b,
+    #   gpt-oss:20b, llama3-groq-tool-use:70b-q2_K, nemotron-3-nano
+    # All need 13-27GB. l2's MI50 has 32GB and would run any of them — but its
+    # ROCm stack is currently crash-looping on the net-next kernel (see
+    # l2/llama-service.nix), so that is blocked, not merely unconfigured.
   };
-
 }
-
-# rocminfo 2>&1 | grep -i -E '(agent|name|uuid)'
-
-# [das@l:~/nixos/desktop/l]$ systemctl restart ollama-model-loader.service
-
-# [das@l:~/nixos/desktop/l]$ systemctl status ollama-model-loader.service
-# ○ ollama-model-loader.service - Download ollama models in the background
-#      Loaded: loaded (/etc/systemd/system/ollama-model-loader.service; enabled; preset: ignored)
-#      Active: inactive (dead) since Fri 2025-09-12 11:29:58 PDT; 5s ago
-#    Duration: 413ms
-#  Invocation: 54354297f7de43299bbebd26460adefe
-#     Process: 551044 ExecStart=/nix/store/if3rc0z8v3f1h468klz4varj3jgn7isc-unit-script-ollama-model-loader-start/bin/ollama-model-loader-start (code=exited, status=0/SUCCESS)
-#    Main PID: 551044 (code=exited, status=0/SUCCESS)
-#          IP: 16.9K in, 12.9K out
-#          IO: 0B read, 0B written
-#    Mem peak: 60.8M
-#         CPU: 184ms
-
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [122B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [122B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [122B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [122B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [122B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [27B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [20B blob data]
-# Sep 12 11:29:58 l ollama-model-loader-start[551054]: [25B blob data]
-# Sep 12 11:29:58 l systemd[1]: ollama-model-loader.service: Deactivated successfully.
-# Sep 12 11:29:58 l systemd[1]: ollama-model-loader.service: Consumed 184ms CPU time, 60.8M memory peak, 16.9K incoming IP traffic, 12.9K outgoing IP traffic.
-
-# [das@l:~/nixos/desktop/l]$ ollama list
-# NAME                             ID              SIZE      MODIFIED
-# llama3.2:3b                      a80c4f17acd5    2.0 GB    14 seconds ago
-# llama3.2:latest                  a80c4f17acd5    2.0 GB    14 seconds ago
-# nomic-embed-text:latest          0a109f422b47    274 MB    14 seconds ago
-# qwen2.5-coder:32b                b92d6a0bd47e    19 GB     14 seconds ago
-# codellama:34b                    685be00e1532    19 GB     14 seconds ago
-# deepseek-r1:32b                  edba8017331d    19 GB     14 seconds ago
-# gpt-oss:20b                      aa4295ac10c3    13 GB     14 seconds ago
-# llama3-groq-tool-use:70b-q2_K    dab8a158f092    26 GB     14 seconds ago
-
-# [das@l:~/nixos/desktop/l]$
-
-# [das@l:~/nixos/desktop/l]$ rocm-smi --alldevices --showallinfo
-
-
-# ============================ ROCm System Management Interface ============================
-# ============================== Version of System Component ===============================
-# Driver version: 6.16.5
-# ==========================================================================================
-# =========================================== ID ===========================================
-# GPU[0]          : Device Name:          TBD VEGA20 CARD
-# GPU[0]          : Device ID:            0x66a1
-# GPU[0]          : Device Rev:           0x00
-# GPU[0]          : Subsystem ID:         0x1002
-# GPU[0]          : GUID:                 33678
-# GPU[1]          : Device Name:          0x1002
-# GPU[1]          : Device ID:            0x7312
-# GPU[1]          : Device Rev:           0x00
-# GPU[1]          : Subsystem ID:         0x1002
-# GPU[1]          : GUID:                 11012

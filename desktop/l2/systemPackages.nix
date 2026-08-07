@@ -37,6 +37,7 @@
 
     # Network testing and performance tools
     iperf2
+    iperf3  # series-3 flow_dissector test orchestrators drive iperf3
     flent
     netperf
     ethtool
@@ -52,15 +53,32 @@
     nmap
     tshark
     perf-tools
-    linuxPackages_latest.perf
+    perf
 
     clinfo
     lact
 
-    # NVIDIA Tools
-    nvidia-vaapi-driver
-    nvtopPackages.full # Excellent multi-GPU monitor (shows both AMD and NVIDIA)
-    cudaPackages.cuda_nvcc # If you plan to compile llama.cpp locally
+    # Vulkan diagnostics + the Vulkan-backed ollama for the MI50 (gfx906).
+    # gfx906 left ROCm official support at 5.7; ROCm 7.2.3 SIGSEGVs at HIP
+    # getDeviceKernel on it, and ollama-rocm rejects gfx906 at runtime regardless.
+    # The Vulkan path (RADV) drives the DRM render node directly, never loading
+    # libamdhip64, so it sidesteps both failures. `vulkaninfo` confirms RADV sees
+    # the card; `ollama` here is the Vulkan build. See ollama-service.nix.
+    vulkan-tools # vulkaninfo
+    ollama-vulkan
+
+    # GPU monitoring (supports AMD and NVIDIA)
+    nvtopPackages.full
+
+    # 2026-06-14: CUDA 12 toolkit system-wide for the Quadro P620.
+    # Pinned to cudaPackages_12 because cudaPackages_13 dropped sm_61
+    # (Pascal). After rebuild: `nvcc --version`, `nvidia-smi`.
+    # nixpkgs metapackage `cudatoolkit` bundles nvcc + libs + samples
+    # (~3 GB); if disk is tight, swap to the per-component picks
+    # below (nvcc + cudart only is ~600 MB).
+    cudaPackages_12.cudatoolkit
+    #cudaPackages_12.cuda_nvcc
+    #cudaPackages_12.cuda_cudart
 
     rdma-core # ibv_devinfo, rdma
     mstflint  # Mellanox firmware tools (mstconfig to allow third-party SFPs)

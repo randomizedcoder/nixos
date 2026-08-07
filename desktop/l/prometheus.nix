@@ -15,6 +15,20 @@
         targets = [ "localhost:${toString config.services.prometheus.exporters.node.port}" ];
       }];
     }
+    # 2026-06-16: NVIDIA DCGM exporters. l serves on localhost; l2
+    # serves on 0.0.0.0 (l reaches l2 via hosts.nix → 172.16.50.46).
+    {
+      job_name = "dcgm_l";
+      static_configs = [{
+        targets = [ "localhost:9400" ];
+      }];
+    }
+    {
+      job_name = "dcgm_l2";
+      static_configs = [{
+        targets = [ "l2:9400" ];
+      }];
+    }
     # {
     #   job_name = "xtcp";
     #   static_configs = [{

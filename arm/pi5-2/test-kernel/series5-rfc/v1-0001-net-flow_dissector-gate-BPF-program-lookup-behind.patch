@@ -1,0 +1,249 @@
+From 0f85270601a1708da2050100b3e858f485455c4a Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Sun, 5 Jul 2026 17:06:05 -0700
+Subject: [PATCH net-next v1 01/11] net: flow_dissector: gate BPF program
+ lookup behind a static key
+
+__skb_flow_dissect() takes rcu_read_lock(), resolves the netns from
+skb->dev/skb->sk, and does two dependent rcu_dereference() loads of
+the netns-BPF run_array (init_net's first - a shared cacheline - then
+the packet netns') on every dissect, even though the overwhelmingly
+common case is that no BPF flow dissector program is attached
+anywhere on the system.
+
+Add a static key that counts attached flow dissector programs and
+skip the whole lookup block when it is zero, exactly as
+bpf_sk_lookup_enabled does for the sibling NETNS_BPF_SK_LOOKUP attach
+type (also see cgroup_bpf_enabled_key[] for the same pattern per
+cgroup-BPF attach type).
+
+The sk_lookup type is link-only, so its inc/dec sit only in
+netns_bpf_attach_type_need()/unneed(), which the link attach/release
+paths already call. The flow dissector type also supports legacy
+BPF_PROG_ATTACH, so additionally inc on a fresh (non-replacement)
+prog attach, dec in __netns_bpf_prog_detach(), and dec for a
+remaining legacy prog in netns_bpf_pernet_pre_exit() (links are
+already handled by the existing per-link unneed loop there). All
+these paths run under netns_bpf_mutex.
+
+As with sk_lookup, there is a brief window where a just-attached
+program can miss a concurrent dissect (key flips after
+rcu_assign_pointer) or a just-detached one can cause a wasted lookup;
+both are benign and match the existing semantics of the sibling keys.
+
+DEBUG_NET_WARN_ON_ONCE(!net) moves inside the gated block: it exists
+to catch a missing netns for the BPF hook, which is only meaningful
+when a program can actually be attached.
+
+With the key disabled this removes the rcu_read_lock/unlock pair, the
+netns resolution, and both run_array loads from the per-packet path.
+
+Assisted-by: Claude:claude-fable-5 sparse smatch
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ include/linux/skbuff.h     |   1 +
+ kernel/bpf/net_namespace.c |  17 +++++-
+ net/core/flow_dissector.c  | 104 +++++++++++++++++++++----------------
+ 3 files changed, 75 insertions(+), 47 deletions(-)
+
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 22eda1d54a0e..6448c59dc807 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -1588,6 +1588,7 @@ void skb_flow_dissector_init(struct flow_dissector *flow_dissector,
+ 			     unsigned int key_count);
+ 
+ struct bpf_flow_dissector;
++extern struct static_key_false netns_bpf_flow_dissector_enabled;
+ u32 bpf_flow_dissect(struct bpf_prog *prog, struct bpf_flow_dissector *ctx,
+ 		     __be16 proto, int nhoff, int hlen, unsigned int flags);
+ 
+diff --git a/kernel/bpf/net_namespace.c b/kernel/bpf/net_namespace.c
+index 25f30f9edaef..0d48ea65697e 100644
+--- a/kernel/bpf/net_namespace.c
++++ b/kernel/bpf/net_namespace.c
+@@ -28,6 +28,9 @@ DEFINE_MUTEX(netns_bpf_mutex);
+ static void netns_bpf_attach_type_unneed(enum netns_bpf_attach_type type)
+ {
+ 	switch (type) {
++	case NETNS_BPF_FLOW_DISSECTOR:
++		static_branch_dec(&netns_bpf_flow_dissector_enabled);
++		break;
+ #ifdef CONFIG_INET
+ 	case NETNS_BPF_SK_LOOKUP:
+ 		static_branch_dec(&bpf_sk_lookup_enabled);
+@@ -41,6 +44,9 @@ static void netns_bpf_attach_type_unneed(enum netns_bpf_attach_type type)
+ static void netns_bpf_attach_type_need(enum netns_bpf_attach_type type)
+ {
+ 	switch (type) {
++	case NETNS_BPF_FLOW_DISSECTOR:
++		static_branch_inc(&netns_bpf_flow_dissector_enabled);
++		break;
+ #ifdef CONFIG_INET
+ 	case NETNS_BPF_SK_LOOKUP:
+ 		static_branch_inc(&bpf_sk_lookup_enabled);
+@@ -352,6 +358,11 @@ int netns_bpf_prog_attach(const union bpf_attr *attr, struct bpf_prog *prog)
+ 	net->bpf.progs[type] = prog;
+ 	if (attached)
+ 		bpf_prog_put(attached);
++	else
++		/* Mark attach point as used on a fresh attach; a
++		 * replacement keeps the existing count.
++		 */
++		netns_bpf_attach_type_need(type);
+ 
+ out_unlock:
+ 	mutex_unlock(&netns_bpf_mutex);
+@@ -373,6 +384,8 @@ static int __netns_bpf_prog_detach(struct net *net,
+ 	attached = net->bpf.progs[type];
+ 	if (!attached || attached != old)
+ 		return -ENOENT;
++	/* Mark attach point as unused */
++	netns_bpf_attach_type_unneed(type);
+ 	netns_bpf_run_array_detach(net, type);
+ 	net->bpf.progs[type] = NULL;
+ 	bpf_prog_put(attached);
+@@ -546,8 +559,10 @@ static void __net_exit netns_bpf_pernet_pre_exit(struct net *net)
+ 			net_link->net = NULL; /* auto-detach link */
+ 			netns_bpf_attach_type_unneed(type);
+ 		}
+-		if (net->bpf.progs[type])
++		if (net->bpf.progs[type]) {
++			netns_bpf_attach_type_unneed(type);
+ 			bpf_prog_put(net->bpf.progs[type]);
++		}
+ 	}
+ 	mutex_unlock(&netns_bpf_mutex);
+ }
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 8aa4f9b4df81..b8c59209b460 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -73,6 +73,14 @@ void skb_flow_dissector_init(struct flow_dissector *flow_dissector,
+ }
+ EXPORT_SYMBOL(skb_flow_dissector_init);
+ 
++/* Enabled while any netns has a BPF flow dissector program attached;
++ * lets __skb_flow_dissect() skip the program lookup entirely in the
++ * common no-program case. Maintained by the netns-BPF attach/detach
++ * paths in kernel/bpf/net_namespace.c.
++ */
++DEFINE_STATIC_KEY_FALSE(netns_bpf_flow_dissector_enabled);
++EXPORT_SYMBOL(netns_bpf_flow_dissector_enabled);
++
+ #ifdef CONFIG_BPF_SYSCALL
+ int flow_dissector_bpf_prog_attach_check(struct net *net,
+ 					 struct bpf_prog *prog)
+@@ -1117,59 +1125,63 @@ bool __skb_flow_dissect(const struct net *net,
+ 					      FLOW_DISSECTOR_KEY_BASIC,
+ 					      target_container);
+ 
+-	rcu_read_lock();
++	if (static_branch_unlikely(&netns_bpf_flow_dissector_enabled)) {
++		rcu_read_lock();
+ 
+-	if (skb) {
+-		if (!net) {
+-			if (skb->dev)
+-				net = dev_net_rcu(skb->dev);
+-			else if (skb->sk)
+-				net = sock_net(skb->sk);
++		if (skb) {
++			if (!net) {
++				if (skb->dev)
++					net = dev_net_rcu(skb->dev);
++				else if (skb->sk)
++					net = sock_net(skb->sk);
++			}
+ 		}
+-	}
+ 
+-	DEBUG_NET_WARN_ON_ONCE(!net);
+-	if (net) {
+-		enum netns_bpf_attach_type type = NETNS_BPF_FLOW_DISSECTOR;
+-		struct bpf_prog_array *run_array;
+-
+-		run_array = rcu_dereference(init_net.bpf.run_array[type]);
+-		if (!run_array)
+-			run_array = rcu_dereference(net->bpf.run_array[type]);
+-
+-		if (run_array) {
+-			struct bpf_flow_keys flow_keys;
+-			struct bpf_flow_dissector ctx = {
+-				.flow_keys = &flow_keys,
+-				.data = data,
+-				.data_end = data + hlen,
+-			};
+-			__be16 n_proto = proto;
+-			struct bpf_prog *prog;
+-			u32 result;
+-
+-			if (skb) {
+-				ctx.skb = skb;
+-				/* we can't use 'proto' in the skb case
+-				 * because it might be set to skb->vlan_proto
+-				 * which has been pulled from the data
+-				 */
+-				n_proto = skb->protocol;
+-			}
++		DEBUG_NET_WARN_ON_ONCE(!net);
++		if (net) {
++			enum netns_bpf_attach_type type = NETNS_BPF_FLOW_DISSECTOR;
++			struct bpf_prog_array *run_array;
++
++			run_array = rcu_dereference(init_net.bpf.run_array[type]);
++			if (!run_array)
++				run_array = rcu_dereference(net->bpf.run_array[type]);
++
++			if (run_array) {
++				struct bpf_flow_keys flow_keys;
++				struct bpf_flow_dissector ctx = {
++					.flow_keys = &flow_keys,
++					.data = data,
++					.data_end = data + hlen,
++				};
++				__be16 n_proto = proto;
++				struct bpf_prog *prog;
++				u32 result;
++
++				if (skb) {
++					ctx.skb = skb;
++					/* we can't use 'proto' in the skb case
++					 * because it might be set to
++					 * skb->vlan_proto which has been pulled
++					 * from the data
++					 */
++					n_proto = skb->protocol;
++				}
+ 
+-			prog = READ_ONCE(run_array->items[0].prog);
+-			result = bpf_flow_dissect(prog, &ctx, n_proto, nhoff,
+-						  hlen, flags);
+-			if (result != BPF_FLOW_DISSECTOR_CONTINUE) {
+-				__skb_flow_bpf_to_target(&flow_keys, flow_dissector,
+-							 target_container);
+-				rcu_read_unlock();
+-				return result == BPF_OK;
++				prog = READ_ONCE(run_array->items[0].prog);
++				result = bpf_flow_dissect(prog, &ctx, n_proto,
++							  nhoff, hlen, flags);
++				if (result != BPF_FLOW_DISSECTOR_CONTINUE) {
++					__skb_flow_bpf_to_target(&flow_keys,
++								 flow_dissector,
++								 target_container);
++					rcu_read_unlock();
++					return result == BPF_OK;
++				}
+ 			}
+ 		}
+-	}
+ 
+-	rcu_read_unlock();
++		rcu_read_unlock();
++	}
+ 
+ 	if (dissector_uses_key(flow_dissector,
+ 			       FLOW_DISSECTOR_KEY_ETH_ADDRS)) {
+-- 
+2.54.0
+

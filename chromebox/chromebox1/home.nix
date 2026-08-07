@@ -3,24 +3,20 @@
   pkgs,
   ...
 }:
+
+# Aligned with ~/nixos/hp/hp1/home.nix — chromebox1 is now an xdp2
+# benchmark host, not a k3s control plane. Dropped KUBECONFIG and the
+# kubectl shell alias.
+
 {
   home.username = "das";
   home.homeDirectory = "/home/das";
 
-  # https://nix-community.github.io/home-manager/index.xhtml#ch-installation
-  #home-manager.users.das = { pkgs, ... }: {
-
-  # https://nix-community.github.io/home-manager/options.xhtml#opt-home.sessionVariables
   home.sessionVariables = {
-      #GI_TYPELIB_PATH = "/run/current-system/sw/lib/girepository-1.0";
-      # disable wayland
-      #NIXOS_OZONE_WL = "1";
-      KUBECONFIG = "/home/das/k3s.yaml";
       TERM = "xterm-256color";
   };
 
   home.packages = with pkgs; [
-    #
     killall
     hw-probe
     lshw
@@ -42,7 +38,6 @@
     vlan
     tcpdump
     #
-    # debug
     strace
     #
     gnumake
@@ -51,9 +46,6 @@
   programs.bash = {
     enable = true;
     enableCompletion = true;
-    shellAliases = {
-      k = "kubectl";
-    };
   };
 
   programs.vim = {
@@ -64,17 +56,11 @@
       set mouse=a
     '';
   };
-  #ldflags = [
-  #  "-X main.Version=${version}"
-  #  "-X main.Commit=${version}"
-  #];
 
   programs.git = {
     enable = true;
     userEmail = "dave.seddon.ca@gmail.com";
     userName = "randomizedcoder ";
-    #signing.key = "GPG-KEY-ID";
-    #signing.signByDefault = true;
   };
 
   nixpkgs.config.allowUnfree = true;

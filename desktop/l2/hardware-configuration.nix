@@ -13,12 +13,19 @@
   boot.kernelModules = [ "kvm-amd" ];
   boot.extraModulePackages = [ ];
 
-  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
-  # (the default) this is the recommended approach. When using systemd-networkd it's
-  # still possible to use this option, but it's recommended to use it in conjunction
-  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
-  networking.useDHCP = lib.mkDefault true;
-  # networking.interfaces.enp1s0.useDHCP = lib.mkDefault true;
+  # DHCP restricted to the mgmt NIC only (2026-07-05). Global useDHCP=true made
+  # dhcpcd probe every interface — including the removed Broadcom card
+  # (enp4s0f0np0/f1np1) and the down testbed ports — adding ~8.9s to boot while
+  # it waited on dead links. enp1s0 (mgmt/SSH, 172.16.50.46) is DHCP-assigned,
+  # so keep DHCP on it and turn it off everywhere else.
+  networking.useDHCP = lib.mkDefault false;
+  networking.interfaces.enp1s0.useDHCP = true;
+
+  # Don't block boot on the DHCP lease: dhcpcd forks immediately and acquires
+  # the enp1s0 lease in the background, so network-online.target isn't gated by
+  # the ~4s Aquantia carrier wait + IPv6 RA + lease (~9s total). Mgmt IP still
+  # comes up a few seconds into userspace; nothing on l2 needs the lease at boot.
+  networking.dhcpcd.wait = "background";
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;

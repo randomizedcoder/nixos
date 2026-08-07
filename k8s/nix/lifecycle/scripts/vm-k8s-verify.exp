@@ -1,0 +1,67 @@
+#!/usr/bin/env expect
+#
+# vm-k8s-verify.exp - Verify K8s services via console.
+#
+# Usage:
+#   expect vm-k8s-verify.exp <virtio_port> <password> <service_name>
+#
+# Checks systemctl is-active for the given service.
+# Exits 0 if active, 1 otherwise.
+#
+
+set timeout 30
+set prompt_pattern {root@k8s-[a-z0-9]+:.*[#$]}
+
+if {$argc < 3} {
+    puts "Usage: vm-k8s-verify.exp <port> <password> <service>"
+    exit 1
+}
+
+set port [lindex $argv 0]
+set password [lindex $argv 1]
+set service [lindex $argv 2]
+
+# Connect
+spawn socat -,rawer tcp:127.0.0.1:$port
+after 500
+
+send "\r"
+expect {
+    "login:" {
+        send "root\r"
+        expect "Password:"
+        send "$password\r"
+        expect -re $prompt_pattern
+    }
+    -re $prompt_pattern {
+        # Already logged in
+    }
+    timeout {
+        puts "ERROR: Cannot connect"
+        exit 1
+    }
+}
+
+# Check service
+send "systemctl is-active $service\r"
+expect {
+    "active" {
+        expect -re $prompt_pattern
+        send "exit\r"
+        expect eof
+        exit 0
+    }
+    "inactive" {
+        send "exit\r"
+        expect eof
+        exit 1
+    }
+    "failed" {
+        send "exit\r"
+        expect eof
+        exit 1
+    }
+    timeout {
+        exit 1
+    }
+}

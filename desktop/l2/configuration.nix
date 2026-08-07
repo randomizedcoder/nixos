@@ -14,25 +14,52 @@
 {
   # https://nixos.wiki/wiki/NixOS_modules
   # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
+  # l2 is currently configured as a flow-dissector kernel-patch
+  # benchmark host (parity with hp5). The WiFi-AP / monitoring /
+  # llama.cpp imports below are commented out — un-comment them to
+  # restore the prior WiFi-AP + LLM role. See ./test-kernel/ for the
+  # series-3 patches and the xdp2.testbed block further down for
+  # CPU/IRQ/NIC tuning.
   imports =
     [
       ./disko-l2.nix
       ./hardware-configuration.nix
+      # GPU drivers stay imported: kernel-mode-only, no runtime jitter,
+      # cheap to leave so the AMD cards probe at boot.
       ./hardware-graphics.nix
+      # 2026-06-14: Quadro P620 (Pascal/GP107) driver. Uses legacy_580
+      # because R585+ dropped Pascal. See ./hardware-nvidia.nix for
+      # why open=false and why no CUDA toolkit is installed by default.
+      # Disabled for the net-next 7.2-rc1 kernel: nvidia legacy_580 fails to
+      # build against it (gcc-15 + newer kernel: implicit strncpy). l2's
+      # compute is AMD ROCm (llama); re-enable when nvidia supports 7.2.
+      #./hardware-nvidia.nix
+      # 2026-06-16: NVIDIA DCGM Prometheus exporter on :9400 so l's
+      # Prometheus can scrape P620 metrics. Tiny systemd service —
+      # safe to leave on in benchmark mode (no daemon polling beyond
+      # the scrape request itself).
+      # Disabled 2026-07-05: l2 has no NVIDIA GPU (AMD/ROCm cards only; the
+      # RTX is on l), so dcgm-exporter fails on libnvidia-ml.so and
+      # crash-loops (auto-restart), making switch-to-configuration exit
+      # non-zero. Re-enable if an NVIDIA GPU is added to l2.
+      #./dcgm-exporter.nix
       ./sysctl.nix
       #./wireless_desktop.nix
       ./locale.nix
       ./hosts.nix
-      ./firewall.nix
+      # WiFi-AP NAT/firewall — conntrack adds jitter in benchmarks.
+      #./firewall.nix
       #./crowdsec.nix
       #./systemdSystem.nix
       ./systemPackages.nix
       # home manager is imported in the flake
       #./home.nix
-      ./nodeExporter.nix
-      ./prometheus.nix
-      ./grafana.nix
-      ./devnull-monitor.nix
+      # Monitoring stack disabled during kernel testing — scraping is
+      # periodic I/O / scheduler noise.
+      #./nodeExporter.nix
+      #./prometheus.nix
+      #./grafana.nix
+      #./devnull-monitor.nix
       ./udev-nic-names.nix
       # clickhouse
       #./clickhouse-service.nix
@@ -42,24 +69,47 @@
       #./distributed-builds.nix
       #./hyprland.nix
       #./hostapd.nix
+      # WiFi AP / Atlantic NIC tuning — both incompatible with the
+      # xdp2.testbed-managed benchmark profile.
       #./hostapd-multi.nix
-      ./network-optimization.nix
+      #./network-optimization.nix
       # BBRv3 congestion control from L4S team
-      ./bbr3-module.nix
+      # Disabled for net-next 7.2-rc1: the L4STeam BBRv3 out-of-tree source
+      # doesn't build against it. Re-enable with an updated L4STeam rev.
+      #./bbr3-module.nix
       # Multi-queue CAKE (cake_mq) - now included in kernel 7.x
       #./mq-cake-module.nix
-      # CPU and IRQ optimization modules
+      # CPU and IRQ optimization modules — superseded by xdp2.testbed
+      # (CPU isolation, IRQ pinning, systemd slices all from the module).
       #./irq-affinity.nix
-      ./systemd-slices.nix
+      #./systemd-slices.nix  # WiFi AP slices, not needed currently
       ./kernel-params.nix
       #./monitoring.nix
-      # llama-cpp CUDA test
-      ./llama-service.nix
-      # NIC configuration
+      # llama-cpp DISABLED 2026-07-06: the AMD GPU inference services
+      # (llama-cpp-mi50 / llama-cpp-w5700) were crash-looping with a GPF in
+      # libamdhip64 (ROCm/HIP) on the net-next 7.2-rc1 kernel, hanging amdgpu
+      # and tripping the sp5100_tco hardware watchdog → reboot loop (~7 min).
+      # Re-enable once the ROCm/amdgpu stack is stable on this kernel.
+      # ./llama-service.nix
+      #./fan2go.nix
+      # agent-seddon remote seam fleet — opens the gRPC gateway port for l.
+      ./agent-seam.nix
+      # "gpu-stable" boot specialisation: a stable-kernel boot entry, kept as a
+      # spare. NOTE it turned out unnecessary — the GPU wedge was the faulty W5700,
+      # not the kernel; with that card removed the MI50 works on net-next.
+      ./gpu-stable.nix
+      # ollama serving the MI50 (32GB) over Vulkan on :11434.
+      ./ollama-service.nix
+      # NIC configuration — Mellanox ports are now owned by xdp2.testbed.
       ./network-interfaces.nix
       ./ethtool-nics.nix
       # MQ-CAKE test environment scripts
-      ./mq-cake-test.nix
+      #./mq-cake-test.nix
+      # WiFi TSF synchronisation via upstream mt76 PTP patches
+      #./tsf-sync.nix
+      # INSECURE: passwordless root SSH for isolated lab network.
+      # Replaces the inline services.openssh block below.
+      ./sshd-INSECURE.nix
     ];
 
   boot = {
@@ -68,7 +118,11 @@
       enable = true;
       consoleMode = "max";
       memtest86.enable = true;
-      configurationLimit = 20;
+      # /boot is a 511M ESP. net-next and the gpu-stable (6.18) specialisation each
+      # carry a large kernel+initrd, so 20 generations overflowed it (bootloader
+      # install failed with ENOSPC). 5 keeps the current + recent rollbacks and
+      # fits comfortably.
+      configurationLimit = 5;
     };
 
     loader.efi.canTouchEfiVariables = true;
@@ -76,7 +130,14 @@
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages;
     #kernelPackages = pkgs.linuxPackages_latest;
-    kernelPackages = pkgs.linuxPackages;  # Stable kernel for NVIDIA driver compatibility
+    # net-next v7.2-rc1 + the series4 flow_dissector fast-path framework
+    # (12 patches, baked into src via the series4-send branch). Built by
+    # overriding linux_testing so nixpkgs' config machinery is reused —
+    # see ./netnext-kernel.nix. Supersedes the earlier ./test-kernel
+    # (stable 7.0.12 + series-3 patches) so we test on the real net-next
+    # base the patches target. Revert to `pkgs.callPackage ./test-kernel {}`
+    # (wrapped in linuxPackagesFor) or `pkgs.linuxPackages_latest`.
+    kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
     # # Enable mac80211 debugfs for WiFi AQM tuning
     # kernelPatches = [{
@@ -94,20 +155,12 @@
     ];
 
     kernelModules = [
-      "bnxt_en"      # Ethernet
-      "bnxt_re"      # RoCEv2 RDMA provider
+      # Broadcom BCM57416 removed/abandoned 2026-07-05 — no card to bind to.
+      # "bnxt_en"      # Ethernet
+      # "bnxt_re"      # RoCEv2 RDMA provider
       "ib_uverbs"    # RDMA verbs
       "rdma_ucm"
       "sch_dualpi2"  # DualPI2 L4S AQM packet scheduler (available in kernel 6.17+)
-      "nvidia"
-      "nvidia_uvm" # Essential for CUDA/llama.cpp
-      "nvidia_modeset"
-      "nvidia_drm"
-    ];
-
-    blacklistedKernelModules = [
-      "nouveau"
-      #"i915"
     ];
 
     # https://wiki.nixos.org/wiki/NixOS_on_ARM/Building_Images#Compiling_through_binfmt_QEMU
@@ -143,6 +196,9 @@
       zlib
       libxml2
       pciutils # for broadcom niccli
+      libdrm
+      numactl
+      rocmPackages.clr.icd
     ];
   };
 
@@ -195,15 +251,16 @@
 
   systemd.services.systemd-udev-settle.enable = false;
 
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = "yes"; # Change me to "no"!!
-      #AllowUsers = [ "das" ]
-    };
-  };
+  # Replaced by ./sshd-INSECURE.nix (imported above).
+  # services.openssh = {
+  #   enable = true;
+  #   settings = {
+  #     PasswordAuthentication = false;
+  #     KbdInteractiveAuthentication = false;
+  #     PermitRootLogin = "yes"; # Change me to "no"!!
+  #     #AllowUsers = [ "das" ]
+  #   };
+  # };
 
   # programs.ssh.extraConfig = ''
   # Host hp4.home
@@ -259,15 +316,73 @@
      enableSSHSupport = true;
   };
 
-  # Enable LACT GPU Control Daemon
-  # https://github.com/NixOS/nixpkgs/blob/nixos-unstable/nixos/modules/services/hardware/lact.nix
-  services.lact = {
+  # GPU compute stack re-enabled alongside ./llama-service.nix — the ROCm
+  # OpenCL runtime + /opt/rocm/hip symlink are required for the MI50/W5700
+  # inference instances. lact (GPU control daemon) and fan2go (Corsair fan
+  # control) stay off: neither is required for inference.
+  #
+  # services.lact.enable = true;                # LACT GPU Control Daemon
+  hardware.amdgpu.opencl.enable = true;         # ROCm OpenCL for MI50 (gfx906)
+  systemd.tmpfiles.rules = [                    # AMD ROCm /opt/rocm/hip symlink
+    "L+ /opt/rocm/hip - - - - ${pkgs.rocmPackages.clr}"
+  ];
+  # hardware.fan2go.enable = true;              # Corsair Commander PRO fan control
+
+  # xdp2 physical-testbed: CPU isolation, IRQ pinning, NIC tuning,
+  # hugepages, lowJitter, disableNonEssentialServices. Mirrors hp5's
+  # configuration, adjusted for l2's 12c/24t Threadripper PRO 3945WX
+  # and the Mellanox ConnectX-4 Lx ports (lspci 23:00.0 / 23:00.1).
+  # See xdp2 docs/physical-testbed.md for the full option reference.
+  xdp2.testbed = {
     enable = true;
-    # Optional: Add custom settings here if needed
-    # settings = {
-    #   # Example settings
-    # };
+
+    peerInterfaces = [ "enp35s0f0np0" "enp35s0f1np1" ];
+
+    # Pair #4: l (generator, .2) <-> l2 (DUT, .5), cabled back-to-back
+    # over two ConnectX-4 Lx DAC links. /29 (not /30): xdp2
+    # docs/physical-testbed.md §21 — .2 and .5 must share a subnet.
+    # 10.10.0/1 = hp2/hp5, 10.10.2/3 = hp1/hp3, so l/l2 take 10.10.4/5.
+    # IPv6 ULA: fd10:10:N::M/64, N = v4 third octet, M = v4 host octet.
+    addresses = {
+      enp35s0f0np0 = {
+        local  = "10.10.4.5/29";    peer  = "10.10.4.2";
+        local6 = "fd10:10:4::5/64"; peer6 = "fd10:10:4::2";
+      };
+      enp35s0f1np1 = {
+        local  = "10.10.5.5/29";    peer  = "10.10.5.2";
+        local6 = "fd10:10:5::5/64"; peer6 = "fd10:10:5::2";
+      };
+    };
+
+    # 12c/24t Threadripper PRO 3945WX. Isolate logical CPUs 4-23 (10
+    # physical cores × 2 SMT threads); housekeeping on 0-3.
+    isolatedCpus = [ 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 ];
+
+    hugepages2M = 1024;  # 2 GiB — matches hp5/hp2
+    disableNonEssentialServices = true;
+    lowJitter = true;
+
+    # Management NIC for SSH / nix-daemon — Aquantia Atlantic (enp1s0).
+    managementInterface = "enp1s0";
+
+    # Same UDP/443 → queue 1 steering hp5 uses for the
+    # af-xdp-template bench. mlx5 ntuple syntax may differ from i40e
+    # — if xdp2-nic-tune-enp35s0f0np0.service fails on first boot,
+    # drop this list and steer manually via ethtool.
+    flowDirectorRules = [
+      { interface = "enp35s0f0np0"; flowType = "udp4"; destPort = 443; queue = 1; }
+    ];
+
+    realServicesBench = true;
   };
+
+  # The data-plane NICs are Mellanox ConnectX-4 Lx — select the
+  # mlx5_core ethtool/IRQ/flow-steering branch in the nic-tuning
+  # sub-module. WITHOUT this, xdp2.testbed forwards the default
+  # driver = "i40e" (mkDefault in nix/modules/physical-testbed.nix),
+  # which is wrong for this card and makes the ethtool-ntuple
+  # flowDirectorRules above fail; mlx5_core uses tc-flower instead.
+  xdp2.nicTuning.driver = "mlx5_core";
 
   # # https://nixos.wiki/wiki/Virt-manager
   # virtualisation.libvirtd.enable = true;
@@ -292,7 +407,7 @@
   # };
 
   # BBRv3 congestion control from L4S team (out-of-tree module)
-  services.bbr3.enable = true;
+  # services.bbr3.enable = true;  # disabled: won't build on net-next 7.2-rc1
 
   # Multi-queue CAKE (cake_mq) qdisc - backported from net-next/Linux 7.0
   #services.mqCake.enable = true;

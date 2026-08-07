@@ -2,24 +2,30 @@
   description = "HP2 Flake";
 
   inputs = {
-    #nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    #nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    # Converged with hp5 on nixos-unstable so both benchmark hosts run
+    # matching kernels (xdp2 docs/physical-testbed.md §3, 2026-04-20).
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-
     # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/start-using-home-manager
     home-manager = {
-      #rl = "github:nix-community/home-manager/release-24.11";
-      #url = "github:nix-community/home-manager/release-25.05";
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/master";
       # The `follows` keyword in inputs is used for inheritance.
       # Here, `inputs.nixpkgs` of home-manager is kept consistent with
       # the `inputs.nixpkgs` of the current flake,
       # to avoid problems caused by different versions of nixpkgs.
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # xdp2 provides nixosModules.physical-testbed for the benchmark-host
+    # tuning (kernel params, NIC ethtool, IRQ pinning, noise suppression).
+    # See xdp2 docs/physical-testbed.md §5–§7.
+    # After pushing new xdp2 changes, refresh on hp2 with:
+    #   nix flake update xdp2 && sudo nixos-rebuild switch --flake .#hp2
+    xdp2 = {
+      url = "github:randomizedcoder/xdp2/xdp2-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, ... }:
+  outputs = inputs@{ nixpkgs, home-manager, xdp2, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -34,6 +40,7 @@
         inherit system;
         modules = [
           ./configuration.nix
+          xdp2.nixosModules.physical-testbed
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;

@@ -1,8 +1,95 @@
 { pkgs, lib, ... }:
 
+# Notes for future-me (last checked 2026-04-12, Claude Code docs at
+# https://code.claude.com/docs/en/statusline):
+#
+# Statusline JSON fields currently exposed on stdin:
+#   model.*, workspace.*, cost.*, context_window.*, rate_limits.*,
+#   session_id, session_name, transcript_path, version,
+#   output_style.name, exceeds_200k_tokens, worktree.*
+# Session (5-hour) rate limit lives at rate_limits.five_hour.used_percentage
+# and only appears for Pro/Max subscribers after the first API response.
+#
+# Env vars Claude Code sets in the child shell:
+#   CLAUDECODE=1, CLAUDE_CONFIG_DIR, CLAUDE_CODE_ENTRYPOINT, CLAUDE_CODE_EXECPATH
+#
+# Plan mode: plans are written to $CLAUDE_CONFIG_DIR/plans/<slug>.md but
+# Claude Code does NOT expose the active plan's path via env var or
+# statusline JSON. $CLAUDE_CONFIG_DIR/session-env/<session_id>/ directories
+# exist but were empty on this machine — likely reserved for future use.
+# Re-check both (env + statusline fields) if you want a plan-file segment:
+# a CLAUDE_PLAN_FILE env var or a new statusline field would be the clean hook.
+
 let
-  profiles = [ "personal" "work" ];
-  defaultProfile = "personal";
+  profiles = [ "personal" "runpod" ];
+  defaultProfile = "runpod";
+
+  # Per-profile model selection — exported as ANTHROPIC_MODEL by claude-use.
+  profileModels = {
+    personal = "claude-opus-4-8";
+    runpod = "claude-opus-4-8";
+  };
+  defaultModel = profileModels.${defaultProfile};
+
+  # Per-profile GitHub account hint — only used to print a nudge in claude-use
+  # if the profile's gh-profiles dir has not been initialised yet. The actual
+  # account binding comes from `gh auth login` writing into GH_CONFIG_DIR.
+  profileGhUsers = {
+    personal = "randomizedcoder";
+    runpod = "daveseddon-runpod";
+  };
+
+  # Generate a bash case statement mapping profile names to model IDs.
+  modelCaseArms = lib.concatStringsSep "\n        " (lib.mapAttrsToList
+    (name: model: ''${name}) _model="${model}" ;;'')
+    profileModels);
+
+  # Same idea for gh usernames (used only for the setup hint message).
+  ghUserCaseArms = lib.concatStringsSep "\n        " (lib.mapAttrsToList
+    (name: user: ''${name}) _gh_user="${user}" ;;'')
+    profileGhUsers);
+
+  # Build example lines for the `claude-use` help text. Generated from the
+  # actual profile list so they stay accurate as profiles are added/removed.
+  maxNameLen = lib.foldl' (acc: p:
+    if builtins.stringLength p > acc then builtins.stringLength p else acc) 0 profiles;
+  padName = p: p + lib.concatStrings (lib.genList (_: " ") (maxNameLen - builtins.stringLength p));
+
+  # One default-mapping example per profile: `claude-use <p>  # claude=<p>, gh=<p> (<user>)`
+  defaultExampleLines = lib.concatMapStringsSep "\n      "
+    (p: let u = profileGhUsers.${p} or "";
+            userStr = if u != "" then " (${u})" else "";
+        in ''echo "  claude-use ${padName p}            # claude=${p}, gh=${p}${userStr}"'')
+    profiles;
+
+  # Cross-combo examples — one line per ordered (claude, gh) pair where they differ.
+  crossExampleLines =
+    let pairs = lib.concatMap (a:
+          lib.concatMap (b: if a == b then [ ] else [ { inherit a b; } ]) profiles
+        ) profiles;
+    in lib.concatMapStringsSep "\n      "
+        (pair: let ub = profileGhUsers.${pair.b} or "";
+                   ubStr = if ub != "" then " (${ub})" else "";
+               in ''echo "  claude-use ${padName pair.a} ${padName pair.b}   # claude=${pair.a}, gh=${pair.b}${ubStr}"'')
+        pairs;
+
+  # Which statusline to wire into settings.json. The shell version stays
+  # installed either way so they can be compared side-by-side.
+  #   "shell" -> claude-statusline      (jq + bash, ~10–20ms per invocation)
+  #   "rust"  -> claude-statusline-rs   (single static binary, sub-ms)
+  statuslineImpl = "rust";
+
+  # Rust statusline, compiled from a single .rs file with plain rustc.
+  # No Cargo.toml, no Cargo.lock, no vendoring — just nix driving rustc.
+  claude-statusline-rs = pkgs.runCommandLocal "claude-statusline-rs" {
+    # rustc invokes `cc` to link; stdenv.cc provides the wrapper.
+    nativeBuildInputs = [ pkgs.rustc pkgs.stdenv.cc ];
+  } ''
+    mkdir -p $out/bin
+    rustc --edition 2021 -C opt-level=3 -C lto=fat -C codegen-units=1 \
+          -C strip=symbols -C panic=abort \
+          -o $out/bin/claude-statusline-rs ${./claude-statusline.rs}
+  '';
 
   claude-statusline = pkgs.writeShellApplication {
     name = "claude-statusline";
@@ -10,121 +97,370 @@ let
     text = ''
       input=$(cat)
 
-      IFS=$'\t' read -r _MODEL PROJECT_DIR USED_PCT REMAINING_PCT < <(
+      # Context percentages come through as pre-calculated integers/floats.
+      # Session (5-hour rate limit) is only present for Pro/Max after the first
+      # API response; fall back to empty and handle below.
+      IFS=$'\t' read -r PROJECT_DIR CTX_USED_PCT CTX_REMAIN_PCT TOTAL_IN TOTAL_OUT SESS_USED_PCT SESS_RESETS_AT MODEL_NAME EFFORT_LVL < <(
         echo "$input" | jq -r '[
-          (.model.display_name // "unknown"),
           (.workspace.project_dir // "unknown"),
           (.context_window.used_percentage // 0 | tostring),
-          (.context_window.remaining_percentage // 100 | tostring)
+          (.context_window.remaining_percentage // 100 | tostring),
+          (.context_window.total_input_tokens // 0 | tostring),
+          (.context_window.total_output_tokens // 0 | tostring),
+          (.rate_limits.five_hour.used_percentage // "" | tostring),
+          (.rate_limits.five_hour.resets_at // "" | tostring),
+          (.model.display_name // .model.id // "" | tostring),
+          (.effort.level // "" | tostring)
         ] | @tsv'
       )
 
       # Integer percentages (strip any decimal)
-      USED="''${USED_PCT%%.*}"
-      REMAINING="''${REMAINING_PCT%%.*}"
+      CTX_USED="''${CTX_USED_PCT%%.*}"
+      CTX_REMAIN="''${CTX_REMAIN_PCT%%.*}"
 
-      # ANSI colors
-      GREEN='\033[32m'
-      ORANGE='\033[33m'
-      RED='\033[31m'
+      # Tokens currently in the context window (input+output), rounded to nearest 1k.
+      TOTAL_IN="''${TOTAL_IN%%.*}"
+      TOTAL_OUT="''${TOTAL_OUT%%.*}"
+      CTX_TOK_K=$(( (TOTAL_IN + TOTAL_OUT + 500) / 1000 ))
+
+      # Profile from CLAUDE_CONFIG_DIR basename; "default" if unset/non-profile.
+      PROFILE="default"
+      if [ -n "''${CLAUDE_CONFIG_DIR:-}" ]; then
+        PROFILE="''${CLAUDE_CONFIG_DIR##*/}"
+      fi
+
+      # ANSI colors. Two palettes so c (context) and s (session) are visually
+      # distinct at a glance, while each still grades independently by usage:
+      #   context: warm traditional — green → orange → red
+      #   session: cool bright     — bright blue → bright magenta → bright red
       CYAN='\033[36m'
+      MAGENTA='\033[35m'
       RESET='\033[0m'
 
-      # Color by context usage
-      if [ "$USED" -ge 80 ]; then
-        CTX_COLOR="$RED"
-      elif [ "$USED" -ge 50 ]; then
-        CTX_COLOR="$ORANGE"
-      else
-        CTX_COLOR="$GREEN"
+      # Context palette (warm)
+      CTX_LOW='\033[32m'        # green
+      CTX_MID='\033[33m'        # orange/yellow
+      CTX_HIGH='\033[31m'       # red
+
+      # Session palette (cool/bright)
+      SESS_LOW='\033[94m'       # bright blue
+      SESS_MID='\033[95m'       # bright magenta
+      SESS_HIGH='\033[91m'      # bright red
+
+      color_for_pct() {
+        local pct="$1" low="$2" mid="$3" high="$4"
+        if [ "$pct" -ge 80 ]; then
+          printf '%s' "$high"
+        elif [ "$pct" -ge 50 ]; then
+          printf '%s' "$mid"
+        else
+          printf '%s' "$low"
+        fi
+      }
+
+      CTX_COLOR=$(color_for_pct "$CTX_USED" "$CTX_LOW" "$CTX_MID" "$CTX_HIGH")
+      # Force red once context reaches CTX_TOKEN_WARN_K thousand tokens, regardless
+      # of percentage — warns before the 200k mark where per-token cost jumps.
+      CTX_TOKEN_WARN_K=180
+      if [ "$CTX_TOK_K" -ge "$CTX_TOKEN_WARN_K" ]; then
+        CTX_COLOR="$CTX_HIGH"
       fi
 
       DIR_NAME="''${PROJECT_DIR##*/}"
 
-      printf '%b' "''${CYAN}''${DIR_NAME}''${RESET} | ''${CTX_COLOR}''${USED}%/''${REMAINING}%''${RESET}"
+      # Git branch from .git/HEAD (fast, no subprocess)
+      BRANCH=""
+      YELLOW='\033[33m'
+      DIM='\033[2m'
+      if [ -f "$PROJECT_DIR/.git/HEAD" ]; then
+        _head=$(< "$PROJECT_DIR/.git/HEAD")
+        _head="''${_head%$'\n'}"
+        if [[ "$_head" == ref:\ refs/heads/* ]]; then
+          BRANCH="''${_head#ref: refs/heads/}"
+        elif [ ''${#_head} -ge 7 ]; then
+          BRANCH="''${_head:0:7}"
+        fi
+      fi
+
+      # Effort abbreviation
+      EFFORT_ABBREV=""
+      case "$EFFORT_LVL" in
+        low) EFFORT_ABBREV="lo" ;;
+        medium) EFFORT_ABBREV="med" ;;
+        high) EFFORT_ABBREV="hi" ;;
+        xhigh) EFFORT_ABBREV="xhi" ;;
+        max) EFFORT_ABBREV="max" ;;
+        ?*) EFFORT_ABBREV="$EFFORT_LVL" ;;
+      esac
+
+      # Build session segment only when rate_limits is present.
+      SESS_SEGMENT=""
+      if [ -n "$SESS_USED_PCT" ]; then
+        SESS_USED="''${SESS_USED_PCT%%.*}"
+        SESS_REMAIN=$(( 100 - SESS_USED ))
+        SESS_COLOR=$(color_for_pct "$SESS_USED" "$SESS_LOW" "$SESS_MID" "$SESS_HIGH")
+        SESS_SEGMENT=$(printf ' | %bs:%d%%/%d%%%b' \
+          "$SESS_COLOR" "$SESS_USED" "$SESS_REMAIN" "$RESET")
+
+        # Time until the 5-hour window resets, "2h13m" / "45m". Omit if past/absent.
+        RESETS_AT="''${SESS_RESETS_AT%%.*}"
+        if [ -n "$RESETS_AT" ]; then
+          _secs=$(( RESETS_AT - $(date +%s) ))
+          if [ "$_secs" -gt 0 ]; then
+            _mins=$(( _secs / 60 ))
+            _h=$(( _mins / 60 ))
+            _m=$(( _mins % 60 ))
+            if [ "$_h" -gt 0 ]; then
+              _reset="''${_h}h''${_m}m"
+            else
+              _reset="''${_m}m"
+            fi
+            SESS_SEGMENT=$(printf '%s %b%s%b' "$SESS_SEGMENT" "$DIM" "$_reset" "$RESET")
+          fi
+        fi
+      fi
+
+      # Branch segment
+      BRANCH_SEGMENT=""
+      if [ -n "$BRANCH" ]; then
+        BRANCH_SEGMENT=$(printf ' %b%s%b' "$YELLOW" "$BRANCH" "$RESET")
+      fi
+
+      # Model + effort segment
+      MODEL_SEGMENT=""
+      if [ -n "$MODEL_NAME" ]; then
+        MODEL_SEGMENT=$(printf ' | %b%s%b' "$DIM" "$MODEL_NAME" "$RESET")
+        if [ -n "$EFFORT_ABBREV" ]; then
+          MODEL_SEGMENT=$(printf '%s %b%s%b' "$MODEL_SEGMENT" "$DIM" "$EFFORT_ABBREV" "$RESET")
+        fi
+      fi
+
+      printf '%b%s%b %b%s%b%b | %bc:%sk:%s%%/%s%%%b%b%b' \
+        "$MAGENTA" "$PROFILE" "$RESET" \
+        "$CYAN" "$DIR_NAME" "$RESET" \
+        "$BRANCH_SEGMENT" \
+        "$CTX_COLOR" "$CTX_TOK_K" "$CTX_USED" "$CTX_REMAIN" "$RESET" \
+        "$SESS_SEGMENT" \
+        "$MODEL_SEGMENT"
     '';
   };
 
-  settingsFile = pkgs.writeText "claude-settings.json" (builtins.toJSON {
-    model = "claude-opus-4-6";
-    enabledPlugins = {
-      "gopls-lsp@claude-plugins-official" = true;
-      "rust-analyzer-lsp@claude-plugins-official" = true;
-    };
+  # Plugins everyone gets. Per-profile extras go in profileExtraPlugins below.
+  # All names resolve against the official marketplace ("@claude-plugins-official").
+  basePlugins = [
+    "gopls-lsp"
+    "rust-analyzer-lsp"
+    "security-guidance"
+  ];
+  profileExtraPlugins = {
+    personal = [ "clangd-lsp" ];
+    runpod = [ ];
+  };
+
+  mkSettingsFile = name: pkgs.writeText "claude-settings-${name}.json" (builtins.toJSON {
+    model = "claude-opus-4-8";
+    enabledPlugins = lib.listToAttrs (map (p: {
+      name = "${p}@claude-plugins-official";
+      value = true;
+    }) (basePlugins ++ (profileExtraPlugins.${name} or [ ])));
     statusLine = {
       type = "command";
-      command = "${claude-statusline}/bin/claude-statusline";
+      command =
+        if statuslineImpl == "rust"
+        then "${claude-statusline-rs}/bin/claude-statusline-rs"
+        else "${claude-statusline}/bin/claude-statusline";
     };
   });
+
+  # Fallback for ad-hoc profiles created via claude-use-setup that aren't in
+  # the `profiles` list — they get the base plugin set only.
+  defaultSettingsFile = mkSettingsFile "_default";
 in
 {
-  home.packages = [ claude-statusline ];
+  # Both binaries installed so you can benchmark / swap via statuslineImpl.
+  # Try: time (echo '<json>' | claude-statusline) vs time (... | claude-statusline-rs)
+  home.packages = [ claude-statusline claude-statusline-rs ];
 
-  # claude-use: switch CLAUDE_CONFIG_DIR between OAuth profiles
+  # claude-use: switch CLAUDE_CONFIG_DIR between OAuth profiles.
+  # Profiles are discovered from disk so adding one is just a new directory
+  # under ~/.claude/profiles/ — no Nix rebuild needed to use it.
   programs.bash.initExtra = ''
     claude-use() {
       local profiles_dir="$HOME/.claude/profiles"
+      local gh_profiles_dir="$HOME/.config/gh-profiles"
       local name="''${1:-}"
+      local gh_name="''${2:-$name}"   # gh profile defaults to the claude profile name
 
       if [ -z "$name" ]; then
-        echo "Claude profiles:"
-        for p in ${lib.concatStringsSep " " profiles}; do
-          local pdir="$profiles_dir/$p"
-          if [ "''${CLAUDE_CONFIG_DIR:-}" = "$pdir" ]; then
-            echo "  * $p (active)"
-          else
-            echo "    $p"
-          fi
-        done
+        local _active_claude="''${CLAUDE_CONFIG_DIR##*/}"
+        local _active_gh="''${GH_CONFIG_DIR##*/}"
+        echo "Currently active:"
+        echo "  claude profile: ''${_active_claude:-(unset)}    (model: ''${ANTHROPIC_MODEL:-unset})"
+        echo "  gh profile:     ''${_active_gh:-(unset)}"
         echo ""
-        echo "Usage: claude-use <profile>"
+        echo "Claude profiles (in $profiles_dir):"
+        if [ -d "$profiles_dir" ]; then
+          local found=0
+          for pdir in "$profiles_dir"/*/; do
+            [ -d "$pdir" ] || continue
+            found=1
+            local p="''${pdir%/}"; p="''${p##*/}"
+            if [ "''${CLAUDE_CONFIG_DIR:-}" = "''${pdir%/}" ]; then
+              echo "  * $p (active)"
+            else
+              echo "    $p"
+            fi
+          done
+          [ "$found" = 0 ] && echo "  (no profiles found — run 'claude-use-setup <name>')"
+        else
+          echo "  (profiles dir missing — run 'make' or 'claude-use-setup <name>')"
+        fi
+        echo ""
+        echo "gh profiles (in $gh_profiles_dir):"
+        if [ -d "$gh_profiles_dir" ]; then
+          for gdir in "$gh_profiles_dir"/*/; do
+            [ -d "$gdir" ] || continue
+            local g="''${gdir%/}"; g="''${g##*/}"
+            if [ "''${GH_CONFIG_DIR:-}" = "''${gdir%/}" ]; then
+              echo "  * $g (active)"
+            else
+              echo "    $g"
+            fi
+          done
+        fi
+        echo ""
+        echo "Usage:"
+        echo "  claude-use <claude-profile> [<gh-profile>]"
+        echo "  If <gh-profile> is omitted, it defaults to <claude-profile>."
+        echo "  Both args switch only the current shell — other terminals are unaffected."
+        echo ""
+        echo "Default mappings (claude profile == gh profile):"
+        ${defaultExampleLines}
+        echo ""
+        echo "Cross combinations (claude from one account, gh from another):"
+        ${crossExampleLines}
+        echo ""
+        echo "Related commands:"
+        echo "  claude-use-setup <name>   # create a new claude profile + run OAuth login"
+        echo "  gh auth login             # add a github login to the active gh profile"
+        echo "  gh auth status            # show the gh login in the active gh profile"
         return 0
       fi
 
       local profile_dir="$profiles_dir/$name"
       if [ ! -d "$profile_dir" ]; then
-        echo "Error: profile not found: $profile_dir" >&2
-        echo "Available profiles: ${lib.concatStringsSep " " profiles}" >&2
+        echo "Error: claude profile not found: $profile_dir" >&2
+        echo "Create it with: claude-use-setup $name" >&2
         return 1
       fi
 
       export CLAUDE_CONFIG_DIR="$profile_dir"
-      echo "Switched to profile: $name (CLAUDE_CONFIG_DIR=$profile_dir)"
+
+      # Set ANTHROPIC_MODEL based on profile name.
+      local _model="${defaultModel}"
+      case "$name" in
+        ${modelCaseArms}
+        *) ;;
+      esac
+      export ANTHROPIC_MODEL="$_model"
+
+      # Bind gh CLI to a per-profile config dir. The gh profile is independent
+      # from the claude profile so e.g. `claude-use runpod personal` lets you
+      # do runpod-claude work against the personal github account.
+      local _gh_dir="$gh_profiles_dir/$gh_name"
+      mkdir -p "$_gh_dir"
+      chmod 700 "$_gh_dir"
+      export GH_CONFIG_DIR="$_gh_dir"
+
+      local _gh_user=""
+      case "$gh_name" in
+        ${ghUserCaseArms}
+        *) ;;
+      esac
+
+      echo "Switched to profile: $name (gh: $gh_name)"
+      echo "  CLAUDE_CONFIG_DIR=$profile_dir"
+      echo "  ANTHROPIC_MODEL=$_model"
+      echo "  GH_CONFIG_DIR=$_gh_dir"
+      if [ ! -f "$_gh_dir/hosts.yml" ]; then
+        if [ -n "$_gh_user" ]; then
+          echo "  gh: not yet set up — run 'gh auth login' and choose $_gh_user"
+        else
+          echo "  gh: not yet set up — run 'gh auth login'"
+        fi
+      fi
+
+      # Enabled plugins for this profile (from its settings.json).
+      if [ -f "$profile_dir/settings.json" ] && command -v jq >/dev/null 2>&1; then
+        local _had_header=0
+        while IFS= read -r _p; do
+          [ -z "$_p" ] && continue
+          if [ "$_had_header" = 0 ]; then
+            echo "  enabled plugins:"
+            _had_header=1
+          fi
+          echo "    $_p"
+        done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value) | .key' "$profile_dir/settings.json" 2>/dev/null)
+      fi
     }
 
     claude-use-setup() {
       local name="''${1:-}"
       if [ -z "$name" ]; then
         echo "Usage: claude-use-setup <profile>"
-        echo "Sets up OAuth login for a profile."
+        echo "Creates the profile dir (if needed) and runs OAuth login."
         return 1
       fi
 
       local profile_dir="$HOME/.claude/profiles/$name"
       if [ ! -d "$profile_dir" ]; then
-        echo "Error: profile directory not found: $profile_dir" >&2
-        echo "Run 'make' first to create profile directories." >&2
-        return 1
+        mkdir -p "$profile_dir"
+        chmod 700 "$profile_dir"
+        echo "Created profile dir: $profile_dir"
       fi
+      # Ensure the profile has the managed settings.json (statusline, etc.).
+      # Ad-hoc profiles get the base plugin set; profiles listed in nix get
+      # their per-profile settings applied by the activation below.
+      install -m 644 ${defaultSettingsFile} "$profile_dir/settings.json"
 
       export CLAUDE_CONFIG_DIR="$profile_dir"
+
+      # Set ANTHROPIC_MODEL based on profile name.
+      local _model="${defaultModel}"
+      case "$name" in
+        ${modelCaseArms}
+        *) ;;
+      esac
+      export ANTHROPIC_MODEL="$_model"
+
       echo "Setting up OAuth for profile: $name"
       echo "CLAUDE_CONFIG_DIR=$profile_dir"
+      echo "ANTHROPIC_MODEL=$_model"
       claude auth login
     }
 
-    # Default profile
+    # Default profile, model, and gh config dir
     if [ -z "''${CLAUDE_CONFIG_DIR:-}" ]; then
       export CLAUDE_CONFIG_DIR="$HOME/.claude/profiles/${defaultProfile}"
     fi
+    if [ -z "''${ANTHROPIC_MODEL:-}" ]; then
+      export ANTHROPIC_MODEL="${defaultModel}"
+    fi
+    if [ -z "''${GH_CONFIG_DIR:-}" ]; then
+      export GH_CONFIG_DIR="$HOME/.config/gh-profiles/${defaultProfile}"
+    fi
   '';
 
-  # Create profile directories and deploy settings.json to each
+  # Create profile directories and deploy settings.json to each.
+  # Also pre-create the matching gh-profiles dir so the first `gh auth login`
+  # under that profile lands in the right place.
   home.activation.claudeProfiles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${lib.concatMapStringsSep "\n    " (profile: ''
       mkdir -p "$HOME/.claude/profiles/${profile}"
       chmod 700 "$HOME/.claude/profiles/${profile}"
-      install -m 644 ${settingsFile} "$HOME/.claude/profiles/${profile}/settings.json"
+      install -m 644 ${mkSettingsFile profile} "$HOME/.claude/profiles/${profile}/settings.json"
+      mkdir -p "$HOME/.config/gh-profiles/${profile}"
+      chmod 700 "$HOME/.config/gh-profiles/${profile}"
     '') profiles}
   '';
 }

@@ -1,138 +1,151 @@
-# Edit this configuration file to define what should be installed on
-# your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
-
-# sudo nixos-rebuild switch
-# sudo nix-channel --update
-# nix-shell -p vim
-# nmcli device wifi connect MYSSID password PWORD
-# systemctl restart display-manager.service
+# hp/chromebox/chromebox1/configuration.nix
+#
+# Mirrors hp1's configuration shape (see ~/nixos/hp/hp1/configuration.nix)
+# adapted for the smaller Intel Celeron 2955U (Haswell-ULT, 2c/2t,
+# 16 GiB RAM, 1.8 TB SATA SSD, 1 GbE onboard). The chromebox joins the
+# xdp2 benchmark host fleet as the Intel-CPU data point alongside the
+# AMD Zen 1 hp1/hp2/hp3/hp5 boxes.
+#
+# What this host CAN run (xdp2 docs/physical-testbed.md §9):
+#   - Category A — xdp2-rs cargo tests
+#   - Category B — flow-dissector matrix userspace ways
+#   - Category C — flow-dissector matrix BPF_PROG_TEST_RUN ways
+#   - Category D — proto-audit
+#   - Category E — perf sweeps over pre-captured pcaps
+#   - Category I — unified xdp2-rs vs C matrix
+#
+# What it CANNOT run (no peer DAC link, no 10/25 GbE NIC):
+#   - Category F — XDP samples loaded against real traffic
+#   - Category G — AF_XDP throughput
+#   - Category H — hardware ntuple offload
+#
+# CPU isolation: empty list (no isolcpus). The 2-core CPU has no
+# headroom to dedicate a core when housekeeping also needs to run; the
+# kernel-cmdline tunings (mitigations=off, hugepages, max_cstate=1) are
+# still applied via the xdp2.testbed module.
 
 { config, pkgs, ... }:
-
-# https://nixos.wiki/wiki/FAQ#How_can_I_install_a_package_from_unstable_while_remaining_on_the_stable_channel.3F
-# https://discourse.nixos.org/t/differences-between-nix-channels/13998
 
 {
   # https://nixos.wiki/wiki/NixOS_modules
   imports =
     [
-      ./disko-chromebox1.nix
-      #./hardware-configuration.nix
+      ./disko-chromebox1.nix   # disk layout (preserved from anywhere install)
       ./sysctl.nix
       ./il8n.nix
       ./systemPackages.nix
       ./hosts.nix
-      ./nodeExporter.nix
+      # disableNonEssentialServices = true forces nodeExporter off
+      # anyway, but the file is kept on disk so we can flip the toggle
+      # if we ever want monitoring on this host.
+      #./nodeExporter.nix
+      # Kubernetes / docker / k3s stack disabled — see hp1 for the same
+      # rationale (benchmark host should have no incidental workloads).
       #./docker-daemon.nix
-      #./k8s_master.nix
       #./k3s_master.nix
-      #./k3s_node.nix
-      # Modular Kubernetes configuration
-      ./kubernetes.nix
-      ./kubernetes_addonManager.nix
-      ./kubernetes_etcd.nix
-      ./kubernetes_networking.nix
-      ./kubernetes_runtime.nix
+      #./kubernetes.nix
+      #./kubernetes_addonManager.nix
+      #./kubernetes_etcd.nix
+      #./kubernetes_networking.nix
+      #./kubernetes_runtime.nix
+      # INSECURE: passwordless root SSH for isolated lab network
+      ./sshd-INSECURE.nix
     ];
 
-  # boot.loader.grub = {
-  #   # no need to set devices, disko will add all devices that have a EF02 partition to the list already
-  #   # devices = [ ];
-  #   efiSupport = true;
-  #   efiInstallAsRemovable = true;
-  # };
-
-  # Use the systemd-boot EFI boot loader.
+  # Boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  #boot.loader.efi.canTouchEfiVariables = true;
-
   # https://nixos.wiki/wiki/Linux_kernel
-  boot.kernelPackages = pkgs.linuxPackages;
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  # Pinned to linuxPackages_latest so chromebox1 matches the hp boxes
+  # (xdp2 docs/physical-testbed.md §3). Haswell-ULT is comfortably
+  # supported by modern kernels.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
+  # for the option reference and trade-offs. Two deltas vs the hp1/hp3
+  # pattern, both forced by chromebox1's hardware:
+  #   - peerInterfaces = [ ] — no peer DAC link.
+  #   - isolatedCpus = [ ] — 2 logical CPUs total, no room to dedicate
+  #     any to benchmark threads while keeping housekeeping responsive.
+  # The kernel-cmdline tunings (mitigations=off, processor.max_cstate=1,
+  # transparent_hugepage=never, audit=0, hugepages) still apply.
+  xdp2.testbed = {
+    enable = true;
+    peerInterfaces = [ ];
+    addresses = { };
+    isolatedCpus = [ ];
+    hugepages2M = 256;           # 512 MiB — plenty for parser rings, modest vs 16 GiB total RAM
+    disableNonEssentialServices = true;
+    lowJitter = false;
+    # eno1 default would match the hp boxes; chromebox1's onboard 1 GbE
+    # is more likely enp1s0 / enp2s0. Verify post-boot with `ip -br link`
+    # and update if it differs — only matters when lowJitter = true
+    # (IRQ pinning of the management interface).
+    managementInterface = "enp1s0";
+    flowDirectorRules = [ ];
+    realServicesBench = false;
+  };
+
+  # The xdp2 nicTuning module forwards driver = "i40e" by default. With
+  # peerInterfaces = [ ] the nic-tuning module compiles away to nothing,
+  # so the driver field doesn't matter here — leaving the default.
 
   nix = {
     gc = {
-      automatic = true;                     # Enable automatic execution of the task
-      dates = "weekly";                     # Schedule the task to run weekly
-      options = "--delete-older-than 10d";  # Specify options for the task: delete files older than 10 days
-      randomizedDelaySec = "14m";           # Introduce a randomized delay of up to 14 minutes before executing the task
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 10d";
+      randomizedDelaySec = "14m";
     };
     settings = {
       auto-optimise-store = true;
       experimental-features = [ "nix-command" "flakes" ];
+      download-buffer-size = "100000000";
     };
   };
 
-  # https://nixos.wiki/wiki/Networking
-  # https://nlewo.github.io/nixos-manual-sphinx/configuration/ipv4-config.xml.html
   networking.hostName = "chromebox1";
 
   services.lldpd.enable = true;
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
   networking.networkmanager.enable = false;
 
-  # Set your time zone.
-  time.timeZone = "America/Los_Angeles";
+  # Explicit nameservers — DHCP from the LAN gateway has been observed
+  # to land an empty resolv.conf, breaking nix-binary-cache fetches
+  # (xdp2 docs/physical-testbed.md §3, hp5 incident 2026-04-20).
+  networking.nameservers = [ "172.16.40.1" "1.1.1.1" "8.8.8.8" ];
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
+  time.timeZone = "America/Los_Angeles";
 
   environment.sessionVariables = {
     TERM = "xterm-256color";
-    #MY_VARIABLE = "my-value";
-    #ANOTHER_VARIABLE = "another-value";
   };
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
+  # Define a user account. Password kept from the historical config
+  # (lab-only box, password is irrelevant once root SSH key works).
   users.users.das = {
     isNormalUser = true;
     description = "das";
     password = "admin123";
-    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" ];
-    # packages = with pkgs; [
-    # ];
-    # https://nixos.wiki/wiki/SSH_public_key_authentication
+    extraGroups = [ "wheel" "libvirtd" "docker" "kubernetes" "video" ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
     ];
   };
 
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
   programs.gnupg.agent = {
      enable = true;
      enableSSHSupport = true;
   };
 
-  services.openssh.enable = true;
+  # services.openssh.enable = true;  # Replaced by sshd-INSECURE.nix
 
   services.timesyncd.enable = true;
 
   services.fstrim.enable = true;
 
-  # This value determines the NixOS release from which the default
-  # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
-  # this value at the release version of the first install of this system.
-  # Before changing this value read the documentation for this option
-  # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "25.05"; # Did you read the comment?
-
-  # virtualisation.libvirtd.enable = true;
-  # programs.virt-manager.enable = true;
-  # services.qemuGuest.enable = true;
-
-  # https://wiki.nixos.org/wiki/Laptop
+  # Keep at 25.05 (the existing install's stateVersion); do not bump
+  # unless you're prepared to migrate stateful services.
+  system.stateVersion = "25.05";
 }

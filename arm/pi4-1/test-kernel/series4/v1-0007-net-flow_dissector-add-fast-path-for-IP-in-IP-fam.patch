@@ -1,0 +1,299 @@
+From c73747fdf3a550c18d0333a147c309290a4dd78e Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Tue, 16 Jun 2026 13:26:01 -0700
+Subject: [PATCH net-next v1 07/15] net: flow_dissector: add fast-path for
+ IP-in-IP family (IPIP / 4in6 / 6in4)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds flow_dissect_fast_ipip_inner() — a small recursion helper
+invoked from the existing flow_dissect_fast_ipv4() and
+flow_dissect_fast_ipv6() helpers when the outer IP's protocol
+(IPv4) or nexthdr (IPv6) is IPPROTO_IPIP or IPPROTO_IPV6 and the
+ipip gate is on. Tail-calls into the matching inner IP fast-path
+then stamps FLOW_DIS_ENCAPSULATION on key_control->flags.
+
+Byte-identical with the slow path's IPPROTO_IPIP and IPPROTO_IPV6
+switch cases in __skb_flow_dissect(): the slow path also lets the
+inner IP overwrite outer addrs/basic and OR's ENCAP into the
+control flags. The ENCAP write must happen *after* the inner
+returns because the existing v3 fast-path helpers unconditionally
+set key_control->flags = 0 on entry (correct for the top-level
+call but clobbers the encap flag during recursion); the
+ipip_inner helper re-establishes ENCAP after the inner returns.
+
+Coverage:
+  outer IPv4, protocol == IPIP   -> inner IPv4
+  outer IPv4, protocol == IPV6   -> inner IPv6 (6in4)
+  outer IPv6, nexthdr  == IPIP   -> inner IPv4 (4in6)
+  outer IPv6, nexthdr  == IPV6   -> inner IPv6
+
+FLOW_DISSECTOR_F_STOP_BEFORE_ENCAP and STOP_AT_ENCAP don't apply
+because the top-level dispatcher already rejects anything beyond
+F_PARSE_1ST_FRAG, so the fast-path entry never sees the encap-stop
+flags - packets that request them go to the slow path unchanged.
+
+Gated by:
+  - new DEFINE_STATIC_KEY_FALSE(flow_dissector_ipip_key)
+  - new sysctl /proc/sys/net/flow_dissector/ipip (default 0)
+  - static_branch_unlikely guard inside the v4/v6 helpers, hit only
+    when the outer protocol/nexthdr is not TCP/UDP (i.e. the v3
+    fast-path was about to return false anyway)
+
+Cost when off: the not-TCP/UDP fall-through grows by one
+static_branch_unlikely check. The v3 hot path (TCP/UDP) is
+unchanged — the new branch is below the existing TCP/UDP fast-out.
+
+Documentation/admin-guide/sysctl/net.rst grows an `ipip` subsection
+under /proc/sys/net/flow_dissector/.
+
+The IPv6-outer descent mirrors the slow path's outer writes (v6addrs,
+addr_type, flow label) before recursing into the inner header. The
+slow path fills these for the outer header and the inner pass then
+overwrites only what it uses: an inner IPv4 overwrites just the first
+8 bytes of the addrs union, leaving outer-v6 bytes in the tail, and an
+inner zero flow label leaves the outer label in place. Byte-identical
+output means reproducing exactly that, residue included — the KUnit
+equivalence test's 4in6 cases fail otherwise. (The IPv4-outer descent
+needs no such mirroring: an inner IPv4 or IPv6 write always fully
+covers the outer's 8 address bytes.)
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst |  19 ++++
+ include/net/flow_dissector.h             |   1 +
+ net/core/flow_dissector.c                | 139 ++++++++++++++++++++++-
+ 3 files changed, 156 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 47fd2eb4992b..b484e02d4a2a 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -553,6 +553,25 @@ vlan -> qinq staging the v3-namespace series used.
+ 
+ Default: 0
+ 
++ipip
++~~~~
++
++IPv4-in-IPv4 (``IPPROTO_IPIP`` 4), IPv6-in-IPv4 (``IPPROTO_IPV6`` 41
++inside an IPv4 outer), IPv4-in-IPv6 and IPv6-in-IPv6 tunnels. When
++the outer IP fast-path notices the outer protocol/nexthdr is one of
++these and this gate is on, it skips the outer header and tail-calls
++into the inner IPv4 / IPv6 fast-path. The flow_keys ends up with the
++inner 5-tuple (matching the slow path's behaviour, where the inner
++parse overwrites the outer addrs/basic), plus
++FLOW_DIS_ENCAPSULATION set on key_control->flags.
++
++Byte-identical with the slow path's IPPROTO_IPIP / IPPROTO_IPV6
++switch cases for the eligible shape. Defers on any miss — including
++fragmented outer, unusual outer IHL, or unsupported inner shapes
++that the inner IP fast-path itself would defer.
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 775fd9c119f9..f4f203efbc1f 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -436,6 +436,7 @@ extern struct static_key_false flow_dissector_vlan_key;
+ extern struct static_key_false flow_dissector_qinq_key;
+ extern struct static_key_false flow_dissector_pppoe_key;
+ extern struct static_key_false flow_dissector_mpls_key;
++extern struct static_key_false flow_dissector_ipip_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index cad06685df30..503f0066f500 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -53,6 +53,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_pppoe_key);
+ EXPORT_SYMBOL(flow_dissector_pppoe_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_mpls_key);
+ EXPORT_SYMBOL(flow_dissector_mpls_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_ipip_key);
++EXPORT_SYMBOL(flow_dissector_ipip_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -70,6 +72,12 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+ 				   void *target_container,
+ 				   const void *data,
+ 				   int nhoff, int hlen);
++static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
++					 struct flow_dissector *flow_dissector,
++					 void *target_container,
++					 const void *data,
++					 __be16 inner_eth_proto,
++					 int inner_nhoff, int hlen);
+ 
+ /* Forward declaration: flow_keys_dissector_symmetric is defined later
+  * in this file (it is static, not extern'd through the header). The
+@@ -1122,8 +1130,27 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 		return false;
+ 
+ 	if (unlikely(iph->protocol != IPPROTO_TCP &&
+-		     iph->protocol != IPPROTO_UDP))
++		     iph->protocol != IPPROTO_UDP)) {
++		/* IPIP / IPV6-in-IPv4 tunnel outer: defer to the inner
++		 * IP fast-path and stamp FLOW_DIS_ENCAPSULATION.
++		 * Outer addrs/basic are NOT written here — the inner pass
++		 * overwrites them, which is what the slow path also does
++		 * (final flow_keys reflect inner 5-tuple).
++		 */
++		if (static_branch_unlikely(&flow_dissector_ipip_key)) {
++			if (iph->protocol == IPPROTO_IPIP)
++				return flow_dissect_fast_ipip_inner(skb,
++						flow_dissector, target_container,
++						data, htons(ETH_P_IP),
++						nhoff + (int)sizeof(*iph), hlen);
++			if (iph->protocol == IPPROTO_IPV6)
++				return flow_dissect_fast_ipip_inner(skb,
++						flow_dissector, target_container,
++						data, htons(ETH_P_IPV6),
++						nhoff + (int)sizeof(*iph), hlen);
++		}
+ 		return false;
++	}
+ 
+ 	thoff = nhoff + (int)sizeof(*iph);
+ 
+@@ -1197,8 +1224,59 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+ 		return false;
+ 
+ 	if (unlikely(iph->nexthdr != IPPROTO_TCP &&
+-		     iph->nexthdr != IPPROTO_UDP))
+-		return false;
++		     iph->nexthdr != IPPROTO_UDP)) {
++		/* IPIP / IPV6-in-IPv6 tunnel outer: same pattern as the
++		 * IPv4 helper. The nexthdr_IPIP / nexthdr_IPV6 cases
++		 * defer to the inner IP fast-path and stamp ENCAP.
++		 */
++		bool ipip = static_branch_unlikely(&flow_dissector_ipip_key) &&
++			    (iph->nexthdr == IPPROTO_IPIP ||
++			     iph->nexthdr == IPPROTO_IPV6);
++
++		if (!ipip)
++			return false;
++
++		/* Mirror the slow path's outer-IPv6 writes before the
++		 * descent. The slow path fills v6addrs (and the flow
++		 * label) for the outer header and the inner pass then
++		 * overwrites only what it uses — an inner IPv4 leaves
++		 * the tail of the addrs union holding outer-v6 bytes,
++		 * and an inner zero flow label leaves the outer label
++		 * in place. Byte-identical means reproducing exactly
++		 * that, residue included.
++		 */
++		if (dissector_uses_key(flow_dissector,
++				       FLOW_DISSECTOR_KEY_IPV6_ADDRS)) {
++			key_addrs = skb_flow_dissector_target(flow_dissector,
++							      FLOW_DISSECTOR_KEY_IPV6_ADDRS,
++							      target_container);
++			memcpy(&key_addrs->v6addrs.src, &iph->saddr,
++			       sizeof(key_addrs->v6addrs.src));
++			memcpy(&key_addrs->v6addrs.dst, &iph->daddr,
++			       sizeof(key_addrs->v6addrs.dst));
++			key_control = skb_flow_dissector_target(flow_dissector,
++								FLOW_DISSECTOR_KEY_CONTROL,
++								target_container);
++			key_control->addr_type = FLOW_DISSECTOR_KEY_IPV6_ADDRS;
++		}
++		if (dissector_uses_key(flow_dissector,
++				       FLOW_DISSECTOR_KEY_FLOW_LABEL) &&
++		    ip6_flowlabel(iph)) {
++			struct flow_dissector_key_tags *key_tags;
++
++			key_tags = skb_flow_dissector_target(flow_dissector,
++							     FLOW_DISSECTOR_KEY_FLOW_LABEL,
++							     target_container);
++			key_tags->flow_label = ntohl(ip6_flowlabel(iph));
++		}
++
++		return flow_dissect_fast_ipip_inner(skb,
++				flow_dissector, target_container,
++				data,
++				iph->nexthdr == IPPROTO_IPIP ?
++				htons(ETH_P_IP) : htons(ETH_P_IPV6),
++				nhoff + (int)sizeof(*iph), hlen);
++	}
+ 
+ 	/* Slow path writes key_tags->flow_label when the dissector
+ 	 * requests it and the label is non-zero; defer to stay byte-
+@@ -1499,6 +1577,54 @@ static bool flow_dissect_fast_mpls(const struct sk_buff *skb,
+ 	return true;
+ }
+ 
++/* IPIP / 4in6 / 6in4 inner: invoked by the v4 / v6 fast-path helpers
++ * when the outer IP's protocol/nexthdr is IPPROTO_IPIP or IPPROTO_IPV6
++ * and the ipip gate is on. Recurses into the inner IP fast-path then
++ * stamps FLOW_DIS_ENCAPSULATION on key_control — the inner helper
++ * unconditionally zeros key_control->flags, so the ENCAP write must
++ * happen *after* the inner returns.
++ *
++ * Byte-identical with the slow path's IPPROTO_IPIP / IPPROTO_IPV6
++ * cases in __skb_flow_dissect (which OR ENCAP into key_control->flags
++ * and re-dispatch on the new proto, ending up with inner addrs/basic
++ * overwriting outer's). FLOW_DISSECTOR_F_STOP_BEFORE_ENCAP and
++ * STOP_AT_ENCAP don't apply because the dispatcher's flag check
++ * already rejects anything beyond F_PARSE_1ST_FRAG.
++ */
++static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
++					 struct flow_dissector *flow_dissector,
++					 void *target_container,
++					 const void *data,
++					 __be16 inner_eth_proto,
++					 int inner_nhoff, int hlen)
++{
++	struct flow_dissector_key_control *key_control;
++	bool ok;
++
++	if (inner_eth_proto == htons(ETH_P_IP))
++		ok = flow_dissect_fast_ipv4(skb, flow_dissector,
++					    target_container, data,
++					    inner_nhoff, hlen);
++	else if (inner_eth_proto == htons(ETH_P_IPV6))
++		ok = flow_dissect_fast_ipv6(skb, flow_dissector,
++					    target_container, data,
++					    inner_nhoff, hlen);
++	else
++		return false;
++
++	if (!ok)
++		return false;
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_CONTROL)) {
++		key_control = skb_flow_dissector_target(flow_dissector,
++							FLOW_DISSECTOR_KEY_CONTROL,
++							target_container);
++		key_control->flags |= FLOW_DIS_ENCAPSULATION;
++	}
++	return true;
++}
++
+ /* Top-level dispatcher: eligibility check (only the two standard
+  * dissectors and flag subset) + per-proto switch with per-shape
+  * static_branch gating. Each case's branch is a forward not-taken JMP
+@@ -2715,6 +2841,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "ipip",
++		.data		= &flow_dissector_ipip_key.key,
++		.maxlen		= sizeof(flow_dissector_ipip_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

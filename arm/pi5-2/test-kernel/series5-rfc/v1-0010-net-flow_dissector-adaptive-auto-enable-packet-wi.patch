@@ -1,0 +1,599 @@
+From 4c8e094ee8879a7bed7860718694c12a8894da50 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Fri, 3 Jul 2026 21:31:29 -0700
+Subject: [RFC net-next v1 1/1] net: flow_dissector: adaptive auto-enable
+ (packet-window controller)
+
+Seven opt-in gates are seven policy decisions the operator has to get
+right. This RFC lets the kernel manage the byte-identical gates itself
+from the per-shape counters, so "turn on the fast path" becomes one
+knob instead of seven:
+
+  net.flow_dissector.auto                 0/1 (static key; manual
+                                          knobs apply when 0)
+  net.flow_dissector.auto_window_packets  decision window
+                                          (default 1,000,000)
+  net.flow_dissector.auto_exclude         bitmask of shapes auto must
+                                          leave alone (default: mpls),
+                                          so single gates can be pinned
+                                          by hand while auto runs
+
+Decisions are driven by a packet-count window, not a wall-clock tick:
+every ~auto_window_packets dissects the worker re-evaluates each
+byte-identical shape's windowed eligible fraction (occurrences +
+fast_hits over the window) against its measured break-even
+p_be = C / (S + C) and flips the gate. This is traffic-proportional: a
+busy link adapts in milliseconds, an idle link does not churn, and
+adaptation speed is one intuitive knob (the same shape as lib/dim
+interrupt moderation).
+
+Design points:
+
+  - Decide on window *deltas*, never cumulative counters -- a
+    since-boot ratio asymptotically freezes and stops adapting. The
+    worker snapshots the counters each decision and diffs.
+  - Sample on the hot path, flip in process context. With auto off the
+    packet path pays one not-taken static branch (fd_auto_on_key --
+    the same discipline as the gates themselves); with auto on it adds
+    a per-cpu increment and a compare against a cached threshold (no
+    division on the packet path; the window/ncpus threshold is
+    recomputed on sysctl writes and per worker run, which also tracks
+    CPU hotplug lazily) that schedule_work()s, with preemption
+    disabled across the counter update so a migration cannot reset a
+    stranger's window. The summation and the static_branch flips
+    (text_poke, which can sleep) run in the worker, which the sysctl
+    handlers cancel_work_sync() against before touching shared
+    windowing state. Counter deltas are clamped (64-bit per-cpu reads
+    can tear on 32-bit; a torn read must not drive a flip).
+  - The per-shape policy is a pure function (fd_auto_decide()):
+    hysteresis (enable above break-even + 10pp, disable below
+    break-even - 5pp), a dwell of 3 consecutive windows, and dwell
+    saturation so a rate-capped decision stays pending instead of
+    wrapping. Being pure, it is unit-tested directly: the KUnit case
+    covers the dwell requirement, both margin boundaries, dwell reset
+    on a dip, the deadband holding both states, the low-break-even
+    clamp, and saturation.
+
+A >= 1s per-shape flip-rate cap keeps a crafted burst from forcing
+text_poke storms while letting a traffic shift that touches several
+shapes adapt in one window. Shape management is a whitelist -- a shape
+the controller does not explicitly know is never managed, so the
+UDP-tunnel descent gates (separate series) can never be auto-managed
+even if they later join the counter enum; enabling them changes
+hashing and must stay deliberate. mpls is excluded by default via
+auto_exclude (its saving barely exceeds its miss cost on in-order
+cores). The vlan/qinq coupling is respected, including under pins:
+while vlan is excluded, qinq is left unmanaged too. An attached netns
+BPF flow dissector zeroes the controller's input (those dissects are
+deliberately not counted), so it will disable the gates -- consistent,
+since the gates are unreachable behind the program, and documented.
+The gates are global static keys patching shared text, so the
+controller is host-wide by construction; the per-netns escape hatch
+remains the netns BPF flow dissector.
+
+Applies on top of "net: flow_dissector: opt-in byte-identical fast
+paths for common shapes".
+
+Assisted-by: Claude:claude-fable-5 sparse smatch
+[ARM 6.x variant: KUnit test + header-accessor hunks stripped, since
+ the KUnit patch is excluded on the 6.x base per testbed policy]
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst |  76 ++++-
+ include/net/flow_dissector.h             |   2 +
+ net/core/flow_dissector.c                | 372 +++++++++++++++++++++++
+ net/core/flow_dissector_test.c           | 101 ++++++
+ 4 files changed, 544 insertions(+), 7 deletions(-)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 2049a493c5c2..744715f971e5 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -597,6 +597,67 @@ additional 4-byte key field read and a write to
+ 
+ Default: 0
+ 
++auto
++~~~~
++
++Adaptive auto-enablement of the byte-identical fast-path gates
++(``eth_ip``, ``vlan``, ``qinq``, ``pppoe``, ``ipip``, ``gre``). When set
++to 1 the kernel manages those gates itself from the per-shape counters
++(see ``/proc/net/flow_dissector_stats`` below), so the operator sets one
++knob instead of one per shape. When 0 (default) the manual per-shape
++sysctls above apply.
++
++Decisions are driven by a packet-count window, not a timer (see
++``auto_window_packets``): every window the kernel compares each shape's
++windowed eligible fraction to its measured break-even and enables the
++gate when the shape is comfortably above it, disables when comfortably
++below, with hysteresis, a multi-window dwell, and a flip rate cap so a
++crafted rare-shape burst cannot force static-key patch storms. Sampling
++is on the packet path; the static-branch flips run in a workqueue.
++
++``mpls`` is excluded by default (its fast-path saving barely exceeds the
++miss cost on in-order cores; see ``auto_exclude``) and the ``*_inner``
++descent gates are never auto-managed (they change hashing behaviour —
++enable them deliberately). The vlan/qinq coupling is respected: while
++``vlan`` is excluded, ``qinq`` is left unmanaged too, since enabling
++qinq force-enables vlan.
++
++Manual writes to a gate the controller manages may be overridden at the
++next window; to pin a gate by hand while ``auto`` stays on, set its bit
++in ``auto_exclude`` first (or set ``auto`` to 0 to pin everything).
++
++Note an interaction with the netns BPF flow dissector: dissects fully
++handled by an attached BPF program are deliberately not counted (see
++the counters patch), so on a system where a BPF dissector handles all
++traffic the controller sees no eligible packets and will disable the
++gates. That is consistent — the gates are unreachable behind the BPF
++program — but worth knowing when debugging.
++
++Default: 0
++
++auto_exclude
++~~~~~~~~~~~~
++
++Bitmask of shapes, by their position in the per-shape enum (``eth_ip``
++= bit 0, ``vlan`` = 1, ``qinq`` = 2, ``pppoe`` = 3, ``mpls`` = 4,
++``ipip`` = 5, ``gre`` = 6), that ``auto`` must leave alone. An excluded
++gate keeps whatever value the operator sets manually. Writing the mask
++re-baselines the controller's dwell state.
++
++Default: 0x10 (mpls)
++
++auto_window_packets
++~~~~~~~~~~~~~~~~~~~~~
++
++The decision window for ``auto``, in packets: after at least half this
++many fresh dissects the kernel re-evaluates and may flip gates. This is the single
++knob for how fast auto adapts — larger is smoother/slower, smaller is
++faster/twitchier. Because it counts packets, adaptation is
++traffic-proportional: a busy link adapts in milliseconds, an idle link
++does not churn. Only consulted when ``auto`` is 1.
++
++Default: 1000000
++
+ The ``/proc/net/flow_dissector_stats`` observability file
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+@@ -608,13 +669,14 @@ the slow-path classification, exactly one of the two counters is
+ incremented per shaped packet depending on gate state, so
+ ``(occurrences + fast_hits) / dissects`` is a gate-invariant measure of
+ how much traffic each shape's fast body would handle -- the signal an
+-operator uses to decide whether a gate is worth enabling. The slow-path
+-counts sit at protocol recognition points, a superset of fast-path
+-eligibility (a VLAN+ARP frame counts as vlan), so the eligible fraction
+-is an upper bound; the exact hit rate once a gate is on is
+-``fast_hits / (occurrences + fast_hits)``. The counters
+-are per-cpu and summed on read; the per-packet cost is one increment on
+-the already-hot classification path.
++operator (or ``auto``) uses to decide whether a gate is worth enabling.
++The slow-path counts sit at protocol recognition points, a superset of
++fast-path eligibility (a VLAN+ARP frame counts as vlan), so the
++eligible fraction is an upper bound; the exact hit rate once a gate is
++on is ``fast_hits / (occurrences + fast_hits)``. The controller's
++hysteresis margins absorb this overestimate. The counters are per-cpu
++and summed on read; the per-packet cost is one increment on the
++already-hot classification path.
+ 
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 15fa3301517b..2bf1a9208ec8 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -40,6 +40,7 @@
+ #include <linux/seq_file.h>
+ #include <linux/string_choices.h>
+ #include <linux/math64.h>
++#include <linux/workqueue.h>
+ 
+ /* Per-shape fast-path gates, one static_branch per shape so operators
+  * enable only what their deployment carries. All default off.
+@@ -91,6 +92,47 @@ static inline void flow_dissector_count_fast(enum flow_dissector_shape shape)
+ /* IPv4 version/IHL byte of an option-less header: version 4, IHL 5. */
+ #define FLOW_DIS_IPV4_VIHL_NOOPT	0x45
+ 
++/* Adaptive auto-enablement: every ~fd_auto_window dissects, re-evaluate
++ * each byte-identical shape's windowed eligible fraction against its
++ * break-even and flip the gate. The hot path only samples (a per-cpu
++ * count crossing window/nr_cpus schedules the worker); summation and
++ * static_branch flips, which can sleep, run in the worker.
++ */
++DEFINE_STATIC_KEY_FALSE(fd_auto_on_key);	/* net.flow_dissector.auto */
++static unsigned int fd_auto_window = 1000000; /* net.flow_dissector.auto_window_packets */
++/* fd_auto_window / num_online_cpus(), cached so the packet path never
++ * divides. Recomputed on the sysctl writes and at every worker run (the
++ * latter tracks CPU hotplug lazily; a window between hotplug and the
++ * next run is merely a slightly skewed sampling interval).
++ */
++static unsigned int fd_auto_thresh = 1000000;
++static DEFINE_PER_CPU(u32, fd_auto_pcpu);
++static unsigned int fd_auto_exclude = BIT(FLOW_DISSECTOR_SHAPE_MPLS);
++static unsigned int fd_auto_exclude_max = GENMASK(FLOW_DISSECTOR_SHAPE__MAX - 1, 0);
++
++static void flow_dissector_auto_worker(struct work_struct *work);
++static DECLARE_WORK(fd_auto_work, flow_dissector_auto_worker);
++
++static void fd_auto_update_thresh(void)
++{
++	WRITE_ONCE(fd_auto_thresh,
++		   max_t(u32, READ_ONCE(fd_auto_window) / num_online_cpus(),
++			 1));
++}
++
++static inline void flow_dissector_auto_account(void)
++{
++	/* The inc and the reset must hit the same CPU's counter; a
++	 * migration between them would zero a stranger's window.
++	 */
++	preempt_disable();
++	if (this_cpu_inc_return(fd_auto_pcpu) >= READ_ONCE(fd_auto_thresh)) {
++		this_cpu_write(fd_auto_pcpu, 0);
++		schedule_work(&fd_auto_work);	/* coalesces if already pending */
++	}
++	preempt_enable();
++}
++
+ /* @num_hdrs: protocol headers consumed so far (Ethernet = 1, each VLAN
+  * tag, each outer IP header). Tunnel descents increment it and defer
+  * past MAX_FLOW_DISSECT_HDRS, so both paths stop at the same depth.
+@@ -1956,6 +1998,8 @@ bool __skb_flow_dissect(const struct net *net,
+ 	 * and per-shape gating.
+ 	 */
+ 	this_cpu_inc(flow_dissector_pcpu_stats.dissects);
++	if (static_branch_unlikely(&fd_auto_on_key))
++		flow_dissector_auto_account();
+ 
+ 	if (flow_dissect_fast(skb, flow_dissector, target_container,
+ 			      data, proto, nhoff, hlen, flags))
+@@ -2991,6 +3035,17 @@ static int proc_set_qinq_key(const struct ctl_table *table, int write,
+ 	return ret;
+ }
+ 
++/* Auto knob — handler and window floor are defined after the worker below;
++ * forward-declare them for the sysctl table.
++ */
++static int proc_set_auto(const struct ctl_table *table, int write,
++			 void *buffer, size_t *lenp, loff_t *ppos);
++static int proc_set_auto_window(const struct ctl_table *table, int write,
++				void *buffer, size_t *lenp, loff_t *ppos);
++static int proc_set_auto_exclude(const struct ctl_table *table, int write,
++				 void *buffer, size_t *lenp, loff_t *ppos);
++static unsigned int fd_auto_window_min = 1000;
++
+ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 	{
+ 		.procname	= "eth_ip",
+@@ -3041,6 +3096,40 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		/* Adaptive auto-enablement. When on, the byte-identical
++		 * gates above are managed automatically from the per-shape
++		 * counters (mpls and the descent shapes excluded). Manual
++		 * per-shape writes apply when off.
++		 */
++		.procname	= "auto",
++		.data		= &fd_auto_on_key.key,
++		.maxlen		= sizeof(fd_auto_on_key),
++		.mode		= 0644,
++		.proc_handler	= proc_set_auto,
++	},
++	{
++		/* Decision window in packets — how fast auto adapts. */
++		.procname	= "auto_window_packets",
++		.data		= &fd_auto_window,
++		.maxlen		= sizeof(fd_auto_window),
++		.mode		= 0644,
++		.proc_handler	= proc_set_auto_window,
++		.extra1		= &fd_auto_window_min,
++	},
++	{
++		/* Bitmask of shapes (by enum value) auto must not touch,
++		 * so individual gates can be pinned by hand while auto
++		 * manages the rest. Default: mpls.
++		 */
++		.procname	= "auto_exclude",
++		.data		= &fd_auto_exclude,
++		.maxlen		= sizeof(fd_auto_exclude),
++		.mode		= 0644,
++		.proc_handler	= proc_set_auto_exclude,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= &fd_auto_exclude_max,
++	},
+ };
+ 
+ static const char * const flow_dissector_shape_names[FLOW_DISSECTOR_SHAPE__MAX] = {
+@@ -3113,6 +3202,289 @@ static int flow_dissector_stats_show(struct seq_file *seq, void *v)
+ 	return 0;
+ }
+ 
++/* --- Adaptive auto-enablement worker ------------------------------------ */
++
++#define FD_AUTO_DWELL		3	/* consecutive windows before a flip */
++#define FD_AUTO_MARGIN_HI	1000	/* enable at break-even + 10.00pp */
++#define FD_AUTO_MARGIN_LO	500	/* disable at break-even - 5.00pp */
++#define FD_AUTO_FLIP_MIN_IVAL	HZ	/* >= 1s between any two flips */
++
++/* Measured break-even p_be = C/(S+C), in 1/10000, using the conservative
++ * in-order row from perf-results/2026-07-02-fastpath-breakeven/BREAKEVEN.md
++ * (in-order cores have the highest C, hence the highest bar — so the same
++ * table is safe on out-of-order cores too). gre's S was not separately
++ * microbenched; it is treated as a single descent (~ipip class).
++ */
++static const u32 fd_auto_pbe[FLOW_DISSECTOR_SHAPE__MAX] = {
++	[FLOW_DISSECTOR_SHAPE_ETH_IP] = 1920,
++	[FLOW_DISSECTOR_SHAPE_VLAN]   = 1290,
++	[FLOW_DISSECTOR_SHAPE_QINQ]   = 1100,
++	[FLOW_DISSECTOR_SHAPE_PPPOE]  = 1840,
++	[FLOW_DISSECTOR_SHAPE_MPLS]   = 6950,
++	[FLOW_DISSECTOR_SHAPE_IPIP]   = 800,
++	/* Same descent class as ipip; not separately microbenched, so
++	 * rounded up from the ipip measurement to stay conservative.
++	 */
++	[FLOW_DISSECTOR_SHAPE_GRE]    = 1000,
++};
++
++/* net.flow_dissector.auto_exclude: bitmask of shapes (by enum value) the
++ * controller must leave alone, so an operator can pin individual gates
++ * while auto manages the rest. mpls is excluded by default: its
++ * break-even is 60-70% on in-order cores (S ~ C), a net loss unless
++ * mpls is a large majority — that flip stays a deliberate operator
++ * action.
++ */
++static bool fd_auto_managed(enum flow_dissector_shape s)
++{
++	/* Whitelist: a shape this switch does not name is never
++	 * auto-managed, whatever grows the enum later (the UDP-tunnel
++	 * descent gates change hashing and must stay manual).
++	 */
++	switch (s) {
++	case FLOW_DISSECTOR_SHAPE_ETH_IP:
++	case FLOW_DISSECTOR_SHAPE_VLAN:
++	case FLOW_DISSECTOR_SHAPE_QINQ:
++	case FLOW_DISSECTOR_SHAPE_PPPOE:
++	case FLOW_DISSECTOR_SHAPE_MPLS:
++	case FLOW_DISSECTOR_SHAPE_IPIP:
++	case FLOW_DISSECTOR_SHAPE_GRE:
++		break;
++	default:
++		return false;
++	}
++
++	if (READ_ONCE(fd_auto_exclude) & BIT(s))
++		return false;
++
++	/* Enabling qinq force-enables vlan (the sysctl coupling): honour
++	 * a vlan pin by leaving qinq unmanaged while vlan is excluded.
++	 */
++	if (s == FLOW_DISSECTOR_SHAPE_QINQ &&
++	    (READ_ONCE(fd_auto_exclude) & BIT(FLOW_DISSECTOR_SHAPE_VLAN)))
++		return false;
++
++	return true;
++}
++
++static struct static_key_false *fd_auto_key(enum flow_dissector_shape s)
++{
++	switch (s) {
++	case FLOW_DISSECTOR_SHAPE_ETH_IP: return &flow_dissector_eth_ip_key;
++	case FLOW_DISSECTOR_SHAPE_VLAN:   return &flow_dissector_vlan_key;
++	case FLOW_DISSECTOR_SHAPE_QINQ:   return &flow_dissector_qinq_key;
++	case FLOW_DISSECTOR_SHAPE_PPPOE:  return &flow_dissector_pppoe_key;
++	case FLOW_DISSECTOR_SHAPE_MPLS:   return &flow_dissector_mpls_key;
++	case FLOW_DISSECTOR_SHAPE_IPIP:   return &flow_dissector_ipip_key;
++	case FLOW_DISSECTOR_SHAPE_GRE:    return &flow_dissector_gre_key;
++	default: return NULL;
++	}
++}
++
++static void fd_auto_flip(enum flow_dissector_shape s, bool on)
++{
++	struct static_key_false *k = fd_auto_key(s);
++
++	if (!k)
++		return;
++	if (on)
++		static_branch_enable(k);
++	else
++		static_branch_disable(k);
++
++	/* Respect the vlan/qinq coupling (mirrors proc_set_vlan/qinq_key):
++	 * qinq requires vlan; turning vlan off drops qinq.
++	 */
++	if (s == FLOW_DISSECTOR_SHAPE_QINQ && on)
++		static_branch_enable(&flow_dissector_vlan_key);
++	if (s == FLOW_DISSECTOR_SHAPE_VLAN && !on)
++		static_branch_disable(&flow_dissector_qinq_key);
++}
++
++static void flow_dissector_stats_totals(u64 total[FLOW_DISSECTOR_SHAPE__MAX],
++					u64 *dissects)
++{
++	int cpu, i;
++
++	memset(total, 0, sizeof(u64) * FLOW_DISSECTOR_SHAPE__MAX);
++	*dissects = 0;
++	for_each_possible_cpu(cpu) {
++		const struct flow_dissector_stats *s =
++			per_cpu_ptr(&flow_dissector_pcpu_stats, cpu);
++
++		for (i = 0; i < FLOW_DISSECTOR_SHAPE__MAX; i++)
++			total[i] += READ_ONCE(s->occurrences[i]) +
++				    READ_ONCE(s->fast_hits[i]);
++		*dissects += READ_ONCE(s->dissects);
++	}
++}
++
++/* Windowing state — file-scope so the sysctl handlers can re-baseline on
++ * an off->on transition. Touched by the single-threaded worker and by
++ * the sysctl write paths, which cancel_work_sync() before writing, so
++ * the two never run concurrently.
++ */
++static u64 fd_auto_snap_total[FLOW_DISSECTOR_SHAPE__MAX];
++static u64 fd_auto_snap_dissects;
++static u8 fd_auto_en_dwell[FLOW_DISSECTOR_SHAPE__MAX];
++static u8 fd_auto_dis_dwell[FLOW_DISSECTOR_SHAPE__MAX];
++/* Per-shape flip-rate cap: >= 1s between flips of one gate, so a
++ * traffic shift touching several shapes still adapts in one window
++ * while a crafted single-shape burst cannot force text_poke storms.
++ */
++static unsigned long fd_auto_last_flip[FLOW_DISSECTOR_SHAPE__MAX];
++
++static void flow_dissector_auto_reset(void)
++{
++	u64 dissects;
++
++	flow_dissector_stats_totals(fd_auto_snap_total, &dissects);
++	fd_auto_snap_dissects = dissects;
++	memset(fd_auto_en_dwell, 0, sizeof(fd_auto_en_dwell));
++	memset(fd_auto_dis_dwell, 0, sizeof(fd_auto_dis_dwell));
++}
++
++/* Pure per-window policy decision for one shape. Updates the dwell
++ * counters and returns +1 to enable, -1 to disable, 0 to hold. The
++ * caller applies the global flip-rate cap and clears the dwell on an
++ * actual flip, so a rate-capped decision stays pending (the dwell
++ * saturates at FD_AUTO_DWELL instead of wrapping).
++ */
++static int fd_auto_decide(u32 frac, u32 pbe, bool on,
++			  u8 *en_dwell, u8 *dis_dwell)
++{
++	u32 lo;
++
++	if (!on) {
++		*en_dwell = frac > pbe + FD_AUTO_MARGIN_HI ?
++			    min_t(u8, *en_dwell + 1, FD_AUTO_DWELL) : 0;
++		*dis_dwell = 0;
++		return *en_dwell >= FD_AUTO_DWELL ? 1 : 0;
++	}
++
++	lo = pbe > FD_AUTO_MARGIN_LO ? pbe - FD_AUTO_MARGIN_LO : 0;
++	*dis_dwell = frac < lo ?
++		     min_t(u8, *dis_dwell + 1, FD_AUTO_DWELL) : 0;
++	*en_dwell = 0;
++	return *dis_dwell >= FD_AUTO_DWELL ? -1 : 0;
++}
++
++#if IS_ENABLED(CONFIG_FLOW_DISSECTOR_KUNIT_TEST)
++/* Test-only: drive the pure policy decision with synthetic windows. */
++int flow_dissector_auto_decide_kunit(u32 frac, u32 pbe, bool on,
++				     u8 *en_dwell, u8 *dis_dwell)
++{
++	return fd_auto_decide(frac, pbe, on, en_dwell, dis_dwell);
++}
++EXPORT_SYMBOL_GPL(flow_dissector_auto_decide_kunit);
++#endif
++
++static void flow_dissector_auto_worker(struct work_struct *work)
++{
++	u64 total[FLOW_DISSECTOR_SHAPE__MAX], dissects, ddiss;
++	int i;
++
++	if (!static_key_enabled(&fd_auto_on_key))
++		return;
++
++	fd_auto_update_thresh();	/* tracks CPU hotplug lazily */
++	flow_dissector_stats_totals(total, &dissects);
++	ddiss = dissects - fd_auto_snap_dissects;
++
++	/* Decide on the delta since the last decision, never cumulative — a
++	 * cumulative ratio asymptotically freezes and stops adapting. Wait for
++	 * a full-ish window of new packets first.
++	 */
++	if (ddiss < READ_ONCE(fd_auto_window) / 2)
++		return;
++
++	for (i = 0; i < FLOW_DISSECTOR_SHAPE__MAX; i++) {
++		u64 dtot = total[i] - fd_auto_snap_total[i];
++		u32 frac;
++		int flip;
++
++		/* 64-bit per-cpu reads can tear on 32-bit; a torn read
++		 * would underflow dtot into an enormous value and drive
++		 * a spurious flip. A shape's delta can never exceed the
++		 * dissect delta, so clamp.
++		 */
++		if (dtot > ddiss)
++			dtot = ddiss;
++		frac = ddiss ? (u32)div64_u64(dtot * 10000, ddiss) : 0;
++
++		if (!fd_auto_managed(i))
++			continue;
++
++		flip = fd_auto_decide(frac, fd_auto_pbe[i],
++				      static_key_enabled(fd_auto_key(i)),
++				      &fd_auto_en_dwell[i],
++				      &fd_auto_dis_dwell[i]);
++		if (flip &&
++		    time_after(jiffies,
++			       fd_auto_last_flip[i] + FD_AUTO_FLIP_MIN_IVAL)) {
++			fd_auto_flip(i, flip > 0);
++			fd_auto_last_flip[i] = jiffies;
++			fd_auto_en_dwell[i] = 0;
++			fd_auto_dis_dwell[i] = 0;
++		}
++	}
++
++	memcpy(fd_auto_snap_total, total, sizeof(fd_auto_snap_total));
++	fd_auto_snap_dissects = dissects;
++}
++
++/* net.flow_dissector.auto — re-baseline the window on an off->on edge so
++ * the first decision measures from "now", not since boot.
++ */
++static int proc_set_auto(const struct ctl_table *table, int write,
++			 void *buffer, size_t *lenp, loff_t *ppos)
++{
++	bool was_on = static_key_enabled(&fd_auto_on_key);
++	int ret = proc_do_static_key(table, write, buffer, lenp, ppos);
++
++	if (ret || !write)
++		return ret;
++
++	/* Serialise against a running worker before touching the
++	 * windowing state; the worker does not take the sysctl mutex.
++	 */
++	cancel_work_sync(&fd_auto_work);
++	if (!was_on && static_key_enabled(&fd_auto_on_key)) {
++		fd_auto_update_thresh();
++		flow_dissector_auto_reset();
++		schedule_work(&fd_auto_work);
++	}
++	return ret;
++}
++
++/* Threshold depends on the window; dwell state belongs to the shapes the
++ * mask lets the controller manage, so both writes re-baseline.
++ */
++static int proc_set_auto_window(const struct ctl_table *table, int write,
++				void *buffer, size_t *lenp, loff_t *ppos)
++{
++	int ret = proc_douintvec_minmax(table, write, buffer, lenp, ppos);
++
++	if (!ret && write) {
++		cancel_work_sync(&fd_auto_work);
++		fd_auto_update_thresh();
++	}
++	return ret;
++}
++
++static int proc_set_auto_exclude(const struct ctl_table *table, int write,
++				 void *buffer, size_t *lenp, loff_t *ppos)
++{
++	int ret = proc_douintvec_minmax(table, write, buffer, lenp, ppos);
++
++	if (!ret && write) {
++		cancel_work_sync(&fd_auto_work);
++		memset(fd_auto_en_dwell, 0, sizeof(fd_auto_en_dwell));
++		memset(fd_auto_dis_dwell, 0, sizeof(fd_auto_dis_dwell));
++	}
++	return ret;
++}
++
+ static int __init flow_dissector_sysctl_init(void)
+ {
+ 	if (!register_net_sysctl(&init_net, "net/flow_dissector",

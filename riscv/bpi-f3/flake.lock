@@ -1,0 +1,106 @@
+{
+  "nodes": {
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1778716662,
+        "narHash": "sha256-m1Yf0wZ8j1OHjTc2UwHwyQRSnNeSgLJOd7q5Y45hzi4=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "f7c1a2d347e4c52d5fb8d10cb4d94b5884e546fb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1781074563,
+        "narHash": "sha256-md8WlXOlfnIeHeOScMTTHFyf2d6iaTwPl2apR5EQ3P4=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "opensbi-spacemit": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780627050,
+        "narHash": "sha256-KHPr56pJw2C/y8Fa8WRUUsqjNms6gHtp9VAnsTToQnE=",
+        "ref": "k1-bl-v2.2.y",
+        "rev": "34143f5f665be8b86ebb71b8085a1ade7f8b97ad",
+        "revCount": 1461,
+        "type": "git",
+        "url": "https://gitee.com/spacemit-buildroot/opensbi.git"
+      },
+      "original": {
+        "ref": "k1-bl-v2.2.y",
+        "rev": "34143f5f665be8b86ebb71b8085a1ade7f8b97ad",
+        "type": "git",
+        "url": "https://gitee.com/spacemit-buildroot/opensbi.git"
+      }
+    },
+    "root": {
+      "inputs": {
+        "flake-parts": "flake-parts",
+        "nixpkgs": "nixpkgs",
+        "opensbi-spacemit": "opensbi-spacemit",
+        "treefmt-nix": "treefmt-nix",
+        "uboot-spacemit": "uboot-spacemit"
+      }
+    },
+    "treefmt-nix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780220602,
+        "narHash": "sha256-eynAfOmbmxJnkp7YewvCEbShNnnYJ9gLLqkzsYtBPeM=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "db947814a175b7ca6ded66e21383d938df01c227",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "uboot-spacemit": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1769599337,
+        "narHash": "sha256-hYrA0lwZGn0IfzWp6CGghtPK7c85WG69Upd25ie+vbQ=",
+        "owner": "pyavitz",
+        "repo": "spacemit-u-boot",
+        "rev": "d61c8c77e241314438dce31d9ff1b1cbd9d53688",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pyavitz",
+        "ref": "k1-bl-v2.2.9-release",
+        "repo": "spacemit-u-boot",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

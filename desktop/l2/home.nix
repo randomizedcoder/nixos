@@ -182,10 +182,11 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder";
+    settings.user.email = "dave.seddon.ca@gmail.com";
+    settings.user.name = "randomizedcoder";
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
+    signing.format = null;
   };
 
   nixpkgs.config.allowUnfree = true;

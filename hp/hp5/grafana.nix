@@ -7,6 +7,9 @@
   services.grafana = {
     enable = true;
     settings = {
+      security = {
+        secret_key = "SW2YcwTIb9zpOOhoPsMm";
+      };
       server = {
         # Listening Address
         http_addr = "0.0.0.0";

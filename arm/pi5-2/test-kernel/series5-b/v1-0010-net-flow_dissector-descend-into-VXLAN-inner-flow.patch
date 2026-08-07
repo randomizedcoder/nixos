@@ -1,0 +1,542 @@
+From 35d574a2b7da4c6f14a28914af7e3b32b85b3bd5 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Thu, 9 Jul 2026 21:29:12 -0700
+Subject: [PATCH net-next v1 1/6] net: flow_dissector: descend into VXLAN inner
+ flow
+
+Opt-in, off by default, and byte-identical between the fast and slow
+paths. Enabling it changes hashing for VXLAN traffic, so it stays a
+deliberate operator choice, gated independently of the byte-identical
+fast-path knobs.
+
+Today's flow_keys_dissector stops at the outer UDP of a VXLAN packet
+(Eth + IPv4/IPv6 + UDP, dst port 4789). That collapses every inner flow
+between two VTEPs onto a single 5-tuple bucket for cake / fq / fq_codel
+fairness, RPS, RFS, ECMP -- bad for east-west traffic in k8s overlay
+deployments.
+
+This patch introduces the shared UDP-tunnel descent machinery the
+later descents build on: the flow_dissect_*_inner_ok() classifiers
+(one validator per tunnel, called by both the fast and slow paths),
+the flow_dissect_fast_udp_tunnels() dispatcher, and the slow-path
+__skb_flow_dissect_udp_encap() counterpart.
+
+Both paths grow the same descent so the "fast == slow" contract holds:
+
+  - flow_dissect_fast_ipv4() / flow_dissect_fast_ipv6() descend when
+    the outer is eth + IPv4/IPv6 + UDP (the VXLAN header does not vary
+    with the outer family, so both underlays descend the same way),
+    dst port == IANA_VXLAN_UDP_PORT (4789), enough bytes remain
+    for udphdr + vxlanhdr + ETH_HLEN, the VXLAN header is plain
+    RFC 7348 (vx_flags == VXLAN_HF_VNI: I flag set, every other flag
+    bit zero -- GBP / GPE frames keep the outer keys), and the
+    vxlan_inner static_branch is on. It routes the inner Eth +
+    IPv4/IPv6 through the shared
+    flow_dissect_fast_udp_inner() tail, which bounds the
+    MAX_FLOW_DISSECT_HDRS budget (a crafted overlay-in-overlay chain
+    must not recurse without bound, and must stop at the same depth as
+    the slow path) and stamps FLOW_DIS_ENCAPSULATION after the inner
+    pass.
+  - __skb_flow_dissect() grows the matching descent in
+    __skb_flow_dissect_udp_encap(), called after the outer UDP ports:
+    it rewrites proto/nhoff to the inner header and re-enters the loop
+    (goto proto_again), which is bounded by skb_flow_dissect_allowed().
+
+The gate is tested by the slow path through a summary static key
+(flow_dissector_udp_inner_any_key, maintained by the gates' shared
+proc handler): however many descent gates later patches add, the
+all-gates-off slow path pays exactly one not-taken branch, not one
+per tunnel type.
+
+Two mechanical enablers ride along: MAX_FLOW_DISSECT_HDRS moves above
+the fast-path helpers so the shared flow_dissect_fast_udp_inner() tail
+can use it, and the recursion helpers' inner_eth_proto parameter is
+renamed inner_proto (the GTP-U descent later in the series passes a
+bare IP protocol, not an ethertype).
+
+Because both paths descend identically, the fast path never disagrees
+with the slow path; enabling the gate is a behaviour change only versus
+today's non-descending default, not a fast-vs-slow divergence. The
+KUnit equivalence suite covers it (see the test patch).
+
+Port discovery is hardcoded to IANA_VXLAN_UDP_PORT (4789); non-standard
+VXLAN ports (e.g. Cilium's 8472) are not descended. Consulting the
+tunnel netdev for per-netns port config is left as a follow-up.
+
+Matching is by destination port alone, so with the gate on a non-VXLAN
+UDP packet sent to port 4789 is inspected -- and, if its payload
+happens to validate as VXLAN-with-inner-IP, hashed by that inner flow.
+This ambiguity is inherent to on-wire tunnel recognition and is one
+reason the gate is opt-in: an operator enables it for deployments
+where port 4789 is VXLAN by policy. The header validation above
+bounds what a spoofed payload can influence to the same flow_keys
+fields any UDP flow already influences.
+
+tc-flower tunnel matching (FLOW_DISSECTOR_KEY_ENC_*) is unaffected:
+those keys are filled from decap tunnel metadata by
+skb_flow_dissect_tunnel_info(), not by this packet-parsing descent.
+What changes is the plain 5-tuple seen by skb->hash consumers.
+
+CPU is ~net-zero (the inner work cancels the outer fast-path saving);
+the operator benefit is the inner-flow hash distribution.
+
+Assisted-by: Claude:claude-fable-5 sparse smatch
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst |  23 ++
+ include/net/flow_dissector.h             |   2 +
+ net/core/flow_dissector.c                | 274 +++++++++++++++++++++--
+ 3 files changed, 284 insertions(+), 15 deletions(-)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 2049a493c5c2..fa666b400a16 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -597,6 +597,29 @@ additional 4-byte key field read and a write to
+ 
+ Default: 0
+ 
++vxlan_inner
++~~~~~~~~~~~
++
++Descends into the VXLAN inner Eth + IPv4/IPv6 + TCP/UDP flow for
++hashing when the outer matches Eth + IPv4/IPv6 + UDP with dst port
++IANA_VXLAN_UDP_PORT (4789). When enabled, the inner 5-tuple replaces
++the outer one in struct flow_keys, and key_control->flags gets
++FLOW_DIS_ENCAPSULATION set.
++
++**Enabling this changes hashing** for VXLAN traffic: the dissector
++stops at the outer UDP header by default, so descending gives k8s
++overlays per-inner-flow fairness in cake / fq / RPS / RFS (ECMP
++multipath is unaffected: fib_multipath dissects for itself and stops
++at the encapsulation by design).
++Because it changes the hash, it is off by default and gated
++independently of the byte-identical fast-path knobs. Once on it is
++byte-identical between the fast and slow paths (the slow path grows
++the same descent), so the choice is only *whether* to descend, not
++*which* path ran. Port discovery is hardcoded to IANA_VXLAN_UDP_PORT
++(4789); non-standard VXLAN ports are not descended.
++
++Default: 0
++
+ The ``/proc/net/flow_dissector_stats`` observability file
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index b92aef8039f8..73cc7c92b2ac 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -435,6 +435,8 @@ extern struct static_key_false flow_dissector_pppoe_key;
+ extern struct static_key_false flow_dissector_mpls_key;
+ extern struct static_key_false flow_dissector_ipip_key;
+ extern struct static_key_false flow_dissector_gre_key;
++extern struct static_key_false flow_dissector_vxlan_inner_key;
++extern struct static_key_false flow_dissector_udp_inner_any_key;
+ 
+ /* Per-shape counters for /proc/net/flow_dissector_stats.
+  * occurrences[]: shape seen by the slow path (the eligible-fraction
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 15fa3301517b..219384cb9c09 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -13,6 +13,7 @@
+ #include <net/gre.h>
+ #include <net/pptp.h>
+ #include <net/tipc.h>
++#include <net/vxlan.h>
+ #include <linux/igmp.h>
+ #include <linux/icmp.h>
+ #include <linux/sctp.h>
+@@ -58,6 +59,14 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_ipip_key);
+ EXPORT_SYMBOL(flow_dissector_ipip_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_gre_key);
+ EXPORT_SYMBOL(flow_dissector_gre_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_vxlan_inner_key);
++EXPORT_SYMBOL(flow_dissector_vxlan_inner_key);
++/* Summary key: enabled while any UDP-tunnel descent key is enabled, so
++ * the slow path tests one branch however many descents exist.
++ * Maintained by the descent gates' proc handler.
++ */
++DEFINE_STATIC_KEY_FALSE(flow_dissector_udp_inner_any_key);
++EXPORT_SYMBOL(flow_dissector_udp_inner_any_key);
+ 
+ /* Per-cpu, summed on read via /proc/net/flow_dissector_stats.
+  * occurrences[]: shape handled by the slow path (with the gate off,
+@@ -109,7 +118,7 @@ static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
+ 					 struct flow_dissector *flow_dissector,
+ 					 void *target_container,
+ 					 const void *data,
+-					 __be16 inner_eth_proto,
++					 __be16 inner_proto,
+ 					 int inner_nhoff, int hlen, int num_hdrs);
+ static bool flow_dissect_fast_gre_inner(const struct sk_buff *skb,
+ 					struct flow_dissector *flow_dissector,
+@@ -123,6 +132,131 @@ static bool flow_dissect_fast_gre_inner(const struct sk_buff *skb,
+  */
+ static struct flow_dissector flow_keys_dissector_symmetric;
+ 
++/* Maximum number of protocol headers that can be parsed in
++ * __skb_flow_dissect
++ */
++#define MAX_FLOW_DISSECT_HDRS	15
++
++/* Shared tail for the UDP-tunnel inner descents (VXLAN / Geneve / GTP-U /
++ * FOU / GUE). Given the inner ethertype and inner offset, it:
++ *   - bounds the MAX_FLOW_DISSECT_HDRS budget, so a crafted overlay-in-
++ *     overlay chain neither recurses without bound (stack safety) nor
++ *     descends past the depth the slow path stops at (byte-identity);
++ *   - tail-calls the inner IPv4/IPv6 fast-path;
++ *   - stamps FLOW_DIS_ENCAPSULATION *after* the inner returns — the inner
++ *     leaf zeroes key_control->flags, so the ENCAP write must come last.
++ * Returns false (defer to the slow path) when the inner is not fast-pathable
++ * or the header budget is exhausted. UDP-tunnel descents are intentionally
++ * not per-shape counted, so no flow_dissector_count_fast() here.
++ */
++static bool flow_dissect_fast_udp_inner(const struct sk_buff *skb,
++					struct flow_dissector *flow_dissector,
++					void *target_container,
++					const void *data,
++					__be16 inner_proto,
++					int inner_nhoff, int hlen, int num_hdrs)
++{
++	struct flow_dissector_key_control *key_control;
++	bool ok;
++
++	if (++num_hdrs > MAX_FLOW_DISSECT_HDRS)
++		return false;
++
++	if (inner_proto == htons(ETH_P_IP))
++		ok = flow_dissect_fast_ipv4(skb, flow_dissector, target_container,
++					    data, inner_nhoff, hlen, num_hdrs);
++	else if (inner_proto == htons(ETH_P_IPV6))
++		ok = flow_dissect_fast_ipv6(skb, flow_dissector, target_container,
++					    data, inner_nhoff, hlen, num_hdrs);
++	else
++		return false;
++	if (!ok)
++		return false;
++
++	if (dissector_uses_key(flow_dissector, FLOW_DISSECTOR_KEY_CONTROL)) {
++		key_control = skb_flow_dissector_target(flow_dissector,
++							FLOW_DISSECTOR_KEY_CONTROL,
++							target_container);
++		key_control->flags |= FLOW_DIS_ENCAPSULATION;
++	}
++	return true;
++}
++
++/* Result of trying the UDP-tunnel descents on an outer UDP header. */
++enum flow_dissect_fast_tunnel {
++	FAST_TUNNEL_NONE,	/* no descent: the outer dissection stands */
++	FAST_TUNNEL_DISSECTED,	/* descended; inner keys written */
++	FAST_TUNNEL_DEFER,	/* would descend; inner not fast-pathable */
++};
++
++/* Tunnel classifiers, shared verbatim by the fast path and the slow
++ * path's __skb_flow_dissect_udp_encap(): each validates one tunnel
++ * header at UDP offset @thoff and returns the inner network protocol
++ * and offset. Defining the descent subset once makes fast == slow
++ * byte-identity structural rather than maintained by hand.
++ */
++static __always_inline bool
++flow_dissect_vxlan_inner_ok(const void *data, int thoff, int hlen,
++			    __be16 *inner_proto, int *inner_nhoff)
++{
++	const struct ethhdr *inner_eth;
++	const struct vxlanhdr *vxh;
++	const __be16 *udp_ports;
++
++	if (hlen - thoff < (int)(sizeof(struct udphdr) +
++				 sizeof(struct vxlanhdr) + ETH_HLEN))
++		return false;
++	udp_ports = (const __be16 *)((const u8 *)data + thoff);
++	if (udp_ports[1] != htons(IANA_VXLAN_UDP_PORT))
++		return false;
++	vxh = (const struct vxlanhdr *)
++		((const u8 *)data + thoff + sizeof(struct udphdr));
++	/* Only plain RFC 7348 VXLAN: I flag set, every other flag bit
++	 * zero (GBP / GPE keep the outer keys).
++	 */
++	if (vxh->vx_flags != VXLAN_HF_VNI)
++		return false;
++	inner_eth = (const struct ethhdr *)
++		((const u8 *)data + thoff + sizeof(struct udphdr) +
++		 sizeof(struct vxlanhdr));
++	if (inner_eth->h_proto != htons(ETH_P_IP) &&
++	    inner_eth->h_proto != htons(ETH_P_IPV6))
++		return false;
++	*inner_proto = inner_eth->h_proto;
++	*inner_nhoff = thoff + sizeof(struct udphdr) +
++		       sizeof(struct vxlanhdr) + ETH_HLEN;
++	return true;
++}
++
++/* Try the UDP-tunnel descents on an outer UDP header at @thoff. A
++ * packet the classifiers accept but the inner fast path cannot handle
++ * defers, because the slow path will descend into it.
++ */
++static enum flow_dissect_fast_tunnel
++flow_dissect_fast_udp_tunnels(const struct sk_buff *skb,
++			      struct flow_dissector *flow_dissector,
++			      void *target_container, const void *data,
++			      int thoff, int hlen, int num_hdrs, u8 family)
++{
++	__be16 inner_proto;
++	int inner_nhoff;
++
++	if (hlen - thoff < (int)sizeof(struct udphdr))
++		return FAST_TUNNEL_NONE;
++
++	if (static_branch_unlikely(&flow_dissector_vxlan_inner_key) &&
++	    flow_dissect_vxlan_inner_ok(data, thoff, hlen,
++					&inner_proto, &inner_nhoff))
++		goto descend;
++	return FAST_TUNNEL_NONE;
++
++descend:
++	return flow_dissect_fast_udp_inner(skb, flow_dissector,
++					   target_container, data, inner_proto,
++					   inner_nhoff, hlen, num_hdrs) ?
++	       FAST_TUNNEL_DISSECTED : FAST_TUNNEL_DEFER;
++}
++
+ static void dissector_set_key(struct flow_dissector *flow_dissector,
+ 			      enum flow_dissector_key_id key_id)
+ {
+@@ -1009,11 +1143,6 @@ __skb_flow_dissect_ipv6(const struct sk_buff *skb,
+ 	key_ip->ttl = iph->hop_limit;
+ }
+ 
+-/* Maximum number of protocol headers that can be parsed in
+- * __skb_flow_dissect
+- */
+-#define MAX_FLOW_DISSECT_HDRS	15
+-
+ static bool skb_flow_dissect_allowed(int *num_hdrs)
+ {
+ 	++*num_hdrs;
+@@ -1230,6 +1359,26 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 		key_ports->ports = *ports;
+ 	}
+ 
++	/* UDP-tunnel inner descents. Opt-in and off by default --
++	 * descending changes skb->hash for tunnel traffic, so enabling
++	 * any *_inner gate is a deliberate operator choice. Byte-
++	 * identical with the slow path, which descends through the same
++	 * classifiers in __skb_flow_dissect_udp_encap().
++	 */
++	if (iph->protocol == IPPROTO_UDP) {
++		switch (flow_dissect_fast_udp_tunnels(skb, flow_dissector,
++						      target_container, data,
++						      thoff, hlen, num_hdrs,
++						      AF_INET)) {
++		case FAST_TUNNEL_DISSECTED:
++			return true;
++		case FAST_TUNNEL_DEFER:
++			return false;
++		case FAST_TUNNEL_NONE:
++			break;
++		}
++	}
++
+ 	return true;
+ }
+ 
+@@ -1366,6 +1515,20 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+ 		key_ports->ports = *ports;
+ 	}
+ 
++	if (iph->nexthdr == IPPROTO_UDP) {
++		switch (flow_dissect_fast_udp_tunnels(skb, flow_dissector,
++						      target_container, data,
++						      thoff, hlen, num_hdrs,
++						      AF_INET6)) {
++		case FAST_TUNNEL_DISSECTED:
++			return true;
++		case FAST_TUNNEL_DEFER:
++			return false;
++		case FAST_TUNNEL_NONE:
++			break;
++		}
++	}
++
+ 	return true;
+ }
+ 
+@@ -1486,7 +1649,7 @@ static bool flow_dissect_fast_pppoe(const struct sk_buff *skb,
+ 		struct pppoe_hdr hdr;
+ 		__be16 proto;
+ 	} *hdr;
+-	__be16 inner_eth_proto;
++	__be16 inner_proto;
+ 	u16 ppp_proto;
+ 	bool ok;
+ 
+@@ -1499,10 +1662,10 @@ static bool flow_dissect_fast_pppoe(const struct sk_buff *skb,
+ 	ppp_proto = ntohs(hdr->proto);
+ 	switch (ppp_proto) {
+ 	case PPP_IP:
+-		inner_eth_proto = htons(ETH_P_IP);
++		inner_proto = htons(ETH_P_IP);
+ 		break;
+ 	case PPP_IPV6:
+-		inner_eth_proto = htons(ETH_P_IPV6);
++		inner_proto = htons(ETH_P_IPV6);
+ 		break;
+ 	default:
+ 		/* MPLS unicast/multicast + everything else (LCP, IPCP,
+@@ -1523,7 +1686,7 @@ static bool flow_dissect_fast_pppoe(const struct sk_buff *skb,
+ 
+ 	nhoff += PPPOE_SES_HLEN;
+ 
+-	if (inner_eth_proto == htons(ETH_P_IP))
++	if (inner_proto == htons(ETH_P_IP))
+ 		ok = flow_dissect_fast_ipv4(skb, flow_dissector,
+ 					    target_container, data,
+ 					    nhoff, hlen, 2);
+@@ -1613,7 +1776,7 @@ static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
+ 					 struct flow_dissector *flow_dissector,
+ 					 void *target_container,
+ 					 const void *data,
+-					 __be16 inner_eth_proto,
++					 __be16 inner_proto,
+ 					 int inner_nhoff, int hlen, int num_hdrs)
+ {
+ 	struct flow_dissector_key_control *key_control;
+@@ -1625,11 +1788,11 @@ static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
+ 	if (++num_hdrs > MAX_FLOW_DISSECT_HDRS)
+ 		return false;
+ 
+-	if (inner_eth_proto == htons(ETH_P_IP))
++	if (inner_proto == htons(ETH_P_IP))
+ 		ok = flow_dissect_fast_ipv4(skb, flow_dissector,
+ 					    target_container, data,
+ 					    inner_nhoff, hlen, num_hdrs);
+-	else if (inner_eth_proto == htons(ETH_P_IPV6))
++	else if (inner_proto == htons(ETH_P_IPV6))
+ 		ok = flow_dissect_fast_ipv6(skb, flow_dissector,
+ 					    target_container, data,
+ 					    inner_nhoff, hlen, num_hdrs);
+@@ -1810,6 +1973,38 @@ static bool flow_dissect_fast(const struct sk_buff *skb,
+ 	}
+ }
+ 
++/* Slow-path counterpart of flow_dissect_fast_udp_tunnels(): the same
++ * classifiers define the descent subset, so fast == slow is structural.
++ * On a match, rewrite *p_proto / *p_nhoff to the inner flow and return
++ * true; the caller re-enters the loop (bounded by
++ * skb_flow_dissect_allowed()). @thoff is the outer UDP offset, @family
++ * the outer IP family.
++ */
++static bool __skb_flow_dissect_udp_encap(const struct sk_buff *skb,
++					 struct flow_dissector_key_control *key_control,
++					 const void *data, __be16 *p_proto,
++					 int *p_nhoff, int hlen, u8 family)
++{
++	int thoff = *p_nhoff;
++	__be16 inner_proto;
++	int inner_nhoff;
++
++	if (hlen - thoff < (int)sizeof(struct udphdr))
++		return false;
++
++	if (static_branch_unlikely(&flow_dissector_vxlan_inner_key) &&
++	    flow_dissect_vxlan_inner_ok(data, thoff, hlen,
++					&inner_proto, &inner_nhoff))
++		goto descend;
++	return false;
++
++descend:
++	*p_proto = inner_proto;
++	*p_nhoff = inner_nhoff;
++	key_control->flags |= FLOW_DIS_ENCAPSULATION;
++	return true;
++}
++
+ /**
+  * __skb_flow_dissect - extract the flow_keys struct and return it
+  * @net: associated network namespace, derived from @skb if NULL
+@@ -2481,6 +2676,22 @@ bool __skb_flow_dissect(const struct net *net,
+ 		__skb_flow_dissect_ports(skb, flow_dissector, target_container,
+ 					 data, nhoff, ip_proto, hlen);
+ 
++	/* Opt-in UDP-tunnel descent, mirroring the fast path so fast == slow.
++	 * Skipped for callers stopping at/before encap (they want the outer
++	 * tuple) and for fragmented outers.
++	 */
++	if (ip_proto == IPPROTO_UDP &&
++	    fdret == FLOW_DISSECT_RET_CONTINUE &&
++	    !(key_control->flags & FLOW_DIS_IS_FRAGMENT) &&
++	    !(flags & (FLOW_DISSECTOR_F_STOP_BEFORE_ENCAP |
++		       FLOW_DISSECTOR_F_STOP_AT_ENCAP)) &&
++	    static_branch_unlikely(&flow_dissector_udp_inner_any_key) &&
++	    __skb_flow_dissect_udp_encap(skb, key_control, data, &proto, &nhoff,
++					 hlen,
++					 proto == htons(ETH_P_IP) ? AF_INET :
++								    AF_INET6))
++		fdret = FLOW_DISSECT_RET_PROTO_AGAIN;
++
+ 	/* Process result of IP proto processing */
+ 	switch (fdret) {
+ 	case FLOW_DISSECT_RET_PROTO_AGAIN:
+@@ -2991,6 +3202,32 @@ static int proc_set_qinq_key(const struct ctl_table *table, int write,
+ 	return ret;
+ }
+ 
++/* The slow path gates the UDP-tunnel descent behind one summary key
++ * (flow_dissector_udp_inner_any_key); recompute it after every
++ * individual descent-gate write.
++ */
++static void flow_dissector_udp_inner_recompute(void)
++{
++	bool any = static_key_enabled(&flow_dissector_vxlan_inner_key);
++
++	if (any != static_key_enabled(&flow_dissector_udp_inner_any_key)) {
++		if (any)
++			static_branch_enable(&flow_dissector_udp_inner_any_key);
++		else
++			static_branch_disable(&flow_dissector_udp_inner_any_key);
++	}
++}
++
++static int proc_set_udp_inner_key(const struct ctl_table *table, int write,
++				  void *buffer, size_t *lenp, loff_t *ppos)
++{
++	int ret = proc_do_static_key(table, write, buffer, lenp, ppos);
++
++	if (!ret && write)
++		flow_dissector_udp_inner_recompute();
++	return ret;
++}
++
+ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 	{
+ 		.procname	= "eth_ip",
+@@ -3041,6 +3278,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "vxlan_inner",
++		.data		= &flow_dissector_vxlan_inner_key.key,
++		.maxlen		= sizeof(flow_dissector_vxlan_inner_key),
++		.mode		= 0644,
++		.proc_handler	= proc_set_udp_inner_key,
++	},
+ };
+ 
+ static const char * const flow_dissector_shape_names[FLOW_DISSECTOR_SHAPE__MAX] = {
+@@ -3119,8 +3363,8 @@ static int __init flow_dissector_sysctl_init(void)
+ 				 flow_dissector_sysctl_table))
+ 		return -ENOMEM;
+ 
+-	/* Global (init_net) counters — matches the global gates; per-netns
+-	 * is a noted follow-up. A missing proc file is not fatal.
++	/* Global (init_net) counters — matches the global gates; per-netns is
++	 * a noted follow-up. A missing proc file is not fatal.
+ 	 */
+ 	proc_create_single("flow_dissector_stats", 0444, init_net.proc_net,
+ 			   flow_dissector_stats_show);
+-- 
+2.54.0
+

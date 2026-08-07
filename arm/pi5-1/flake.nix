@@ -1,75 +1,77 @@
 #
 # arm/pi5-1/flake.nix
 #
-# This is based on
-# https://github.com/NixOS/nixpkgs/issues/260754#issuecomment-2501839916
+# NixOS config for the Raspberry Pi 5 "pi5-1".
+# Pi-specific support (kernel, firmware, bootloader, vendor pkgs) comes from
+# nixos-raspberrypi. Modeled on ../../hp/hp5.
 #
-# My own success comment
-# https://github.com/NixOS/nixpkgs/issues/260754#issuecomment-2614122573
-#
-# https://nixos-and-flakes.thiscute.world/development/cross-platform-compilation#cross-compilation
+# Deploy onto the running installer SD card:
+#   nixos-rebuild switch --flake .#pi5-1 --target-host root@<pi-ip>
 #
 {
-  description = "Base system for raspberry pi 5";
+  description = "pi5-1 - Raspberry Pi 5";
+
+  nixConfig = {
+    extra-substituters = [
+      "https://nixos-raspberrypi.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI="
+    ];
+    connect-timeout = 5;
+  };
+
   inputs = {
-    # nixpkgs.url = "nixpkgs/nixos-unstable";
-    nixpkgs.url = "nixpkgs/nixos-24.11";
-    # nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    nixos-generators = {
-      url = "github:nix-community/nixos-generators";
-      inputs.nixpkgs.follows = "nixpkgs";
+    nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
+
+    # Keep home-manager's nixpkgs in lockstep with the one nixos-raspberrypi
+    # pins, so we get cache hits and avoid version skew.
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.11";
+      inputs.nixpkgs.follows = "nixos-raspberrypi/nixpkgs";
     };
   };
 
-  #outputs = { self, nixpkgs, nixpkgs-unstable, nixos-generators, ... }:
-  outputs = { self, nixpkgs, nixos-generators, ... }:
-  {
-    nixosModules = {
-      system = {
-        disabledModules = [
-          "profiles/base.nix"
-        ];
+  outputs =
+    inputs@{
+      self,
+      nixos-raspberrypi,
+      home-manager,
+      ...
+    }:
+    let
+      # The actual machine config, shared by the deployable system and the
+      # SD-card image below.
+      baseModules = [
+        ./configuration.nix
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.das = import ./home.nix;
+        }
+      ];
+    in
+    {
+      nixosConfigurations = {
+        # The running system. Deploy with:
+        #   nixos-rebuild switch --flake .#pi5-1 --target-host root@<pi-ip>
+        pi5-1 = nixos-raspberrypi.lib.nixosSystem {
+          specialArgs = inputs;
+          modules = baseModules;
+        };
 
-        system.stateVersion = "24.11";
-      };
-      users = {
-        users.users = {
-          das = {
-            password = "admin123";
-            isNormalUser = true;
-            extraGroups = [ "wheel" ];
-            openssh.authorizedKeys.keys = [
-              "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMCFUMSCFJX95eLfm7P9r72NBp9I1FiXwNwJ+x/HGPV das@t"
-            ];
-          };
-          brent = {
-            password = "admin123";
-            isNormalUser = true;
-            extraGroups = [ "wheel" ];
-            openssh.authorizedKeys.keys = [
-              "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBHhM04LlDK/gOItDXa2mzMof6LhXT9IBJ9liFPEn0xJ brent@mckee.is"
-            ];
-          };
+        # Same system packaged as a flashable SD-card image.
+        # `nixpkgs.buildPlatform` cross-compiles it from x86_64-linux, so it
+        # builds without binfmt/QEMU emulation. Build the image with:
+        #   nix build .#nixosConfigurations.pi5-1-sdimage.config.system.build.sdImage
+        pi5-1-sdimage = nixos-raspberrypi.lib.nixosSystem {
+          specialArgs = inputs;
+          modules = baseModules ++ [
+            nixos-raspberrypi.nixosModules.sd-image
+            { nixpkgs.buildPlatform = "x86_64-linux"; }
+          ];
         };
       };
     };
-
-    packages.aarch64-linux = {
-      sdcard = nixos-generators.nixosGenerate {
-        system = "aarch64-linux";
-        format = "sd-aarch64";
-        modules = [
-          ./configuration.nix
-          self.nixosModules.system
-          self.nixosModules.users
-          ( { ... }: {
-            config = {
-              sdImage.compressImage = false;
-            };
-          })
-        ];
-      };
-    };
-  };
 }
-

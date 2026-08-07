@@ -1,0 +1,196 @@
+From e8acbdd4692d7809b89b936c468b92d73df5e885 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Thu, 9 Jul 2026 21:29:12 -0700
+Subject: [PATCH net-next v1 2/6] net: flow_dissector: descend into Geneve
+ inner flow
+
+Opt-in, off by default, byte-identical between the fast and slow paths.
+Direct companion to vxlan_inner: same rationale (Geneve overlays hash
+on the outer UDP today, collapsing inner flows), same posture.
+
+Both paths grow the same descent:
+
+  - flow_dissect_fast_ipv4() / flow_dissect_fast_ipv6() descend when
+    the outer is eth + IPv4/IPv6 +
+    UDP, dst port == GENEVE_UDP_PORT (6081), Geneve version 0, opt_len
+    0 (no TLV options) and proto_type ETH_P_TEB, routing the inner
+    Eth + IPv4/IPv6 through the shared flow_dissect_fast_udp_inner()
+    tail (bounded, ENCAP stamped after the inner pass).
+  - __skb_flow_dissect_udp_encap() grows the matching slow-path descent
+    and re-enters the loop, bounded by skb_flow_dissect_allowed().
+
+Kept out of the descended set on both paths (so both keep the outer
+keys, and fast == slow holds): Geneve with options (opt_len > 0),
+OAM control frames (the O bit; RFC 8926 says these are not data),
+and proto_type other than ETH_P_TEB. Covered by the KUnit
+equivalence suite.
+
+CPU is ~net-zero; the operator benefit is the inner-flow hash
+distribution.
+
+Assisted-by: Claude:claude-fable-5 sparse smatch
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 24 +++++++++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 55 +++++++++++++++++++++++-
+ 3 files changed, 79 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index fa666b400a16..5e5a9b23ddf3 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -620,6 +620,30 @@ the same descent), so the choice is only *whether* to descend, not
+ 
+ Default: 0
+ 
++geneve_inner
++~~~~~~~~~~~~
++
++Descends into the Geneve inner Eth + IPv4/IPv6 + TCP/UDP flow for
++hashing when the outer matches Eth + IPv4/IPv6 + UDP with dst port
++``GENEVE_UDP_PORT`` (6081), Geneve version=0, opt_len=0 (no TLV
++options), and proto_type=``ETH_P_TEB`` (the standard transparent-
++Ethernet inner envelope used by k8s/cloud overlays). When enabled,
++the inner 5-tuple replaces the outer one in the flow_keys output,
++and key_control->flags gets FLOW_DIS_ENCAPSULATION set.
++
++**Enabling this changes hashing** for Geneve traffic -- direct
++companion to ``vxlan_inner`` above. The dissector stops at the outer
++UDP header by default; descending gives Geneve overlays per-inner-flow
++fairness in cake / fq / RPS / RFS. Because it changes the
++hash it is off by default and gated independently. Once on it is
++byte-identical between the fast and slow paths (the slow path grows
++the same descent).
++
++Kept out of the descended set (both paths keep the outer keys): Geneve
++with options (opt_len > 0), proto_type other than ETH_P_TEB (rare
++L3-Geneve variants).
++
++Default: 0
+ The ``/proc/net/flow_dissector_stats`` observability file
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 73cc7c92b2ac..e5bed0b4e204 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -436,6 +436,7 @@ extern struct static_key_false flow_dissector_mpls_key;
+ extern struct static_key_false flow_dissector_ipip_key;
+ extern struct static_key_false flow_dissector_gre_key;
+ extern struct static_key_false flow_dissector_vxlan_inner_key;
++extern struct static_key_false flow_dissector_geneve_inner_key;
+ extern struct static_key_false flow_dissector_udp_inner_any_key;
+ 
+ /* Per-shape counters for /proc/net/flow_dissector_stats.
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 219384cb9c09..0047443f1c93 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -14,6 +14,7 @@
+ #include <net/pptp.h>
+ #include <net/tipc.h>
+ #include <net/vxlan.h>
++#include <net/geneve.h>
+ #include <linux/igmp.h>
+ #include <linux/icmp.h>
+ #include <linux/sctp.h>
+@@ -61,6 +62,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_gre_key);
+ EXPORT_SYMBOL(flow_dissector_gre_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_vxlan_inner_key);
+ EXPORT_SYMBOL(flow_dissector_vxlan_inner_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_geneve_inner_key);
++EXPORT_SYMBOL(flow_dissector_geneve_inner_key);
+ /* Summary key: enabled while any UDP-tunnel descent key is enabled, so
+  * the slow path tests one branch however many descents exist.
+  * Maintained by the descent gates' proc handler.
+@@ -228,6 +231,40 @@ flow_dissect_vxlan_inner_ok(const void *data, int thoff, int hlen,
+ 	return true;
+ }
+ 
++static __always_inline bool
++flow_dissect_geneve_inner_ok(const void *data, int thoff, int hlen,
++			     __be16 *inner_proto, int *inner_nhoff)
++{
++	const struct ethhdr *inner_eth;
++	const struct genevehdr *gnv;
++	const __be16 *udp_ports;
++
++	if (hlen - thoff < (int)(sizeof(struct udphdr) +
++				 sizeof(struct genevehdr) + ETH_HLEN))
++		return false;
++	udp_ports = (const __be16 *)((const u8 *)data + thoff);
++	if (udp_ports[1] != htons(GENEVE_UDP_PORT))
++		return false;
++	gnv = (const struct genevehdr *)
++		((const u8 *)data + thoff + sizeof(struct udphdr));
++	/* Version 0, no options, no OAM (control traffic, RFC 8926
++	 * §3.1), transparent-Ethernet inner only.
++	 */
++	if (gnv->ver != 0 || gnv->opt_len != 0 || gnv->oam ||
++	    gnv->proto_type != htons(ETH_P_TEB))
++		return false;
++	inner_eth = (const struct ethhdr *)
++		((const u8 *)data + thoff + sizeof(struct udphdr) +
++		 sizeof(struct genevehdr));
++	if (inner_eth->h_proto != htons(ETH_P_IP) &&
++	    inner_eth->h_proto != htons(ETH_P_IPV6))
++		return false;
++	*inner_proto = inner_eth->h_proto;
++	*inner_nhoff = thoff + sizeof(struct udphdr) +
++		       sizeof(struct genevehdr) + ETH_HLEN;
++	return true;
++}
++
+ /* Try the UDP-tunnel descents on an outer UDP header at @thoff. A
+  * packet the classifiers accept but the inner fast path cannot handle
+  * defers, because the slow path will descend into it.
+@@ -248,6 +285,10 @@ flow_dissect_fast_udp_tunnels(const struct sk_buff *skb,
+ 	    flow_dissect_vxlan_inner_ok(data, thoff, hlen,
+ 					&inner_proto, &inner_nhoff))
+ 		goto descend;
++	if (static_branch_unlikely(&flow_dissector_geneve_inner_key) &&
++	    flow_dissect_geneve_inner_ok(data, thoff, hlen,
++					 &inner_proto, &inner_nhoff))
++		goto descend;
+ 	return FAST_TUNNEL_NONE;
+ 
+ descend:
+@@ -1996,6 +2037,10 @@ static bool __skb_flow_dissect_udp_encap(const struct sk_buff *skb,
+ 	    flow_dissect_vxlan_inner_ok(data, thoff, hlen,
+ 					&inner_proto, &inner_nhoff))
+ 		goto descend;
++	if (static_branch_unlikely(&flow_dissector_geneve_inner_key) &&
++	    flow_dissect_geneve_inner_ok(data, thoff, hlen,
++					 &inner_proto, &inner_nhoff))
++		goto descend;
+ 	return false;
+ 
+ descend:
+@@ -3208,7 +3253,8 @@ static int proc_set_qinq_key(const struct ctl_table *table, int write,
+  */
+ static void flow_dissector_udp_inner_recompute(void)
+ {
+-	bool any = static_key_enabled(&flow_dissector_vxlan_inner_key);
++	bool any = static_key_enabled(&flow_dissector_vxlan_inner_key) ||
++		   static_key_enabled(&flow_dissector_geneve_inner_key);
+ 
+ 	if (any != static_key_enabled(&flow_dissector_udp_inner_any_key)) {
+ 		if (any)
+@@ -3285,6 +3331,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_set_udp_inner_key,
+ 	},
++	{
++		.procname	= "geneve_inner",
++		.data		= &flow_dissector_geneve_inner_key.key,
++		.maxlen		= sizeof(flow_dissector_geneve_inner_key),
++		.mode		= 0644,
++		.proc_handler	= proc_set_udp_inner_key,
++	},
+ };
+ 
+ static const char * const flow_dissector_shape_names[FLOW_DISSECTOR_SHAPE__MAX] = {
+-- 
+2.54.0
+

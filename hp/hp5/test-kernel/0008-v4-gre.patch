@@ -1,0 +1,279 @@
+From a7efd58a733d427f4d08115b5c74511b17c94b8d Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Wed, 17 Jun 2026 17:34:40 -0700
+Subject: [PATCH] net: flow_dissector: add byte-identical fast-path for plain
+ GRE inner
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds flow_dissect_fast_gre_inner() — invoked from inside the existing
+v3/v4 flow_dissect_fast_ipv4/_ipv6 helpers when the outer IP's
+protocol/nexthdr is IPPROTO_GRE and the GRE gate is on.
+
+Byte-identical with the slow path's __skb_flow_dissect_gre() for the
+subset where:
+
+  - GRE version == 0 (v1 = PPTP defers to slow path)
+  - All GRE flags clear (no CSUM, KEY, SEQ, ROUTING)
+  - protocol == ETH_P_IP or ETH_P_IPV6 (no TEB, PPP, MPLS-over-GRE)
+
+In that subset, the GRE base header is exactly 4 bytes; slow path also
+descends to inner IP (sets *p_proto = hdr->protocol and returns
+PROTO_AGAIN) and stamps FLOW_DIS_ENCAPSULATION on key_control->flags.
+The fast-path produces the same output: skips the 4-byte header,
+tail-calls into the inner IP fast-path, re-establishes ENCAP on
+key_control after the inner overwrites it (same pattern as the
+IPIP family fast-path from the prior patch).
+
+Why this matters: plain GRE (no key, no checksum) is the dominant
+shape for cloud backbone tunnels (AWS GRE between regions, GCP
+inter-region overlays) and corporate site-to-site VPNs that don't
+need per-tunnel keying. The existing slow-path GRE handler does a
+__skb_header_pointer + flag-walk per packet; the fast-path saves
+that for the common case while keeping the slow path as the escape
+valve for GRE-with-flags, v1/PPTP, TEB, and PPP-over-GRE.
+
+Gated by:
+  - new DEFINE_STATIC_KEY_FALSE(flow_dissector_gre_key)
+  - new sysctl /proc/sys/net/flow_dissector/gre (default 0)
+  - static_branch_unlikely guard inside the v4/v6 helpers, on the
+    same not-TCP/UDP fall-through path as the IPIP gate (so the
+    eth_ip hot path remains unchanged when this is off)
+
+Cost when off: the not-TCP/UDP fall-through grows by one
+static_branch_unlikely check on top of the IPIP check. The TCP/UDP
+hot path is untouched.
+
+GRE-with-KEY (used in some MPLS-over-GRE and cloud-overlay
+deployments) is a natural follow-up: same descent shape with the
+optional 4-byte key field read and a write to
+FLOW_DISSECTOR_KEY_GRE_KEYID.
+
+Documentation/admin-guide/sysctl/net.rst grows a `gre` subsection
+under /proc/sys/net/flow_dissector/.
+
+Re-classification note: an earlier RFC mis-categorized GRE inner
+descent as "behaviour change" (alongside VXLAN inner). That was
+wrong — the slow path already descends through GRE, so this fast-
+path is byte-identical, not a behaviour change. It belongs in the
+Phase D byte-identical bundle, not the Phase E RFC EXPERIMENT
+bundle that contains VXLAN inner, Geneve inner, and GTP-U inner
+(those genuinely change behaviour because slow path stops at outer
+UDP for them).
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst |  25 +++++
+ include/net/flow_dissector.h             |   1 +
+ net/core/flow_dissector.c                | 111 +++++++++++++++++++++++
+ 3 files changed, 137 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 0b3d2358ee09..f8b172056848 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -599,6 +599,31 @@ that the inner IP fast-path itself would defer.
+ 
+ Default: 0
+ 
++gre
++~~~
++
++GRE-encapsulated inner IP (``IPPROTO_GRE`` 47). The fast-path
++mirrors the slow path's __skb_flow_dissect_gre() descent for the
++common subset:
++
++- GRE version 0 (the v1 PPTP variant defers to slow path)
++- All GRE flags clear (no GRE_CSUM, GRE_KEY, GRE_SEQ, GRE_ROUTING —
++  i.e. plain 4-byte GRE base header)
++- protocol field is ``ETH_P_IP`` 0x0800 or ``ETH_P_IPV6`` 0x86DD
++  (no Transparent Ethernet Bridging, no PPP-over-GRE, no MPLS-
++  over-GRE)
++
++In that subset, slow path also descends to inner IP and stamps
++``key_control->flags |= FLOW_DIS_ENCAPSULATION``; the fast-path
++produces the same output.
++
++GRE-with-KEY (common in MPLS-over-GRE deployments and some cloud
++overlays) is a follow-up patch — same descent shape with an
++additional 4-byte key field read and a write to
++``FLOW_DISSECTOR_KEY_GRE_KEYID``.
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index 65a00f3831ce..b99fde02c756 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -438,6 +438,7 @@ extern struct static_key_false flow_dissector_vxlan_inner_key;
+ extern struct static_key_false flow_dissector_pppoe_key;
+ extern struct static_key_false flow_dissector_mpls_key;
+ extern struct static_key_false flow_dissector_ipip_key;
++extern struct static_key_false flow_dissector_gre_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 25bd4c792f91..641172362904 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -58,6 +58,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_mpls_key);
+ EXPORT_SYMBOL(flow_dissector_mpls_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_ipip_key);
+ EXPORT_SYMBOL(flow_dissector_ipip_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_gre_key);
++EXPORT_SYMBOL(flow_dissector_gre_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -81,6 +83,11 @@ static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
+ 					 const void *data,
+ 					 __be16 inner_eth_proto,
+ 					 int inner_nhoff, int hlen);
++static bool flow_dissect_fast_gre_inner(const struct sk_buff *skb,
++					struct flow_dissector *flow_dissector,
++					void *target_container,
++					const void *data,
++					int nhoff, int hlen);
+ 
+ /* Forward declaration: flow_keys_dissector_symmetric is defined later
+  * in this file (it is static, not extern'd through the header). The
+@@ -1144,6 +1151,11 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 						data, htons(ETH_P_IPV6),
+ 						nhoff + (int)sizeof(*iph), hlen);
+ 		}
++		if (static_branch_unlikely(&flow_dissector_gre_key) &&
++		    iph->protocol == IPPROTO_GRE)
++			return flow_dissect_fast_gre_inner(skb, flow_dissector,
++					target_container, data,
++					nhoff + (int)sizeof(*iph), hlen);
+ 		return false;
+ 	}
+ 
+@@ -1287,6 +1299,11 @@ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+ 						data, htons(ETH_P_IPV6),
+ 						nhoff + (int)sizeof(*iph), hlen);
+ 		}
++		if (static_branch_unlikely(&flow_dissector_gre_key) &&
++		    iph->nexthdr == IPPROTO_GRE)
++			return flow_dissect_fast_gre_inner(skb, flow_dissector,
++					target_container, data,
++					nhoff + (int)sizeof(*iph), hlen);
+ 		return false;
+ 	}
+ 
+@@ -1614,6 +1631,93 @@ static bool flow_dissect_fast_ipip_inner(const struct sk_buff *skb,
+ 	return true;
+ }
+ 
++/* GRE inner descent — byte-identical with the slow path's
++ * __skb_flow_dissect_gre() for the subset where:
++ *   - version == 0 (the only common deployment; v1 = PPTP)
++ *   - flags == 0 (no GRE_CSUM, GRE_KEY, GRE_SEQ, GRE_ROUTING)
++ *   - protocol == ETH_P_IP or ETH_P_IPV6 (no Transparent Eth Bridging)
++ *
++ * In that subset, the GRE base header is exactly 4 bytes, slow path
++ * sets *p_proto = hdr->protocol and returns PROTO_AGAIN — i.e. it
++ * descends to inner IP. The fast-path mirrors that descent: skip the
++ * 4-byte GRE header, tail-call into the inner IP fast-path, stamp
++ * FLOW_DIS_ENCAPSULATION after the inner overwrites key_control.
++ *
++ * Any GRE frame with flags (CSUM/KEY/SEQ/ROUTING) or version 1 (PPTP)
++ * defers to the slow path — the byte-identical subset is the
++ * "plain GRE" deployment shape (cloud backbone tunnels, simple corp
++ * VPNs). GRE-with-KEY variants are a follow-up patch that mirror this
++ * one with the optional 4-byte key field included.
++ *
++ * FLOW_DISSECTOR_F_STOP_BEFORE_ENCAP / STOP_AT_ENCAP don't apply
++ * because the dispatcher rejects everything but F_PARSE_1ST_FRAG.
++ */
++static bool flow_dissect_fast_gre_inner(const struct sk_buff *skb,
++					struct flow_dissector *flow_dissector,
++					void *target_container,
++					const void *data,
++					int nhoff, int hlen)
++{
++	struct flow_dissector_key_control *key_control;
++	const struct gre_base_hdr *hdr;
++	__be16 inner_proto;
++	int inner_nhoff;
++	bool ok;
++
++	if (unlikely(hlen - nhoff < (int)sizeof(*hdr)))
++		return false;
++	hdr = (const struct gre_base_hdr *)((const u8 *)data + nhoff);
++
++	/* flags field carries the GRE control flags *and* the 3-bit
++	 * version in its low bits. A zero word means "no flags set
++	 * AND version 0" — the byte-identical fast subset.
++	 */
++	if (hdr->flags != 0)
++		return false;
++
++	switch (hdr->protocol) {
++	case htons(ETH_P_IP):
++		inner_proto = htons(ETH_P_IP);
++		break;
++	case htons(ETH_P_IPV6):
++		inner_proto = htons(ETH_P_IPV6);
++		break;
++	default:
++		/* ETH_P_TEB (transparent Eth bridging), PPP, MPLS-over-GRE,
++		 * etc.: defer to slow path.
++		 */
++		return false;
++	}
++
++	inner_nhoff = nhoff + (int)sizeof(*hdr);
++
++	if (inner_proto == htons(ETH_P_IP))
++		ok = flow_dissect_fast_ipv4(skb, flow_dissector,
++					    target_container, data,
++					    inner_nhoff, hlen);
++	else
++		ok = flow_dissect_fast_ipv6(skb, flow_dissector,
++					    target_container, data,
++					    inner_nhoff, hlen);
++
++	if (!ok)
++		return false;
++
++	/* Slow path sets key_control->flags |= FLOW_DIS_ENCAPSULATION
++	 * after the GRE descent. Inner fast-path zeros flags on entry,
++	 * so re-establish ENCAP after the inner returns — same pattern
++	 * as flow_dissect_fast_ipip_inner.
++	 */
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_CONTROL)) {
++		key_control = skb_flow_dissector_target(flow_dissector,
++							FLOW_DISSECTOR_KEY_CONTROL,
++							target_container);
++		key_control->flags |= FLOW_DIS_ENCAPSULATION;
++	}
++	return true;
++}
++
+ /* Top-level dispatcher: eligibility check (only the two standard
+  * dissectors and flag subset) + per-proto switch with per-shape
+  * static_branch gating. Each case's branch is a forward not-taken JMP
+@@ -2832,6 +2936,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "gre",
++		.data		= &flow_dissector_gre_key.key,
++		.maxlen		= sizeof(flow_dissector_gre_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

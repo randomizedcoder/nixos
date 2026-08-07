@@ -13,8 +13,9 @@
   services.udev.extraRules = ''
     # Intel 82599ES 10GbE - DUT interfaces for mq-cake testing
     # PCI 42:00.0 and 42:00.1
-    SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:1b:21:66:a9:80", NAME="ixgbe0"
-    SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:1b:21:66:a9:81", NAME="ixgbe1"
+    # CARD NOT INSTALLED (commented out 2026-07-05) - re-enable with the card:
+    # SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:1b:21:66:a9:80", NAME="ixgbe0"
+    # SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:1b:21:66:a9:81", NAME="ixgbe1"
 
     # Intel X710 10GbE SFP+ - Load generator interfaces
     # PCI 23:00.0 and 23:00.1

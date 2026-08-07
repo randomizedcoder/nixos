@@ -15,6 +15,7 @@
     curl
     wget
     tcpdump
+    iperf3  # series-3 flow_dissector test orchestrators drive iperf3
     iproute2
     nftables
     iptables
@@ -56,6 +57,7 @@
     jq
 
     rdma-core # ibv_devinfo, rdma
+    mstflint  # Mellanox firmware tools (mstconfig to allow third-party SFPs)
     pciutils
     libpciaccess
   ];

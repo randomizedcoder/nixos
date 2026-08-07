@@ -126,13 +126,14 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder ";
+    settings.user.email = "dave.seddon.ca@gmail.com";
+    settings.user.name = "randomizedcoder";
+    signing.format = null;
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };
 
-  nixpkgs.config.allowUnfree = true;
+  #nixpkgs.config.allowUnfree = true;  # not needed with useGlobalPkgs
 
   home.stateVersion = "24.05";
   programs.home-manager.enable = true;

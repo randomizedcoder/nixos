@@ -5,7 +5,9 @@ EXPECTED_HOSTNAME := l2
 
 ACTUAL_HOSTNAME := $(shell hostname)
 
-all: check_hostname fix_null rebuild
+all: check_hostname rebuild
+
+#all: check_hostname fix_null rebuild
 
 check_hostname:
 ifeq ($(ACTUAL_HOSTNAME),$(EXPECTED_HOSTNAME))
@@ -53,5 +55,8 @@ l2s:
 
 nix-custom:
 	nix flake update nix-custom
+
+lock:
+	scp "${EXPECTED_HOSTNAME}":/home/das/nixos/desktop/l2/flake.lock ./
 
 # end

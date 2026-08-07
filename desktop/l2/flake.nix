@@ -9,8 +9,10 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     #nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
 
-    # Local nixpkgs for testing llama-cpp module
-    nixpkgs-local.url = "path:/home/das/Downloads/nixpkgs";
+    # (removed) nixpkgs-local: the llama-cpp *packages* now come from main
+    # nixpkgs (via pkgs.path in llama-service.nix), and the multi-instance
+    # services.llama-cpp module is vendored locally as
+    # ./llama-cpp-multi-instance.nix — so no fork checkout is needed.
 
     # Custom nix with build telemetry
     nix-custom.url = "path:/home/das/Downloads/nix";
@@ -31,9 +33,27 @@
     #   url = "git+https://codeberg.org/kampka/nix-flake-crowdsec.git";
     #   inputs.nixpkgs.follows = "nixpkgs";
     # };
+
+    # WiFi TSF synchronisation — upstream mt76 PTP patches + daemon
+    tsf-sync = {
+      url = "github:randomizedcoder/tsf-sync/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # xdp2 physical-testbed NixOS module: CPU isolation, IRQ pinning,
+    # NIC tuning, hugepages, lowJitter, disableNonEssentialServices.
+    # flow-keys-compat-reorder branch (replaces the old xdp2-rs branch,
+    # which predated the xdp2.nicTuning option needed for the mlx5_core
+    # driver selection in configuration.nix). GitHub ref so the input
+    # resolves identically on l and l2 (a machine-local git+file path
+    # only exists on the host where the repo is checked out).
+    xdp2 = {
+      url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-local, disko, home-manager, nix-custom, ... }:
+  outputs = { self, nixpkgs, disko, home-manager, nix-custom, tsf-sync, xdp2, ... }@inputs:
     let
       system = "x86_64-linux";
 
@@ -62,15 +82,30 @@
       pkgs = import nixpkgs {
         inherit system;
         overlays = [
-          (final: prev:
-            let
-              ps = nix-custom.lib.makeComponents { pkgs = final; };
-            in {
-              nix = (ps.nix-everything.overrideAttrs (old: {
-                doCheck = false;
-              }));
-            }
-          )
+          # Patch rocm-runtime to fix multi-GPU init failure (fix-doorbell-type-exception)
+          # GPUs with deprecated doorbell type (e.g. gfx803/Polaris) were aborting hsa_init()
+          # for ALL devices. This patch makes them gracefully skipped instead.
+          (final: prev: {
+            rocmPackages = prev.rocmPackages.overrideScope (rfinal: rprev: {
+              rocm-runtime = rprev.rocm-runtime.overrideAttrs (old: {
+                patches = (old.patches or []) ++ [
+                  ./fix-doorbell-type-exception.patch
+                ];
+              });
+            });
+          })
+          # FIXME: nix-custom 2.35.0pre fails to build against newer lowdown
+          # (LOWDOWN_TERM_NORELLINK renamed to LOWDOWN_NORELLINK).
+          # Re-enable after updating /home/das/Downloads/nix.
+          # (final: prev:
+          #   let
+          #     ps = nix-custom.lib.makeComponents { pkgs = final; };
+          #   in {
+          #     nix = (ps.nix-everything.overrideAttrs (old: {
+          #       doCheck = false;
+          #     }));
+          #   }
+          # )
         ];
         config.allowUnfree = true;
       };
@@ -81,13 +116,16 @@
 
           inherit system;
 
-          specialArgs = { inherit nixpkgs-local; };
+          specialArgs = { inherit inputs; };
 
           modules = [
             disko.nixosModules.disko
             # CrowdSec now in nixpkgs - use services.crowdsec in configuration.nix if needed
             # crowdsec.nixosModules.crowdsec
             # crowdsec.nixosModules.crowdsec-firewall-bouncer
+            # xdp2 physical-testbed: same module hp5 uses; configured
+            # via xdp2.testbed = { ... } in configuration.nix.
+            xdp2.nixosModules.physical-testbed
             ./configuration.nix
             {
               nixpkgs.pkgs = pkgs;

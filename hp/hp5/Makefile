@@ -23,9 +23,9 @@ rebuild:
 	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
 	sudo systemctl daemon-reexec
-	sudo systemctl restart create-stream-sdp.service
-	sudo systemctl restart create-stream-m3u8.service
-	sudo systemctl restart ffmpeg-hls
+	#sudo systemctl restart create-stream-sdp.service
+	#sudo systemctl restart create-stream-m3u8.service
+	#sudo systemctl restart ffmpeg-hls
 
 
 rebuild_trace:
@@ -35,8 +35,12 @@ update:
 	sudo nix flake update;
 
 sync:
-	rsync -av /home/das/nixos/hp/hp5/ hp5:/home/das/nixos/hp/hp5/
+	rsync -avz /home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/
+	#rsync -av /home/das/nixos/hp/hp5/ hp5:/home/das/nixos/hp/hp5/
 	#rsync -av /home/das/nixos/modules/ hp5:/home/das/nixos/modules/
+
+lock:
+	scp "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/hp5/flake.lock ./
 
 nuke_k3s: check_hostname delete_k3s
 

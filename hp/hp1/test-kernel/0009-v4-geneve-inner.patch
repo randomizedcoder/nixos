@@ -1,0 +1,210 @@
+From 1ccdeb669b3412cbe4aab633c859cc8aee8c2496 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Thu, 18 Jun 2026 14:13:33 -0700
+Subject: [PATCH 1/2] net: flow_dissector: RFC EXPERIMENT: descend into Geneve
+ inner flow
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds Geneve-inner-descent fast-path block inside flow_dissect_fast_ipv4
+(mirroring the existing vxlan_inner pattern from the v3 namespace
+series). Fires when:
+
+  - flow_dissector_geneve_inner_key is on
+  - iph->protocol == IPPROTO_UDP
+  - outer UDP dst port == GENEVE_UDP_PORT (6081)
+  - Geneve version == 0, opt_len == 0 (no TLV options)
+  - Geneve proto_type == ETH_P_TEB (standard transparent-Ethernet
+    inner envelope used by k8s/cloud overlays)
+
+When all conditions match, reads the inner Ethernet header, sets
+FLOW_DIS_ENCAPSULATION on key_control->flags, and tail-calls into
+the inner IPv4 or IPv6 fast-path. The flow_keys output reflects the
+inner 5-tuple instead of the outer.
+
+**Not byte-identical with the slow path** — direct companion to the
+v3 vxlan_inner RFC EXPERIMENT. The standard flow_keys_dissector
+stops at outer UDP today; descending changes hashing for Geneve
+overlays (per-inner-flow fairness in cake / fq / fib_multipath /
+RPS), but the hash output for Geneve packets is no longer the same
+as the slow path. Operators who want byte-identical behaviour
+elsewhere can still leave this off; it has its own per-shape sysctl
+independent of the byte-identical knobs.
+
+Geneve with options (opt_len > 0), Geneve over IPv6 outer, and
+non-TEB proto_type (rare "L3-Geneve" variants used in some
+specialised SDN overlays) defer to slow path.
+
+Gated by:
+  - new DEFINE_STATIC_KEY_FALSE(flow_dissector_geneve_inner_key)
+  - new sysctl /proc/sys/net/flow_dissector/geneve_inner (default 0)
+
+Cost when off: one not-taken forward JMP on the outer-UDP fall-
+through path, same as vxlan_inner.
+
+Documentation/admin-guide/sysctl/net.rst grows a `geneve_inner`
+subsection under /proc/sys/net/flow_dissector/.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 26 +++++++++
+ include/net/flow_dissector.h             |  1 +
+ net/core/flow_dissector.c                | 71 ++++++++++++++++++++++++
+ 3 files changed, 98 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index f8b172056848..9f4bc5c97ce7 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -624,6 +624,32 @@ additional 4-byte key field read and a write to
+ 
+ Default: 0
+ 
++geneve_inner
++~~~~~~~~~~~~
++
++RFC EXPERIMENT. Descends into the Geneve inner Eth + IPv4/IPv6 +
++TCP/UDP flow for hashing when the outer matches Eth + IPv4 + UDP
++with dst port ``GENEVE_UDP_PORT`` (6081), Geneve version=0, opt_len=0
++(no TLV options), and proto_type=``ETH_P_TEB`` (the standard
++transparent-Ethernet inner envelope used by k8s/cloud overlays).
++When enabled, the inner 5-tuple replaces the outer one in the
++flow_keys output, and key_control->flags gets FLOW_DIS_ENCAPSULATION
++set.
++
++**This is a behaviour change**, not a byte-identical fast-path —
++direct companion to ``vxlan_inner`` above. The standard
++flow_keys_dissector stops at outer UDP today; descending gives
++Geneve-using overlays per-inner-flow fairness in cake / fq /
++fib_multipath / RPS, but the hash output for Geneve packets is no
++longer the same as the slow path. Gated independently of the other
++fast-path knobs.
++
++Defers to slow path for: Geneve with options (opt_len > 0), Geneve
++proto_type other than ETH_P_TEB (rare L3-Geneve variants),
++Geneve-over-IPv6 outer (only IPv4 outer is in the v4 fast subset).
++
++Default: 0
++
+ 3. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index b99fde02c756..25472428bff6 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -439,6 +439,7 @@ extern struct static_key_false flow_dissector_pppoe_key;
+ extern struct static_key_false flow_dissector_mpls_key;
+ extern struct static_key_false flow_dissector_ipip_key;
+ extern struct static_key_false flow_dissector_gre_key;
++extern struct static_key_false flow_dissector_geneve_inner_key;
+ 
+ /* struct flow_keys_digest:
+  *
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 641172362904..fc887673b931 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -14,6 +14,7 @@
+ #include <net/pptp.h>
+ #include <net/tipc.h>
+ #include <net/vxlan.h>
++#include <net/geneve.h>
+ #include <linux/igmp.h>
+ #include <linux/icmp.h>
+ #include <linux/sctp.h>
+@@ -60,6 +61,8 @@ DEFINE_STATIC_KEY_FALSE(flow_dissector_ipip_key);
+ EXPORT_SYMBOL(flow_dissector_ipip_key);
+ DEFINE_STATIC_KEY_FALSE(flow_dissector_gre_key);
+ EXPORT_SYMBOL(flow_dissector_gre_key);
++DEFINE_STATIC_KEY_FALSE(flow_dissector_geneve_inner_key);
++EXPORT_SYMBOL(flow_dissector_geneve_inner_key);
+ 
+ /* Forward declarations for the per-shape fast-path helpers, anchored
+  * at the top of the file. Subsequent patches in this series add new
+@@ -1251,6 +1254,67 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 		}
+ 	}
+ 
++	/* RFC EXPERIMENT: Geneve inner descent. NOT byte-identical with
++	 * the slow path — the standard flow_keys_dissector stops at
++	 * outer UDP today. Descending changes hashing for Geneve
++	 * overlays (cloud east-west traffic between datacenters gets
++	 * per-inner-flow fairness in cake / fq / ECMP). Same operator-
++	 * facing posture as vxlan_inner above; independently gated.
++	 *
++	 * Fast subset: Geneve version=0, opt_len=0 (no TLV options),
++	 * proto_type=ETH_P_TEB (the common transparent-Ethernet inner
++	 * envelope used by k8s/cloud overlays). Anything else defers
++	 * to slow path.
++	 */
++	if (static_branch_unlikely(&flow_dissector_geneve_inner_key) &&
++	    iph->protocol == IPPROTO_UDP &&
++	    hlen - thoff >= (int)(sizeof(struct udphdr) +
++				  sizeof(struct genevehdr) +
++				  ETH_HLEN)) {
++		const __be16 *udp_ports = (const __be16 *)
++			((const u8 *)data + thoff);
++
++		if (udp_ports[1] == htons(GENEVE_UDP_PORT)) {
++			const struct genevehdr *gnv = (const struct genevehdr *)
++				((const u8 *)data + thoff +
++				 sizeof(struct udphdr));
++
++			if (gnv->ver == 0 && gnv->opt_len == 0 &&
++			    gnv->proto_type == htons(ETH_P_TEB)) {
++				const struct ethhdr *inner_eth = (const struct ethhdr *)
++					((const u8 *)data + thoff +
++					 sizeof(struct udphdr) +
++					 sizeof(struct genevehdr));
++				__be16 inner_proto = inner_eth->h_proto;
++				int inner_nhoff = thoff +
++					sizeof(struct udphdr) +
++					sizeof(struct genevehdr) + ETH_HLEN;
++
++				if (dissector_uses_key(flow_dissector,
++						       FLOW_DISSECTOR_KEY_CONTROL)) {
++					key_control = skb_flow_dissector_target(flow_dissector,
++										FLOW_DISSECTOR_KEY_CONTROL,
++										target_container);
++					key_control->flags |= FLOW_DIS_ENCAPSULATION;
++				}
++
++				switch (inner_proto) {
++				case htons(ETH_P_IP):
++					return flow_dissect_fast_ipv4(skb, flow_dissector,
++								      target_container, data,
++								      inner_nhoff, hlen);
++				case htons(ETH_P_IPV6):
++					return flow_dissect_fast_ipv6(skb, flow_dissector,
++								      target_container, data,
++								      inner_nhoff, hlen);
++				}
++				/* Inner ethertype not fast-pathable; fall
++				 * through and keep the outer keys.
++				 */
++			}
++		}
++	}
++
+ 	return true;
+ }
+ 
+@@ -2943,6 +3007,13 @@ static struct ctl_table flow_dissector_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "geneve_inner",
++		.data		= &flow_dissector_geneve_inner_key.key,
++		.maxlen		= sizeof(flow_dissector_geneve_inner_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ };
+ 
+ static int __init flow_dissector_sysctl_init(void)
+-- 
+2.54.0
+

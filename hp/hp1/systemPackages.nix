@@ -1,11 +1,11 @@
-{
-  config,
-  pkgs,
-  ...
-}:
+{ config, pkgs, ... }:
+
 {
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
+
+  #nixpkgs.config.nvidia.acceptLicense = true;
+
   # $ nix search wget
   environment.systemPackages = with pkgs; [
   #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
@@ -16,6 +16,12 @@
     wget
     tcpdump
     iproute2
+    # Mellanox 25 GbE + XDP diagnostics — required by the xdp2 nic-tune
+    # systemd services and used by xdp2 docs/physical-testbed.md
+    # procedures. Same tooling as the hp2/hp5 (i40e) pair so the
+    # automation wrapper is identical across testbeds.
+    ethtool
+    bpftools
     nftables
     iptables
     pciutils
@@ -27,13 +33,11 @@
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp
-    neofetch
+    fastfetch
     #
     ffmpeg-full
-    radeontop  # GPU monitoring tool
-    # https://nixos.wiki/wiki/AMD_GPU#OpenCL
-    clinfo
-    #
-    bridge-utils
+    # PPPoE testing for series3-flowdis-fastpath v4 netconf-pppoe.nix
+    ppp
+    rp-pppoe
   ];
 }

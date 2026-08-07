@@ -1,5 +1,5 @@
 #
-# nixos/hp2/Makefile
+# nixos/hp/hp2/Makefile
 #
 EXPECTED_HOSTNAME := hp2
 
@@ -20,12 +20,9 @@ rebuild:
 	#sudo cp ./*.nix /etc/nixos/
 	#sudo nix-channel --update
 	#sudo nixos-rebuild switch
-	sudo nix flake update;
-	sudo nix-channel --update;
+	#sudo nix-channel --update;
 	sudo nixos-rebuild switch --flake .
-
-upgrade:
-	nixos-rebuild boot --flake . --upgrade
+	sudo systemctl daemon-reexec
 
 rebuild_trace:
 	sudo nixos-rebuild switch --show-trace --flake .
@@ -33,21 +30,20 @@ rebuild_trace:
 update:
 	sudo nix flake update;
 
-update_flake:
-	sudo nix --extra-experimental-features nix-command --extra-experimental-features flakes flake update
-
 sync:
-	rsync -av /home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/
+	rsync -avz /home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/"${EXPECTED_HOSTNAME}"/
 
-#scp hp2:/home/das/nixos/hp/hp2/flake.lock ./
-
-updateFlake:
-	scp hp2:/home/das/nixos/hp/hp2/flake.lock ./
+lock:
+	scp "${EXPECTED_HOSTNAME}":/home/das/nixos/hp/hp2/flake.lock ./
 
 nuke_k3s: check_hostname delete_k3s
 
-delete k3s:
+delete_k3s:
 	sudo rm -rf /var/lib/rancher/k3s/ /etc/rancher/k3s
 	k3s-killall.sh
+
+systemd:
+	sudo systemctl daemon-reload
+	sudo systemctl stop k3s.service
 
 # end

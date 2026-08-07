@@ -43,8 +43,24 @@ let
   #
   models = {
     code = {
-      # Qwen2.5-Coder: top-tier coding, matches GPT-4o on HumanEval
-      large = { hfRepo = "bartowski/Qwen2.5-Coder-32B-Instruct-GGUF"; hfFile = "Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf"; }; # 19.85GB
+      # Qwen3-30B-A3B-Instruct-2507 — the qwen that ACTUALLY tool-calls through the
+      # pinned llama.cpp (b9503) OpenAI-compat endpoint with `--jinja`. Verified live on
+      # the MI50 (Vulkan): a write_file request returns structured `tool_calls` with the
+      # correct `arguments` key — exactly what agent-seddon (OpenAI-compat) consumes.
+      #
+      # Why NOT the Coder variant: Qwen3-*Coder*-30B emits its tool calls in the custom
+      # `<function=…><parameter=…>` XML format, and the parser for that format postdates
+      # our pinned llama.cpp b9503 — so `--jinja` returns `tool_calls: null` and the agent
+      # writes no files (empirically confirmed on this exact build). Qwen3-*Instruct* uses
+      # the standard `<tool_call>`-wrapped JSON that b9503 parses today. To go back to the
+      # Coder you must bump llama.cpp to a build carrying the `<function=>` parser (a
+      # nixpkgs flake bump — bigger blast radius), then re-verify tool_calls.
+      #
+      # Instruct-2507 is a strong general 30B-A3B MoE (good, if not specialist, at code)
+      # and is ALREADY in the MI50 cache. ~18GB at Q4_K_M — fits 32GB with KV headroom.
+      #   history: Qwen2.5-Coder-32B (great coder, bare-JSON tool calls, unparseable);
+      #            Qwen3-Coder-30B (custom XML tool calls, needs newer llama.cpp).
+      large = { hfRepo = "unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF"; hfFile = "Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"; }; # ~18GB, tool-calls on b9503
       small = { hfRepo = "bartowski/Qwen2.5-Coder-7B-Instruct-GGUF";  hfFile = "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf"; };  # 4.68GB
       cpu   = { hfRepo = "bartowski/Qwen2.5-Coder-7B-Instruct-GGUF";  hfFile = "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf"; };  # 4.68GB
     };
@@ -85,12 +101,12 @@ let
   #  system = "x86_64-linux";
   #  config.allowUnfree = true;
   #};
-  # 2026-06-14: re-import the flake's nixpkgs (via pkgs.path) so
-  # llama-cpp picks up ROCm 7.2.3 from main nixpkgs. NOTE: this
-  # re-import does NOT carry flake.nix's rocm-runtime doorbell-type
-  # overlay — but gfx803 (WX 2100) is masked off below via
-  # ROCR_VISIBLE_DEVICES, so the unpatched HSA path is never hit
-  # by either llama-cpp instance.
+  # NOTE (2026-07-05): the doorbell overlay was REMOVED — it was the wrong fix.
+  # The WX2100 (gfx803) is physically gone (display is now an NVIDIA P620), and
+  # the actual crash is a SIGSEGV at HIP `getDeviceKernel` during model warmup
+  # (see coredump), i.e. ROCm 7.2.3's runtime cannot launch kernels on the
+  # legacy gfx906 (MI50) / gfx1010 (W5700) GPUs. Fix is a ROCm rollback or a
+  # switch to the Vulkan backend — see docs/pipeline notes.
   rocmPkgs = import pkgs.path {
     system = "x86_64-linux";
     config.allowUnfree = true;
@@ -101,6 +117,14 @@ let
     system = "x86_64-linux";
     config.allowUnfree = true;
   };
+
+  # Vulkan (RADV) llama.cpp for the MI50 (gfx906). ROCm 7.2.3 SIGSEGVs at HIP
+  # getDeviceKernel on gfx906 (see the note above + ollama-service.nix), so the
+  # GPU instances must NOT use the ROCm package on this card. The Vulkan backend
+  # drives the DRM render node directly and WORKS on gfx906 — this is the same
+  # backend ollama-vulkan uses for the MI50. Select the card with
+  # GGML_VK_VISIBLE_DEVICES (index 1 = MI50; index 0 = the P620 display GPU).
+  vulkanLlamaCpp = pkgs.llama-cpp.override { vulkanSupport = true; };
 
   cpuInstances = builtins.listToAttrs (map (i: {
     name = "cpu-${toString i}";
@@ -125,11 +149,18 @@ in {
 
   services.llama-cpp.instances = {
 
-    # MI50: 32GB VRAM — uses "large" model from selected mode
+    # MI50: 32GB VRAM — uses "large" model from selected mode, over VULKAN (not ROCm,
+    # which crashes on gfx906). `jinja = "on"` enables llama.cpp's chat-template tool
+    # parsing so the OpenAI-compat endpoint returns structured tool_calls — the whole
+    # point of moving the coder here (ollama's /v1 parser can't do it for qwen).
+    #
+    # GPU SHARING: the MI50 is also driven by ollama-vulkan (ollama-service.nix). The
+    # 32GB holds ONE ~18-20GB coder at a time — so with llama.cpp resident here, keep
+    # ollama to embeddings/small (its KEEP_ALIVE unloads idle models). Running a big
+    # model on BOTH at once will OOM the card.
     mi50 = {
       enable = true;
-      package = rocmPkgs.llama-cpp;
-      rocmGpuTargets = [ "gfx906" ];
+      package = vulkanLlamaCpp;
 
       host = "0.0.0.0";
       port = 8095;
@@ -138,26 +169,17 @@ in {
       enableMetrics = true;
       openFirewall = true;
 
+      # `--jinja` turns on llama.cpp's chat-template tool-call parsing (there is no
+      # dedicated `jinja` instance option — it goes through extraFlags).
+      extraFlags = [ "--jinja" ];
+
       inherit (selected.large) hfRepo hfFile;
-      environment.ROCR_VISIBLE_DEVICES = "1";
+      # Select the MI50 (Vulkan index 1); exclude the P620 display GPU (index 0).
+      environment.GGML_VK_VISIBLE_DEVICES = "1";
     };
 
-    # W5700: 8GB VRAM — uses "small" model from selected mode
-    w5700 = {
-      enable = true;
-      package = rocmPkgs.llama-cpp;
-      rocmGpuTargets = [ "gfx1010" ];
-
-      host = "0.0.0.0";
-      port = 8096;
-      contextSize = 8192;
-      flashAttention = "on";
-      enableMetrics = true;
-      openFirewall = true;
-
-      inherit (selected.small) hfRepo hfFile;
-      environment.ROCR_VISIBLE_DEVICES = "0";
-    };
-
-  } // cpuInstances;
+    # W5700 (gfx1010) instance removed — the card was faulty and has been pulled.
+    # CPU instances (`cpuInstances`) are not wired in: this host's only job here is
+    # the MI50 Vulkan coder above. Re-add `// cpuInstances` to bring them back.
+  };
 }

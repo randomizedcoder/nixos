@@ -7,7 +7,9 @@
 // vendoring — it's a tiny JSON parser sufficient for Claude Code's shape.
 //
 // Output format:
-//   <profile> <dir> [<branch>] | c:USED%/REMAIN% [| s:USED%/REMAIN%] [| <model> [<effort>]]
+//   <profile> <dir> [<branch>] | c:<K>k:USED%/REMAIN% [| s:USED%/REMAIN% [<reset>]] [| <model> [<effort>]]
+//   <K>k    = tokens currently in the context window (input+output), rounded to nearest 1k
+//   <reset> = time until the 5-hour rate-limit window resets, e.g. 2h13m / 45m
 //
 // Palettes (see claude.nix for the rationale):
 //   context (c): green / orange / red   at <50 / <80 / >=80
@@ -17,6 +19,11 @@
 
 use std::io::{self, BufWriter, Read, Write};
 use std::fs;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+// Force the context (c:) segment red once it reaches this many thousand tokens,
+// regardless of percentage. Warns before the 200k mark where per-token cost jumps.
+const CTX_TOKEN_WARN_K: i64 = 180;
 
 // ---------- tiny JSON ----------
 
@@ -222,6 +229,22 @@ fn pick<'a>(pct: i64, low: &'a str, mid: &'a str, high: &'a str) -> &'a str {
     }
 }
 
+// Time until the rate-limit window resets, "2h13m" or "45m". None if past/absent.
+fn fmt_reset(resets_at: i64) -> Option<String> {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs() as i64;
+    let secs = resets_at - now;
+    if secs <= 0 {
+        return None;
+    }
+    let mins = secs / 60;
+    let (h, m) = (mins / 60, mins % 60);
+    Some(if h > 0 {
+        format!("{h}h{m}m")
+    } else {
+        format!("{m}m")
+    })
+}
+
 fn tier_abbrev(s: &str) -> String {
     match s {
         "max" => "max".into(),
@@ -268,10 +291,32 @@ fn main() {
         .and_then(|v| v.as_f64())
         .unwrap_or(100.0) as i64;
 
+    // Tokens currently in the context window (input + output), rounded to nearest 1k.
+    let ctx_tokens_k = {
+        let cw = root.get("context_window");
+        let ti = cw
+            .and_then(|w| w.get("total_input_tokens"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        let to = cw
+            .and_then(|w| w.get("total_output_tokens"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        ((ti + to + 500.0) / 1000.0) as i64
+    };
+
     let sess_used_opt: Option<i64> = root
         .get("rate_limits")
         .and_then(|r| r.get("five_hour"))
         .and_then(|f| f.get("used_percentage"))
+        .and_then(|v| v.as_f64())
+        .map(|n| n as i64);
+
+    // Unix epoch seconds when the 5-hour window resets (for the reset countdown).
+    let sess_resets_at: Option<i64> = root
+        .get("rate_limits")
+        .and_then(|r| r.get("five_hour"))
+        .and_then(|f| f.get("resets_at"))
         .and_then(|v| v.as_f64())
         .map(|n| n as i64);
 
@@ -328,7 +373,11 @@ fn main() {
     const YELLOW: &str = "\x1b[33m";
     const DIM: &str = "\x1b[2m";
 
-    let ctx_color = pick(ctx_used, CTX_LOW, CTX_MID, CTX_HIGH);
+    let ctx_color = if ctx_tokens_k >= CTX_TOKEN_WARN_K {
+        CTX_HIGH
+    } else {
+        pick(ctx_used, CTX_LOW, CTX_MID, CTX_HIGH)
+    };
 
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
@@ -341,12 +390,15 @@ fn main() {
     }
     let _ = write!(
         out,
-        " | {ctx_color}c:{ctx_used}%/{ctx_remain}%{RESET}"
+        " | {ctx_color}c:{ctx_tokens_k}k:{ctx_used}%/{ctx_remain}%{RESET}"
     );
     if let Some(sess_used) = sess_used_opt {
         let sess_remain = 100 - sess_used;
         let sc = pick(sess_used, SESS_LOW, SESS_MID, SESS_HIGH);
         let _ = write!(out, " | {sc}s:{sess_used}%/{sess_remain}%{RESET}");
+        if let Some(rs) = sess_resets_at.and_then(fmt_reset) {
+            let _ = write!(out, " {DIM}{rs}{RESET}");
+        }
     } else if let Some(tier) = read_subscription_tier() {
         let _ = write!(out, " | {DIM}{tier}{RESET}");
     }

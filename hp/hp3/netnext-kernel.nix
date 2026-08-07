@@ -26,8 +26,8 @@
 let
   netNextSeries4 = builtins.fetchGit {
     url = "file:///home/das/Downloads/net-next";
-    ref = "series5-a";
-    rev = "c9908e2809c0fd6c29a0ca054e4d90c3988fe959";
+    ref = "series5-rfc";
+    rev = "4c8e094ee8879a7bed7860718694c12a8894da50";
   };
 in
 linuxPackagesFor (linux_testing.override {

@@ -117,6 +117,11 @@
     git
     htop
     tree
+    # perf matched to the running kernel — needed for the xdp2 Phase G
+    # cpu-bound matrix orchestrator's `perf stat -p <ksoftirqd PIDs>`
+    # call. Without this on PATH the orchestrator returns empty
+    # cycles/ins/branches columns for every pi5 cell.
+    config.boot.kernelPackages.perf
   ];
 
   services.lldpd.enable = true;

@@ -14,6 +14,15 @@
   services.home-assistant = {
     enable = true;
 
+    # Custom (non-core) integrations packaged in nixpkgs. OpenSprinkler has no
+    # built-in HA integration; this is the vinteo/hass-opensprinkler component
+    # (normally a HACS install) provided declaratively. Configure the actual
+    # controller afterwards in the UI: Settings -> Devices & Services ->
+    # Add Integration -> OpenSprinkler (host/IP + API password).
+    customComponents = with pkgs.home-assistant-custom-components; [
+      opensprinkler
+    ];
+
     # package = (pkgs.home-assistant.override {
     #   extraPackages = py: with py; [ psycopg2 ];
     # }).overrideAttrs (oldAttrs: {
@@ -29,7 +38,14 @@
       # Components required to complete the onboarding
       "esphome"
       "homekit"
-      #"met"
+      # Met.no weather. Enabling the component only makes the integration
+      # available; the "Home" weather instance is config-flow (no YAML), so add
+      # it once in the UI: Settings -> Devices & Services -> Add Integration -> Met.no.
+      "met"
+      # Open-Meteo weather. Free, no API key/account. Config-flow: enabling the
+      # component here lets the UI "Add Integration -> Open-Meteo" flow load;
+      # it uses your HA home location. A key-free second source alongside Met.no.
+      "open_meteo"
       "radio_browser"
       "tuya"
       "wemo"
@@ -42,7 +58,11 @@
       "scrape"
       "sensor"
       "smartthings"
-      "openweathermap"
+      # Flume water meter (cloud API). Config-flow only: adding it here registers
+      # the handler so the UI "Add Integration -> Flume" flow works. Needs Flume
+      # portal creds: username, password, Client ID, Client Secret (Flume account
+      # -> API access / "Personal API tokens").
+      "flume"
       "samsungtv"
       "prometheus"
       "roborock"
@@ -98,12 +118,65 @@
       # Includes dependencies for a basic setup
       # https://www.home-assistant.io/integrations/default_config/
       default_config = {};
+
+      # Time-based automations fire in Home Assistant's local time zone, so pin
+      # it explicitly to Pacific to match "16:30 local".
+      homeassistant.time_zone = "America/Los_Angeles";
+
       recorder = {
         db_url = "postgresql://@/hass";
         purge_keep_days = 3650;
         auto_purge = true;
         auto_repack = true;
       };
+
+      # Declarative automations (version-controlled in this repo).
+      # https://www.home-assistant.io/docs/automation/
+      # ZHA switches a1..a5 (verified in .storage/core.entity_registry).
+      # a1/a2/a5 share the evening on/off schedule via a single target list;
+      # a3/a4 (TVs) have their own weekly power-cycle further down.
+      automation = [
+        {
+          alias = "BlueLight A1/A2/A5 - ON 16:30";
+          trigger = [{ platform = "time"; at = "16:30:00"; }];
+          action = [{
+            action = "switch.turn_on";
+            target.entity_id = [ "switch.a1" "switch.a2" "switch.a5" ];
+          }];
+        }
+        {
+          alias = "BlueLight A1/A2/A5 - OFF 22:30";
+          trigger = [{ platform = "time"; at = "22:30:00"; }];
+          action = [{
+            action = "switch.turn_off";
+            target.entity_id = [ "switch.a1" "switch.a2" "switch.a5" ];
+          }];
+        }
+
+        # switch.a3 / switch.a4 power TVs with buggy firmware that hang after ~a
+        # week. Power-cycle them weekly (Wed 04:00 off -> 04:05 on) to force a
+        # clean reinit. Two independent time triggers rather than one automation
+        # with a 5-minute delay, so a HA restart in between can't leave a TV
+        # powered off. The TVs stay off when power returns (no auto-power-on).
+        {
+          alias = "A3/A4 TV - weekly power-cycle OFF (Wed 04:00)";
+          trigger = [{ platform = "time"; at = "04:00:00"; }];
+          condition = [{ condition = "time"; weekday = [ "wed" ]; }];
+          action = [{
+            action = "switch.turn_off";
+            target.entity_id = [ "switch.a3" "switch.a4" ];
+          }];
+        }
+        {
+          alias = "A3/A4 TV - weekly power-cycle ON (Wed 04:05)";
+          trigger = [{ platform = "time"; at = "04:05:00"; }];
+          condition = [{ condition = "time"; weekday = [ "wed" ]; }];
+          action = [{
+            action = "switch.turn_on";
+            target.entity_id = [ "switch.a3" "switch.a4" ];
+          }];
+        }
+      ];
     };
   };
 

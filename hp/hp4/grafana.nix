@@ -29,6 +29,10 @@
         admin_email = "admin@localhost";
         # Disable initial admin creation to prevent password resets
         disable_initial_admin_creation = false;
+        # secret_key lost its default in nixpkgs 26.05. This is the old built-in
+        # default, hard-coded here since this DB holds no secrets needing protection.
+        # For a real secret, use a file-provider: secret_key = "$__file{/path}";
+        secret_key = "SW2YcwTIb9zpOOhoPsMm";
       };
 
       # User settings

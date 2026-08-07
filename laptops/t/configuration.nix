@@ -68,9 +68,15 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
-  # Pinned to linuxPackages_latest so t matches hp1/hp2/hp3/hp5/chromebox1
-  # (xdp2 docs/physical-testbed.md §3, §16).
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # linuxPackages_latest + the 3 series-3 flow_dissector fast-path
+  # patches as a kernelPatches overlay. See ./test-kernel/default.nix
+  # for the patch list + rationale. To revert to stock, swap the
+  # block below back to `boot.kernelPackages = pkgs.linuxPackages_latest;`
+  # (xdp2 docs/physical-testbed.md §3, §16; series 3:
+  # xdp2 kernel-patches/series3-flowdis-fastpath/v1-netdev/).
+  boot.kernelPackages =
+    let customKernel = pkgs.callPackage ./test-kernel { };
+    in pkgs.linuxPackagesFor customKernel;
 
   # Blacklist nouveau just in case — the NVIDIA Quadro T2000 is still
   # physically present and nouveau likes to grab it. Without nouveau the

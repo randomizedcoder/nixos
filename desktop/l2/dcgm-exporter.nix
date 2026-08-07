@@ -26,8 +26,46 @@
 
 let
   port = 9400;
+
+  # dcgm-exporter's prerequisite check (internal/pkg/prerequisites/
+  # dcgmlib_rule.go) runs `/sbin/ldconfig -p`, scans the output for
+  # `libdcgm.so.4`, opens that path, and verifies the ELF arch matches
+  # the running binary. If the lib isn't listed, the exporter exits 1
+  # before serving any metrics.
+  #
+  # On Ubuntu the ld.so.cache lists it; NixOS doesn't populate
+  # /etc/ld.so.cache at all, so real `ldconfig -p` is empty and the
+  # check fails. This shim emits exactly the one line the validator
+  # needs (pointing at the nix-store libdcgm.so.4 symlink) and falls
+  # through to the real ldconfig for anything else.
+  ldconfigShim = pkgs.writeShellScript "ldconfig-dcgm-shim" ''
+    if [ "$1" = "-p" ]; then
+      printf '1 libs found in cache (nix shim)\n'
+      printf '\tlibdcgm.so.4 (libc6,x86-64) => %s\n' \
+        ${pkgs.dcgm}/lib/libdcgm.so.4
+      exit 0
+    fi
+    exec ${pkgs.glibc.bin}/bin/ldconfig "$@"
+  '';
 in
 {
+  # Install the shim as /sbin/ldconfig. Activation-time symlink (L+
+  # overwrites any prior content) so each rebuild repoints at the
+  # newest shim store path.
+  systemd.tmpfiles.rules = [
+    "L+ /sbin/ldconfig - - - - ${ldconfigShim}"
+  ];
+
+  # The exporter falls back to /etc/dcgm-exporter/default-counters.csv
+  # if no --collectors flag is given, and exits 1 if that file is
+  # missing. nixpkgs' prometheus-dcgm-exporter builds the Go binary
+  # only — the etc/ directory from upstream isn't installed. Pull the
+  # CSV straight from the same fetched source so it stays version-
+  # matched to the binary across nixpkgs bumps.
+  # Upstream fix tracked at NVIDIA/dcgm-exporter#684.
+  environment.etc."dcgm-exporter/default-counters.csv".source =
+    "${pkgs.prometheus-dcgm-exporter.src}/etc/default-counters.csv";
+
   systemd.services.dcgm-exporter = {
     description = "NVIDIA DCGM Prometheus exporter (embedded hostengine)";
     after = [ "network.target" "systemd-modules-load.service" ];

@@ -64,12 +64,15 @@ let
       # Context percentages come through as pre-calculated integers/floats.
       # Session (5-hour rate limit) is only present for Pro/Max after the first
       # API response; fall back to empty and handle below.
-      IFS=$'\t' read -r PROJECT_DIR CTX_USED_PCT CTX_REMAIN_PCT SESS_USED_PCT MODEL_NAME EFFORT_LVL < <(
+      IFS=$'\t' read -r PROJECT_DIR CTX_USED_PCT CTX_REMAIN_PCT TOTAL_IN TOTAL_OUT SESS_USED_PCT SESS_RESETS_AT MODEL_NAME EFFORT_LVL < <(
         echo "$input" | jq -r '[
           (.workspace.project_dir // "unknown"),
           (.context_window.used_percentage // 0 | tostring),
           (.context_window.remaining_percentage // 100 | tostring),
+          (.context_window.total_input_tokens // 0 | tostring),
+          (.context_window.total_output_tokens // 0 | tostring),
           (.rate_limits.five_hour.used_percentage // "" | tostring),
+          (.rate_limits.five_hour.resets_at // "" | tostring),
           (.model.display_name // .model.id // "" | tostring),
           (.effort.level // "" | tostring)
         ] | @tsv'
@@ -78,6 +81,11 @@ let
       # Integer percentages (strip any decimal)
       CTX_USED="''${CTX_USED_PCT%%.*}"
       CTX_REMAIN="''${CTX_REMAIN_PCT%%.*}"
+
+      # Tokens currently in the context window (input+output), rounded to nearest 1k.
+      TOTAL_IN="''${TOTAL_IN%%.*}"
+      TOTAL_OUT="''${TOTAL_OUT%%.*}"
+      CTX_TOK_K=$(( (TOTAL_IN + TOTAL_OUT + 500) / 1000 ))
 
       # Profile from CLAUDE_CONFIG_DIR basename; "default" if unset/non-profile.
       PROFILE="default"
@@ -115,6 +123,12 @@ let
       }
 
       CTX_COLOR=$(color_for_pct "$CTX_USED" "$CTX_LOW" "$CTX_MID" "$CTX_HIGH")
+      # Force red once context reaches CTX_TOKEN_WARN_K thousand tokens, regardless
+      # of percentage — warns before the 200k mark where per-token cost jumps.
+      CTX_TOKEN_WARN_K=180
+      if [ "$CTX_TOK_K" -ge "$CTX_TOKEN_WARN_K" ]; then
+        CTX_COLOR="$CTX_HIGH"
+      fi
 
       DIR_NAME="''${PROJECT_DIR##*/}"
 
@@ -151,6 +165,23 @@ let
         SESS_COLOR=$(color_for_pct "$SESS_USED" "$SESS_LOW" "$SESS_MID" "$SESS_HIGH")
         SESS_SEGMENT=$(printf ' | %bs:%d%%/%d%%%b' \
           "$SESS_COLOR" "$SESS_USED" "$SESS_REMAIN" "$RESET")
+
+        # Time until the 5-hour window resets, "2h13m" / "45m". Omit if past/absent.
+        RESETS_AT="''${SESS_RESETS_AT%%.*}"
+        if [ -n "$RESETS_AT" ]; then
+          _secs=$(( RESETS_AT - $(date +%s) ))
+          if [ "$_secs" -gt 0 ]; then
+            _mins=$(( _secs / 60 ))
+            _h=$(( _mins / 60 ))
+            _m=$(( _mins % 60 ))
+            if [ "$_h" -gt 0 ]; then
+              _reset="''${_h}h''${_m}m"
+            else
+              _reset="''${_m}m"
+            fi
+            SESS_SEGMENT=$(printf '%s %b%s%b' "$SESS_SEGMENT" "$DIM" "$_reset" "$RESET")
+          fi
+        fi
       fi
 
       # Branch segment
@@ -168,11 +199,11 @@ let
         fi
       fi
 
-      printf '%b%s%b %b%s%b%b | %bc:%s%%/%s%%%b%b%b' \
+      printf '%b%s%b %b%s%b%b | %bc:%sk:%s%%/%s%%%b%b%b' \
         "$MAGENTA" "$PROFILE" "$RESET" \
         "$CYAN" "$DIR_NAME" "$RESET" \
         "$BRANCH_SEGMENT" \
-        "$CTX_COLOR" "$CTX_USED" "$CTX_REMAIN" "$RESET" \
+        "$CTX_COLOR" "$CTX_TOK_K" "$CTX_USED" "$CTX_REMAIN" "$RESET" \
         "$SESS_SEGMENT" \
         "$MODEL_SEGMENT"
     '';

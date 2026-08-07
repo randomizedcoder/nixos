@@ -1,6 +1,6 @@
-# pi4-2 - Raspberry Pi 4
+# pi3-1 - Raspberry Pi 3
 
-NixOS config for the Raspberry Pi 4 "pi4-2". Pi-specific support (kernel,
+NixOS config for the Raspberry Pi 3 "pi3-1". Pi-specific support (kernel,
 firmware, bootloader, vendor packages) comes from
 [nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi).
 
@@ -15,8 +15,8 @@ The image is cross-compiled from x86_64 to aarch64, so it builds on an
 ordinary PC with no binfmt/QEMU emulation.
 
 ```sh
-cd ~/nixos/arm/pi4-2
-nix build .#nixosConfigurations.pi4-2-sdimage.config.system.build.sdImage
+cd ~/nixos/arm/pi3-1
+nix build .#nixosConfigurations.pi3-1-sdimage.config.system.build.sdImage
 ```
 
 The result is a compressed image under `result/sd-image/`:
@@ -64,12 +64,12 @@ There are two ways in, split by where you log in from:
   `das@t` key. Password auth over SSH is disabled.
 
 ```sh
-ssh root@pi4-2.local
+ssh root@pi3-1.local
 # or
-ssh das@pi4-2.local
+ssh das@pi3-1.local
 ```
 
-mDNS is enabled, so `pi4-2.local` should resolve on the LAN. If it does not,
+mDNS is enabled, so `pi3-1.local` should resolve on the LAN. If it does not,
 find the Pi's IP from the console (`ip -brief address show`) or your DHCP
 server / router and use that instead.
 
@@ -83,14 +83,14 @@ Once the Pi is running you do not need to re-flash for changes. Edit the
 config and push a new generation over SSH:
 
 ```sh
-cd ~/nixos/arm/pi4-2
-nixos-rebuild switch --flake .#pi4-2 --target-host root@pi4-2.local
+cd ~/nixos/arm/pi3-1
+nixos-rebuild switch --flake .#pi3-1 --target-host root@pi3-1.local
 ```
 
 ## Files
 
-- `flake.nix` - flake inputs and the two outputs (`pi4-2` deploy config,
-  `pi4-2-sdimage` image build).
+- `flake.nix` - flake inputs and the two outputs (`pi3-1` deploy config,
+  `pi3-1-sdimage` image build).
 - `configuration.nix` - the machine config (hardware, filesystems, users,
   services).
 - `home.nix` - home-manager config for the `das` user.

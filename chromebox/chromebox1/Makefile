@@ -64,8 +64,25 @@ vmtest:
 	sudo nix flake lock;
 	nix run github:numtide/nixos-anywhere -- -f '.#chromebox1' --vm-test
 
+# sync — rsync this host's config to the target.
+#
+# IMPORTANT: the .git/ directory MUST be synced too. This repo uses
+# `nix flake` / `nixos-rebuild --flake` on the target, and Nix flake
+# source resolution walks up to the nearest .git/ and uses only
+# git-tracked files when staging the source into /nix/store. A
+# nixos-rebuild on the target without an up-to-date .git/ will:
+#   - silently skip any newly-added files (Nix can't see them)
+#   - fail with "path '/nix/store/.../chromebox/<host>/<file>' does
+#     not exist" if configuration.nix imports a file that's on disk
+#     but untracked in the target's local git index
+#
+# We sync only THIS host's subdir + .git/, not the other hosts'
+# subdirs, to keep the per-host blast radius small. `git status` on
+# the target will report other hosts' files as deleted — that's
+# expected and harmless because nothing on this host references them.
 sync:
 	rsync -avz /home/das/nixos/chromebox/"${EXPECTED_HOSTNAME}"/ "${EXPECTED_HOSTNAME}":/home/das/nixos/chromebox/"${EXPECTED_HOSTNAME}"/
+	rsync -avz /home/das/nixos/.git/ "${EXPECTED_HOSTNAME}":/home/das/nixos/.git/
 
 lock:
 	scp "${EXPECTED_HOSTNAME}":/home/das/nixos/chromebox/chromebox1/flake.lock ./

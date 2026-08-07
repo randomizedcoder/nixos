@@ -19,16 +19,22 @@
     api.port = 8082;
     api.allowFrom = [ "127.0.0.1" "::1" ];
 
-    # Configure DNS settings for proper DNSSEC validation
+    # DNSSEC validation defaults to "validate" via services.pdns-recursor.dnssecValidation.
+    #
+    # Recursor 5.x uses structured YAML: settings map 1:1 to recursor.yml sections
+    # (with underscore-style keys), so the old flat settings must be nested.
+    # https://doc.powerdns.com/recursor/yamlsettings.html
     settings = {
-      # Enable DNSSEC validation
-      dnssec = "validate";
-      # Set query local address to enable IPv6 for outgoing queries
-      query-local-address = "::";
-      # Disable security polling to avoid external queries
-      security-poll-suffix = "";
-      # Configure forward zones for specific domains if needed
-      # forward-zones = "example.com=172.16.50.1";
+      outgoing = {
+        # Enable IPv6 for outgoing queries. In Recursor 5.x YAML the old
+        # query-local-address setting is outgoing.source_address.
+        source_address = [ "::" ];
+      };
+      recursor = {
+        # Disable security polling to avoid external queries (was security-poll-suffix)
+        security_poll_suffix = "";
+      };
+      # Configure forward zones under recursor.forward_zones if needed
     };
 
     # Export /etc/hosts entries
@@ -36,6 +42,22 @@
 
     # Serve RFC1918 reverse zones locally
     serveRFC1918 = true;
+
+    # This recursor only knows public DNS, so local ".home" names (served by the
+    # gateway/DHCP resolver at 172.16.50.1) don't resolve on hp4 -- e.g.
+    # opensprinkler.home. Forward the "home" zone to the gateway (recurse form
+    # sets the recursion-desired bit, since the gateway is itself a resolver).
+    forwardZonesRecurse = {
+      "home" = "172.16.50.1";
+    };
+
+    # The gateway's "home" zone is unsigned, but this recursor validates DNSSEC,
+    # so it rejects those answers as bogus (SERVFAIL, EDE 12 "NSEC Missing").
+    # A negative trust anchor tells the recursor to treat "home" as insecure
+    # (skip validation) rather than fail it.
+    luaConfig = ''
+      addNTA("home", "local unsigned zone served by the gateway")
+    '';
   };
 
   # Systemd service configuration for pdns-recursor with resource limits
@@ -62,7 +84,10 @@
   # Configure system to use local pdns-recursor
   #networking.nameservers = [ "::1" "127.0.0.1" ];
   networking.nameservers = [ "172.16.50.1" ];
-  networking.resolvconf.useLocalResolver = true;
+  # We manage /etc/resolv.conf directly below, so resolvconf must be disabled
+  # (nixpkgs now asserts against having both). useLocalResolver is redundant
+  # since the manual file already points at the local recursor.
+  networking.resolvconf.enable = false;
 
   environment.etc."resolv.conf".text = ''
     # pdns

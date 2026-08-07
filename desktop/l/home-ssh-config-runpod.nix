@@ -42,11 +42,18 @@
     # (Host 100.* below) forwards through it. Dev uses dev-runpod-jump instead
     # (see the DEV fleet block below).
     Host runpod-jump
-      Hostname 44.197.169.91
-      User ubuntu
+      Hostname doc-ssh1.runpod.io
+      User rp_das
       IdentityFile ~/.ssh/id_ed25519_runpod
       IdentitiesOnly yes
       ProxyJump vpn-jump
+      # Auto-add the jump's host key on first connect instead of prompting. The
+      # jump moves IPs/hosts periodically (e.g. the 2026-07-29 migration off the
+      # stale ubuntu@44.197.169.91 to rp_das@doc-ssh1.runpod.io), and since fleet
+      # ssh runs without a tty an unknown-host prompt surfaces as a blocking GUI
+      # askpass pop-up (and fleet-socks-up dies "Host key verification failed").
+      # accept-new still REFUSES a changed key. Matches vpn-jump above.
+      StrictHostKeyChecking accept-new
       # See vpn-jump above for the multiplex-on-jump-host rationale.
       # This is the inner proxy; every prod fleet ssh forwards through it.
       ControlMaster no
@@ -63,11 +70,14 @@
     # collapses at -P 40 over the VPN. Full rationale + measurements:
     # runpod/fleet-snapshots scripts/fleet-snapshot/README.md "SOCKS fast path".
     Host fleet-socks
-      Hostname 44.197.169.91
-      User ubuntu
+      Hostname doc-ssh1.runpod.io
+      User rp_das
       IdentityFile ~/.ssh/id_ed25519_runpod
       IdentitiesOnly yes
       ProxyJump vpn-jump
+      # See runpod-jump above: auto-add the jump host key so a moved jump never
+      # blocks fleet-socks-up with a GUI host-key pop-up / verification failure.
+      StrictHostKeyChecking accept-new
       ControlMaster no
       ControlPath none
       ExitOnForwardFailure yes
@@ -208,6 +218,34 @@
       IdentityFile ~/.ssh/id_ed25519_runpod
       IdentitiesOnly yes
       ProxyJump hivejump
+      StrictHostKeyChecking accept-new
+
+    # -- AI API fleet (DigitalOcean) -----------------------------------------
+    # The prod-aiapi-* droplets in NYC3 / AMS3. PUBLIC IPs, reached DIRECTLY
+    # from l -- NOT through the NordLayer VPN (verified 2026-07-27: :22 is open
+    # direct). Auth as root@ with the runpod ed25519 key.
+    #   ssh prod-aiapi-nyc3-1
+    Host prod-aiapi-nyc3-1
+      Hostname 68.183.60.53
+    Host prod-aiapi-nyc3-2
+      Hostname 165.22.32.103
+    Host prod-aiapi-nyc3-3
+      Hostname 68.183.50.64
+    Host prod-aiapi-nyc3-4
+      Hostname 134.209.45.206
+    Host prod-aiapi-ams3-1
+      Hostname 167.99.209.173
+    Host prod-aiapi-ams3-2
+      Hostname 164.92.150.36
+    Host prod-aiapi-ams3-3
+      Hostname 188.166.48.83
+    Host prod-aiapi-ams3-4
+      Hostname 167.172.36.196
+
+    Host prod-aiapi-nyc3-* prod-aiapi-ams3-*
+      User root
+      IdentityFile ~/.ssh/id_ed25519_runpod
+      IdentitiesOnly yes
       StrictHostKeyChecking accept-new
   '';
 

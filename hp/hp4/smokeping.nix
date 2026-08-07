@@ -56,21 +56,28 @@ let
       title = "Internet Connectivity Monitoring";
       menu = "Internet Connectivity";
       targets = {
+        # Public services are resolved by hostname so we track their rotating
+        # anycast addresses instead of pinning stale IPs (a hardcoded Google IP
+        # went dark and showed 100% loss). Family is forced via the probe.
         "Google_IPv4" = {
           name = "Google.com IPv4";
-          host = "142.250.190.78";
+          host = "google.com";
+          probe = "FPing4";
         };
         "Google_IPv6" = {
           name = "Google.com IPv6";
-          host = "2607:f8b0:4007:811::200e";
+          host = "google.com";
+          probe = "FPing6";
         };
         "Facebook_IPv6" = {
           name = "Facebook IPv6";
-          host = "2a03:2880:f10d:183:face:b00c:0:25de";
+          host = "facebook.com";
+          probe = "FPing6";
         };
         "Yahoo_IPv6" = {
           name = "Yahoo IPv6";
-          host = "2001:4998:24:120d::1:0";
+          host = "yahoo.com";
+          probe = "FPing6";
         };
         "crowncastle-ic-386848" = {
           name = "crowncastle-ic-386848";
@@ -201,7 +208,7 @@ host = ${target.host}${lib.optionalString (target ? lookup) "\nlookup = ${target
 
   # Generate the complete target configuration
   targetConfig = ''
-probe = FPing
+probe = FPingAuto
 
 menu = Top
 title = Network Latency Grapher
@@ -251,6 +258,18 @@ in {
     probeConfig = ''
       + FPing
       binary = ${config.security.wrapperDir}/fping
+
+      # fping 5.x is a single binary for both address families. These sub-probes
+      # let us force the family per target: a bare hostname otherwise defaults to
+      # IPv4, which would silently mislabel the IPv6 graphs. Literal-IP targets
+      # use FPingAuto (fping detects the family from the address itself).
+      ++ FPingAuto
+
+      ++ FPing4
+      protocol = 4
+
+      ++ FPing6
+      protocol = 6
 
       # https://oss.oetiker.ch/smokeping/probe/Curl.en.html
       + Curl
@@ -375,6 +394,13 @@ in {
   # Enhanced smokeping service configuration with security measures
   # systemd-analyze security smokeping
   systemd.services.smokeping = {
+    # smokeping's pre-start resolves target hostnames and runs a `dig` timing
+    # probe against the local resolver (::1), so it must start after
+    # pdns-recursor is up. Without this it loses the boot-time race and fails
+    # once before systemd's auto-restart brings it up.
+    after = [ "pdns-recursor.service" "network-online.target" ];
+    wants = [ "pdns-recursor.service" "network-online.target" ];
+
     serviceConfig = {
       # Resource limits
       Slice = "smokeping.slice";

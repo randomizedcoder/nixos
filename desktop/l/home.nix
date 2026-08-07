@@ -371,7 +371,7 @@
     # # Java for Android development
     # jdk17
 
-    nordic
+    # nordic # removed from nixpkgs: depended on gtk-engine-murrine (unmaintained, GTK2)
     gnome-themes-extra
     #gnome-shell-extensions
 
@@ -398,7 +398,7 @@
     gnomeExtensions.tray-icons-reloaded
     gnomeExtensions.vitals
     gnomeExtensions.dash-to-panel
-    gnomeExtensions.sound-output-device-chooser
+    # gnomeExtensions.sound-output-device-chooser # removed from nixpkgs: lack of upstream maintenance
     gnomeExtensions.space-bar
     # https://github.com/AstraExt/astra-monitor
     gnomeExtensions.astra-monitor

@@ -58,6 +58,7 @@ let
     "10.33.0.0/24"     # LADC-Seddon
     "10.35.0.0/24"     # Seddon-MGMT
     "20.200.10.0/24"   # LADC-MNC-DMZ
+    "10.241.10.0/24"   # Dave's VLAN 401 — Supermicro server data ports
     # 10.10.250.0/24 is already pushed by MNC-LADC's own split-tunnel.
     # These are all ASA-connected subnets; MNC-LADCPolicy has no vpn-filter, so
     # the ASA forwards them. A route that the ASA won't NAT-exempt simply won't
@@ -238,6 +239,7 @@ in
         nftables
         bind      # dig, host
         curl
+        ipmitool  # BMC/IPMI over LAN (UDP/623) — SOL console + power to the Supermicros
         less
         vim
       ];

@@ -18,7 +18,7 @@
 
     recommendedProxySettings = true;
     recommendedTlsSettings = true;
-    recommendedZstdSettings = true;
+    experimentalZstdSettings = true;
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
     recommendedBrotliSettings = true;

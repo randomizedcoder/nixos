@@ -130,13 +130,14 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder ";
+    settings.user.email = "dave.seddon.ca@gmail.com";
+    settings.user.name = "randomizedcoder ";
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };
 
-  nixpkgs.config.allowUnfree = true;
+  # allowUnfree is set at the system level; home-manager uses useGlobalPkgs so
+  # setting nixpkgs.config here has no effect (and warns in newer home-manager).
 
   programs.home-manager.enable = true;
   home.stateVersion = "24.11";

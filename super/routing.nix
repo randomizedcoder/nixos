@@ -16,7 +16,7 @@
 # Design + rationale: ../nfb-ladc-asa01/bird-bgp-design.md. Per-node values are derived
 # from the hostname, so this file is identical on every node (super-a->.10 ... super-d->.13).
 #
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   octet =
@@ -27,7 +27,8 @@ let
   selfIp     = "10.241.10.${toString octet}";  # this node's BGP source / router-id
   torLf07    = "10.241.10.2";                   # lf07 Vlan401 SVI (eBGP peer)
   torLf08    = "10.241.10.3";                   # lf08 Vlan401 SVI (eBGP peer)
-  vrrpVip    = "10.241.10.1";                   # VLAN401 gateway = static fallback next-hop
+  vrrpVipA   = "10.241.10.1";                   # VLAN401 VRRP VIP-A (lf07 master) — fallback nexthop
+  vrrpVipB   = "10.241.10.4";                   # VLAN401 VRRP VIP-B (lf08 master) — fallback nexthop
   anycastVip = "10.241.10.20";                  # anycast service VIP (advertised via BGP)
   localAs    = 65200;                            # this node's (server) ASN
   torAs      = 65100;                            # the ToRs' ASN
@@ -206,9 +207,27 @@ ${blackholeRoutes}
     "net.ipv4.conf.all.arp_announce"     = 2;   # use best local source in ARP
   };
 
-  # Static fallback default via the VRRP VIP, high metric so BGP's ECMP default wins when
-  # BIRD is up. This is what makes internet/VPN work WITHOUT BGP (boot / BIRD down).
-  networking.interfaces."bond0.401".ipv4.routes = [
-    { address = "0.0.0.0"; prefixLength = 0; via = vrrpVip; options.metric = "4000"; }
-  ];
+  # Fallback default route — ECMP across BOTH VLAN401 VRRP VIPs (.1 = lf07-master,
+  # .4 = lf08-master), so the no-BGP / boot path also spreads node->ToR flows across both
+  # ToRs. Metric 4000 so BGP's native ECMP default (via .2/.3, `merge paths`) wins whenever
+  # BIRD is up. Linux can't ECMP two same-metric default routes added separately, so this is
+  # ONE multipath route installed by a oneshot (scripted networking can't express multipath
+  # in networking.interfaces.routes). Retries until bond0.401 is ready.
+  systemd.services.nfb-fallback-default = {
+    description = "ECMP fallback default via both VLAN401 VRRP VIPs (.1 + .4)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    script = ''
+      for _ in $(seq 1 30); do
+        ${pkgs.iproute2}/bin/ip route replace default metric 4000 \
+          nexthop via ${vrrpVipA} dev bond0.401 \
+          nexthop via ${vrrpVipB} dev bond0.401 && exit 0
+        sleep 2
+      done
+      echo "nfb-fallback-default: bond0.401 not ready after 60s" >&2
+      exit 1
+    '';
+  };
 }

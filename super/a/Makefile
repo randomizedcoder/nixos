@@ -1,2 +1,44 @@
-all:
-	scp 172.16.40.135:/etc/nixos/* ./
+# super-a deploy helper. Per-node vars only:
+NAME = a
+HOST = 10.241.10.10
+
+EXPECTED_HOSTNAME := super-$(NAME)
+ACTUAL_HOSTNAME := $(shell hostname)
+
+# --- from your WORKSTATION ---
+# Refresh the self-contained copies of the shared modules from the canonical ../ versions,
+# then push the whole node dir to the remote ~/nixos/super/<NAME>/.
+sync:
+	cp ../networking.nix ../routing.nix ./
+	rsync -av --exclude '*.2026_*' --exclude 'result' ./ das@$(HOST):nixos/super/$(NAME)/
+
+# Push, then flake-switch over SSH. NOTE: the network restart mid-switch will close this
+# SSH session — that's cosmetic, the switch still completes. Prefer `make local` over SOL.
+rebuild: sync
+	ssh -t das@$(HOST) 'sudo nixos-rebuild switch --flake /home/das/nixos/super/$(NAME)#super --option extra-experimental-features "nix-command flakes"'
+
+# --- run ON the node itself (e.g. over the SOL console) ---
+# No SSH session to drop during the network restart. Hostname-guarded so you can't switch
+# the wrong machine's config.
+local: check_hostname
+	sudo nixos-rebuild switch --flake .#super --option extra-experimental-features "nix-command flakes"
+
+check_hostname:
+ifeq ($(ACTUAL_HOSTNAME),$(EXPECTED_HOSTNAME))
+	@echo "Hostnames match: $(ACTUAL_HOSTNAME)"
+else
+	@echo "Error: Hostname does not match. Expected: $(EXPECTED_HOSTNAME), Got: $(ACTUAL_HOSTNAME)"
+	@exit 1
+endif
+
+# Build only (no switch, no root) — for testing.
+build:
+	nix build .#nixosConfigurations.super.config.system.build.toplevel --no-link
+
+# DNS band-aid — run ON the node if /etc/resolv.conf has no nameservers and you need to fetch.
+dns:
+	printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' | sudo tee /etc/resolv.conf
+
+# Pull the live hardware-configuration.nix back (per-node; changes if disks change).
+pull-hw:
+	scp das@$(HOST):/etc/nixos/hardware-configuration.nix ./hardware-configuration.nix

@@ -32,6 +32,12 @@ let
   localAs    = 65200;                            # this node's (server) ASN
   torAs      = 65100;                            # the ToRs' ASN
 
+  # TCP-MD5 session authentication (same secret must be set on lf07/lf08's BGP neighbor
+  # config, or the sessions won't authenticate — see bird-bgp-design.md). This lives in
+  # the nix store (world-readable) and in git; acceptable for this internal fabric. Move
+  # to agenix/sops-nix if you later want it out of the store. REPLACE the placeholder.
+  bgpPassword = "REPLACE-WITH-SHARED-BGP-SECRET";
+
   # AS-path prepends added to the anycast advertisement. 2 on every node today, so all
   # servers advertise an equal (length-3) path and the ToRs ECMP evenly. This is a steering
   # lever for later: LOWER a node's count to PREFER it (shorter AS-path wins), RAISE it to
@@ -41,6 +47,19 @@ let
     }.${config.networking.hostName} or 2;
   prependStmts =
     lib.concatStrings (builtins.genList (_: "bgp_path.prepend(${toString localAs}); ") prependCount);
+
+  # --- RTBH blackhole list (see rtbh-blackhole-design.md) ---
+  # Always-on canary + any persistent bad-actor /32s advertised for the ToRs to drop
+  # (source RTBH via loose uRPF). The canary's PRESENCE as Null0 on the ToRs proves the
+  # whole pipeline end-to-end once BGP is up. High-rate / emergency drops go via the
+  # kernel-666 fast-path (`ip route add blackhole <ip>/32 table 666`), not this list.
+  blackholeList = [
+    "192.0.2.66/32"     # CANARY (RFC 5737 TEST-NET-1) — safe, always-on pipeline check
+    # Add VERIFIED bad-actor /32s below (from real threat intel — never a guessed block):
+    # "203.0.113.7/32"
+  ];
+  blackholeRoutes =
+    lib.concatMapStringsSep "\n" (p: "        route ${p} blackhole;") blackholeList;
 in
 {
   # LLDP so the node shows up in the ToRs' neighbour tables (and we can see the ToRs).
@@ -53,6 +72,10 @@ in
     config = ''
       router id ${selfIp};
       log syslog all;
+
+      # Dedicated table for kernel-injected blackholes (Linux table 666); piped into
+      # master4 below. Kept separate so it doesn't clash with the main kernel syncer.
+      ipv4 table blackhole4;
 
       # ============================ Route policy ============================
       # Belt-and-braces filtering on BOTH ToR sessions. To advertise/accept more,
@@ -83,6 +106,10 @@ in
           240.0.0.0/4+         # reserved (incl. 255.255.255.255 broadcast)
       ];
 
+      # RTBH guardrail: prefixes we must NEVER blackhole (our own space / infra). Extend
+      # with any network you can't afford to accidentally drop.
+      define PROTECTED = [ 10.241.10.0/24+, 10.240.10.0/24+ ];
+
       # Inbound: deny bogons first, accept only expected prefixes, else default-deny.
       filter tor_in {
         if net ~ BOGONS   then reject;
@@ -92,6 +119,14 @@ in
       # Outbound: advertise only what we originate (with AS-path prepends for steering
       # headroom — see prependCount above), else deny.
       filter tor_out {
+        # RTBH: a locally-injected blackhole route -> tag BLACKHOLE (RFC 7999) + advertise,
+        # but ONLY host routes (/32) and NEVER our own protected space (anti-footgun).
+        if dest = RTD_BLACKHOLE then {
+          if net.len != 32 then reject;
+          if net ~ PROTECTED then reject;
+          bgp_community.add((65535, 666));
+          accept;
+        }
         if net ~ ORIGINATE then { ${prependStmts}accept; }
         reject;
       }
@@ -111,16 +146,50 @@ in
         merge paths on;        # ECMP: one default with both ToR next-hops
       }
 
-      # eBGP to each ToR — filtered both ways (see tor_in / tor_out above).
-      protocol bgp tor_lf07 {
-        local ${selfIp} as ${toString localAs};
-        neighbor ${torLf07} as ${toString torAs};
-        ipv4 { import filter tor_in; export filter tor_out; };
+      # RTBH sources (advertise-only; NOT installed in this node's FIB, since the main
+      # kernel proto above exports only RTS_BGP). See rtbh-blackhole-design.md.
+      #   (A) declarative list: canary + persistent bad actors (from blackholeList).
+      protocol static blackhole_src {
+        ipv4;
+${blackholeRoutes}
       }
-      protocol bgp tor_lf08 {
-        local ${selfIp} as ${toString localAs};
+      #   (B) operational fast-path: pull blackholes from Linux table 666, so
+      #   `ip route add blackhole <ip>/32 table 666` advertises instantly (no rebuild).
+      #   Imports into a dedicated table, then a pipe copies blackholes into master4.
+      protocol kernel bh_inject {
+        learn;                 # import routes BIRD didn't originate (the injected blackholes)
+        kernel table 666;
+        ipv4 { table blackhole4; import all; export none; };
+      }
+      protocol pipe bh_pipe {
+        table master4;
+        peer table blackhole4;
+        import where dest = RTD_BLACKHOLE;   # blackhole4 -> master4 (advertise), blackholes only
+        export none;                          # nothing master4 -> blackhole4
+      }
+
+      # eBGP to each ToR — filtered both ways (see tor_in / tor_out above).
+      # Session options (Tier 1 — see bird-bgp-design.md). Tier 2 (BFD, ttl security)
+      # is documented there and can be enabled later alongside the matching ToR config.
+      template bgp tor {
+        local as ${toString localAs};
+        password "${bgpPassword}";   # TCP-MD5 (needs the same secret on the ToR)
+        graceful restart on;         # keep forwarding across a BIRD restart
+        check link on;               # drop the session immediately if bond0.401 loses carrier
+        enforce first as on;         # reject routes whose AS-path doesn't start with the ToR's AS
+        ipv4 {
+          import filter tor_in;
+          import keep filtered on;   # retain rejected routes for `birdc show route filtered`
+          export filter tor_out;
+        };
+      }
+      protocol bgp tor_lf07 from tor {
+        source address ${selfIp};
+        neighbor ${torLf07} as ${toString torAs};
+      }
+      protocol bgp tor_lf08 from tor {
+        source address ${selfIp};
         neighbor ${torLf08} as ${toString torAs};
-        ipv4 { import filter tor_in; export filter tor_out; };
       }
     '';
   };

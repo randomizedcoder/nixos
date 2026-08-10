@@ -7,8 +7,9 @@
 #   * BIRD (bird3) eBGP to BOTH ToRs (lf07 .2 / lf08 .3), AS65200 -> AS65100:
 #       - IMPORT only the default (0.0.0.0/0) and install it ECMP (both next-hops) in the
 #         kernel, per-flow hashed;
-#       - EXPORT only the anycast service VIP 10.241.10.20/32.
-#   * The anycast VIP on loopback (so the host answers for it; advertised by BIRD).
+#       - EXPORT the anycast service VIP 10.241.10.20/32 + this node's PUBLIC /32s (its own
+#         unicast + the shared public anycast) — see ../nfb-ladc-asa01/public-ip-anycast-design.md.
+#   * The anycast VIP + public /32s on loopback (so the host answers for them; advertised by BIRD).
 #   * A low-preference STATIC fallback default via the VRRP VIP .1 (metric 4000) so that
 #     internet/VPN work WITHOUT BGP — used at boot and whenever BIRD is down. BGP's ECMP
 #     default (lower metric) wins whenever it is up.
@@ -29,7 +30,18 @@ let
   torLf08    = "10.241.10.3";                   # lf08 Vlan401 SVI (eBGP peer)
   vrrpVipA   = "10.241.10.1";                   # VLAN401 VRRP VIP-A (lf07 master) — fallback nexthop
   vrrpVipB   = "10.241.10.4";                   # VLAN401 VRRP VIP-B (lf08 master) — fallback nexthop
-  anycastVip = "10.241.10.20";                  # anycast service VIP (advertised via BGP)
+  anycastVip = "10.241.10.20";                  # internal anycast service VIP (advertised via BGP)
+
+  # Public /32s — DAVE-namespaced (see ../nfb-ladc-asa01/public-ip-anycast-design.md).
+  #   davePublicUnicast : this node's own public IP (only this node originates it).
+  #   davePublicAnycast : shared public anycast (every node originates it -> ECMP at the ToRs).
+  davePublicUnicast =
+    { "super-a" = "160.72.197.234"; "super-b" = "160.72.197.235";
+      "super-c" = "160.72.197.236"; "super-d" = "160.72.197.237"; }
+    .${config.networking.hostName}
+      or (throw "routing.nix: no public /32 for hostname '${config.networking.hostName}' — add it to davePublicUnicast");
+  davePublicAnycast = "160.72.197.238";
+
   localAs    = 65200;                            # this node's (server) ASN
   torAs      = 65100;                            # the ToRs' ASN
 
@@ -82,8 +94,14 @@ in
       # Belt-and-braces filtering on BOTH ToR sessions. To advertise/accept more,
       # just add a prefix to ORIGINATE / ACCEPT_IN below — the filters pick it up.
 
-      # OUTBOUND allow-list: exactly what this node originates. Today: the anycast VIP.
-      define ORIGINATE = [ ${anycastVip}/32 ];
+      # OUTBOUND allow-list(s): exactly what this node originates.
+      #   ORIGINATE   = the internal anycast service VIP.
+      #   DAVE_PUBLIC = the public /32s (this node's unicast + the shared public anycast).
+      # Kept as TWO sets, combined with `||` at each use-site below: BIRD does not allow a set
+      # constant to be nested inside another set literal (`[ x/32, DAVE_PUBLIC ]` is a syntax
+      # error), so we can't fold them into one. Add a prefix to either set to advertise more.
+      define ORIGINATE   = [ ${anycastVip}/32 ];
+      define DAVE_PUBLIC = [ ${davePublicUnicast}/32, ${davePublicAnycast}/32 ];
 
       # INBOUND allow-list: exactly what we expect to receive. Today: the default only.
       define ACCEPT_IN = [ 0.0.0.0/0 ];
@@ -128,17 +146,18 @@ in
           bgp_community.add((65535, 666));
           accept;
         }
-        if net ~ ORIGINATE then { ${prependStmts}accept; }
+        if net ~ ORIGINATE || net ~ DAVE_PUBLIC then { ${prependStmts}accept; }
         reject;
       }
       # ======================================================================
 
       protocol device { }
 
-      # Pick up the anycast VIP from loopback so BGP can advertise it (VIP only, not 127/8).
+      # Pick up the originated addresses from loopback so BGP can advertise them. The match
+      # (ORIGINATE || DAVE_PUBLIC) is exactly the VIP + public /32s we put on lo (not 127/8).
       protocol direct {
         interface "lo";
-        ipv4 { import where net = ${anycastVip}/32; };
+        ipv4 { import where net ~ ORIGINATE || net ~ DAVE_PUBLIC; };
       }
 
       # Install ONLY BGP-learned routes (the ECMP default) into the kernel FIB.
@@ -218,7 +237,9 @@ ${blackholeRoutes}
   # Anycast VIP on loopback: the host answers for it; the ToRs reach it via the BGP
   # next-hop (this node's .x), so it never needs to ARP on the L2.
   networking.interfaces.lo.ipv4.addresses = [
-    { address = anycastVip; prefixLength = 32; }
+    { address = anycastVip;        prefixLength = 32; }
+    { address = davePublicUnicast; prefixLength = 32; }   # this node's public unicast /32
+    { address = davePublicAnycast; prefixLength = 32; }   # shared public anycast /32
   ];
 
   boot.kernel.sysctl = {

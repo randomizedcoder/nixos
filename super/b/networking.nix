@@ -19,13 +19,17 @@ let
     .${config.networking.hostName}
       or (throw "networking.nix: no VLAN401 IP for hostname '${config.networking.hostName}' — add it to vlan401Octet");
 
-  # MTU: 9000 jumbo on the interface (both leaves now carry the network-qos JUMBO policy,
-  # so the L2 ports are 9216). This gives east-west (node<->node, L2-switched) jumbo frames.
-  # North-south is NOT sent at 9000: routing.nix pins the BGP/fallback DEFAULT route to
-  # krt_mtu/mtu 1500, so off-subnet traffic is capped at 1500 at the source (the ASA is 1500)
-  # while the connected 10.241.10.0/24 route keeps the full 9000. host IP-MTU 9000 + 14 eth
-  # + 4 tag = 9018 < the 9216 fabric ceiling.
-  mtu = 9000;
+  # MTU layering — the switch L2 port MTU is 9216 (network-qos JUMBO + per-port `mtu 9216`):
+  #   underlayMtu (slaves + bond0) = 9216 — matches the Nexus `mtu 9216`; leaves room for the tag.
+  #   ipMtu (bond0.401)            = 9198 — the IP MTU. VLAN-tagged wire frame = 9198 + 14 eth
+  #                                         + 4 (802.1Q) = 9216 exactly = the switch ceiling. This
+  #                                         is the MAX IP MTU that fits a tagged frame through a
+  #                                         9216 port (FCS is excluded from MTU by convention).
+  # The connected 10.241.10.0/24 route inherits 9198 -> east-west (node<->node, L2-switched) jumbo.
+  # North-south is NOT sent at 9198: routing.nix pins the BGP/fallback DEFAULT route to krt_mtu/mtu
+  # 1500, so off-subnet traffic is capped at 1500 at the source (the ASA is 1500).
+  underlayMtu = 9216;
+  ipMtu = 9198;
 in
 {
   # This module drives the interfaces; keep NetworkManager and DHCP off them.
@@ -53,11 +57,12 @@ in
     { address = "10.241.10.${toString vlan401Octet}"; prefixLength = 24; }
   ];
 
-  # Jumbo MTU across the whole data path (slaves -> bond -> tagged VLAN).
-  networking.interfaces.eno1.mtu = mtu;
-  networking.interfaces.eno2.mtu = mtu;
-  networking.interfaces.bond0.mtu = mtu;
-  networking.interfaces."bond0.401".mtu = mtu;
+  # Jumbo MTU across the whole data path. Underlay (slaves -> bond0) at the 9216 switch
+  # ceiling so it can carry the full tagged frame; the IP MTU rides on bond0.401 at 9198.
+  networking.interfaces.eno1.mtu = underlayMtu;
+  networking.interfaces.eno2.mtu = underlayMtu;
+  networking.interfaces.bond0.mtu = underlayMtu;
+  networking.interfaces."bond0.401".mtu = ipMtu;
 
   # NOTE: the default route now lives in routing.nix, NOT here. BIRD installs an ECMP
   # default via the two ToR SVIs (.2/.3) at low metric, with a STATIC fallback via the

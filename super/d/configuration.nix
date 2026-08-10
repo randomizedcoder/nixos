@@ -6,6 +6,7 @@
     ./host.nix                     # per-node hostname
     ./networking.nix               # LACP bond0 + VLAN401 (bond0.401), keyed off hostname
     ./routing.nix                  # BIRD BGP/ECMP/RTBH + multipath fallback default
+    ./sysctl.nix                   # kernel network/TCP tuning (synced from desktop/l)
   ];
 
   # Serial console over IPMI SOL (ttyS1) + local VGA. systemd auto-starts

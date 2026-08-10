@@ -9,7 +9,7 @@ ACTUAL_HOSTNAME := $(shell hostname)
 # Refresh the self-contained copies of the shared modules from the canonical ../ versions,
 # then push the whole node dir to the remote ~/nixos/super/<NAME>/.
 sync:
-	cp ../networking.nix ../routing.nix ./
+	cp ../networking.nix ../routing.nix ../sysctl.nix ./
 	rsync -av --exclude '*.2026_*' --exclude 'result' ./ das@$(HOST):nixos/super/$(NAME)/
 
 # Push, then flake-switch over SSH. NOTE: the network restart mid-switch will close this

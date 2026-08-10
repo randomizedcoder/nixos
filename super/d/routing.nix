@@ -8,7 +8,7 @@
 #       - IMPORT only the default (0.0.0.0/0) and install it ECMP (both next-hops) in the
 #         kernel, per-flow hashed;
 #       - EXPORT the anycast service VIP 10.241.10.20/32 + this node's PUBLIC /32s (its own
-#         unicast + the shared public anycast) — see ../nfb-ladc-asa01/public-ip-anycast-design.md.
+#         unicast + the shared public anycast) — see ../nfb-ladc-asa01/public-ip-anycast/design.md.
 #   * The anycast VIP + public /32s on loopback (so the host answers for them; advertised by BIRD).
 #   * A low-preference STATIC fallback default via the VRRP VIP .1 (metric 4000) so that
 #     internet/VPN work WITHOUT BGP — used at boot and whenever BIRD is down. BGP's ECMP
@@ -32,7 +32,7 @@ let
   vrrpVipB   = "10.241.10.4";                   # VLAN401 VRRP VIP-B (lf08 master) — fallback nexthop
   anycastVip = "10.241.10.20";                  # internal anycast service VIP (advertised via BGP)
 
-  # Public /32s — DAVE-namespaced (see ../nfb-ladc-asa01/public-ip-anycast-design.md).
+  # Public /32s — DAVE-namespaced (see ../nfb-ladc-asa01/public-ip-anycast/design.md).
   #   davePublicUnicast : this node's own public IP (only this node originates it).
   #   davePublicAnycast : shared public anycast (every node originates it -> ECMP at the ToRs).
   davePublicUnicast =

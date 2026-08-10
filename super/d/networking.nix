@@ -19,11 +19,13 @@ let
     .${config.networking.hostName}
       or (throw "networking.nix: no VLAN401 IP for hostname '${config.networking.hostName}' — add it to vlan401Octet");
 
-  # MTU: keep at 1500 for now. Jumbo (9000) must ONLY be enabled AFTER both leaves carry
-  # the network-qos JUMBO policy — otherwise oversized frames the node *sends* blackhole on
-  # the switch (which broke node->internet downloads). Raise to 9000 once jumbo is confirmed
-  # end-to-end (host IP-MTU 9000 + 14 eth + 4 tag = 9018 < the 9216 fabric ceiling).
-  mtu = 1500;
+  # MTU: 9000 jumbo on the interface (both leaves now carry the network-qos JUMBO policy,
+  # so the L2 ports are 9216). This gives east-west (node<->node, L2-switched) jumbo frames.
+  # North-south is NOT sent at 9000: routing.nix pins the BGP/fallback DEFAULT route to
+  # krt_mtu/mtu 1500, so off-subnet traffic is capped at 1500 at the source (the ASA is 1500)
+  # while the connected 10.241.10.0/24 route keeps the full 9000. host IP-MTU 9000 + 14 eth
+  # + 4 tag = 9018 < the 9216 fabric ceiling.
+  mtu = 9000;
 in
 {
   # This module drives the interfaces; keep NetworkManager and DHCP off them.

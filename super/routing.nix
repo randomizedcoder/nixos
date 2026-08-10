@@ -37,7 +37,7 @@ let
   # config, or the sessions won't authenticate — see bird-bgp-design.md). This lives in
   # the nix store (world-readable) and in git; acceptable for this internal fabric. Move
   # to agenix/sops-nix if you later want it out of the store. REPLACE the placeholder.
-  bgpPassword = "REPLACE-WITH-SHARED-BGP-SECRET";
+  bgpPassword = "bgpPassword";
 
   # AS-path prepends added to the anycast advertisement. 2 on every node today, so all
   # servers advertise an equal (length-3) path and the ToRs ECMP evenly. This is a steering
@@ -143,7 +143,21 @@ in
 
       # Install ONLY BGP-learned routes (the ECMP default) into the kernel FIB.
       protocol kernel {
-        ipv4 { import none; export where source = RTS_BGP; };
+        metric 20;             # kernel route metric = eBGP AD (Cisco convention). Cosmetic:
+                               # any value < the 4000 static fallback makes BGP win. (Default 32.)
+        ipv4 {
+          import none;
+          # Export BGP-learned routes (the ECMP default) and pin their route MTU to 1500.
+          # This makes the node cap OFF-subnet (north-south) traffic at 1500 AT THE SOURCE —
+          # no PMTUD/ICMP dependency and no ASA MSS-clamp (which would burn firewall CPU).
+          # ON-subnet (east-west) traffic uses the connected 10.241.10.0/24 route, which
+          # inherits the 9000 interface MTU. So: node<->node = 9000, node->internet = 1500.
+          export filter {
+            if source != RTS_BGP then reject;
+            krt_mtu = 1500;
+            accept;
+          };
+        };
         merge paths on;        # ECMP: one default with both ToR next-hops
       }
 
@@ -170,14 +184,20 @@ ${blackholeRoutes}
       }
 
       # eBGP to each ToR — filtered both ways (see tor_in / tor_out above).
-      # Session options (Tier 1 — see bird-bgp-design.md). Tier 2 (BFD, ttl security)
+      # Session options: Tier 1 + GTSM (ttl security) — see bird-bgp-design.md. BFD (Tier 2)
       # is documented there and can be enabled later alongside the matching ToR config.
       template bgp tor {
         local as ${toString localAs};
         password "${bgpPassword}";   # TCP-MD5 (needs the same secret on the ToR)
+        hold time 9;                 # fast soft-failure detection (default 240). check link
+        keepalive time 3;            # covers cable pulls instantly; these catch a dead BGP
+                                     # process. Match on the ToR: `timers 3 9`.
         graceful restart on;         # keep forwarding across a BIRD restart
         check link on;               # drop the session immediately if bond0.401 loses carrier
         enforce first as on;         # reject routes whose AS-path doesn't start with the ToR's AS
+        ttl security on;             # GTSM (RFC 5082): send TTL 255, require it inbound — drops any
+                                     # spoofed/multi-hop session attempt. Needs `ttl-security hops 1`
+                                     # on the ToR neighbor (paired change) or the session won't come up.
         ipv4 {
           import filter tor_in;
           import keep filtered on;   # retain rejected routes for `birdc show route filtered`
@@ -219,7 +239,7 @@ ${blackholeRoutes}
   # all; localCommands is ordered correctly by construction.)
   networking.localCommands = ''
     for _ in 1 2 3 4 5; do
-      ip route replace default metric 4000 \
+      ip route replace default metric 4000 mtu 1500 \
         nexthop via ${vrrpVipA} dev bond0.401 \
         nexthop via ${vrrpVipB} dev bond0.401 && break
       sleep 1

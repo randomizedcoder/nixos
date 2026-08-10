@@ -1,0 +1,67 @@
+# super-a: sudo storcli /c0 show   (captured 2026-08-09, run by user — root)
+# storcli via: nix shell nixpkgs#storcli -c sudo $(command -v storcli) /c0 show
+
+CLI Version = 007.3103.0000.0000 Aug 22, 2024
+Operating system = Linux 6.18.43
+Controller = 0
+Status = Success
+
+Product Name = AVAGO 3108 MegaRAID
+Serial Number = FW-AKSTRG6AARBWA
+SAS Address =  500304801b28a302
+PCI Address = 00:01:00:00
+FW Package Build = 24.21.0-0151
+FW Version = 4.680.00-8561
+Driver Name = megaraid_sas
+Driver Version = 07.734.00.00-rc1
+Current Personality = RAID-Mode
+Device Interface = SAS-12G
+Drive Groups = 3
+
+TOPOLOGY :
+========
+-----------------------------------------------------------------------------
+DG Arr Row EID:Slot DID Type  State BT       Size PDC  PI SED DS3  FSpace TR
+-----------------------------------------------------------------------------
+ 0 -   -   -        -   RAID0 Optl  N    1.745 TB dflt N  N   dflt N      N
+ 0 0   -   -        -   RAID0 Optl  N    1.745 TB dflt N  N   dflt N      N
+ 0 0   0   252:1    16  DRIVE Onln  N    1.745 TB dflt N  N   dflt -      N
+ 1 -   -   -        -   RAID0 Optl  N    1.818 TB dflt N  N   dflt N      N
+ 1 0   -   -        -   RAID0 Optl  N    1.818 TB dflt N  N   dflt N      N
+ 1 0   0   252:5    13  DRIVE Onln  N    1.818 TB dflt N  N   dflt -      N
+ 2 -   -   -        -   RAID0 Optl  N  476.437 GB dflt N  N   dflt N      N
+ 2 0   -   -        -   RAID0 Optl  N  476.437 GB dflt N  N   dflt N      N
+ 2 0   0   252:2    14  DRIVE Onln  N  476.437 GB dflt N  N   dflt -      N
+-----------------------------------------------------------------------------
+
+VD LIST :
+=======
+------------------------------------------------------------------
+DG/VD TYPE  State Access Consist Cache Cac sCC       Size Name
+------------------------------------------------------------------
+0/1   RAID0 Optl  RW     Yes     RAWBC -   ON    1.745 TB data
+1/2   RAID0 Optl  RW     Yes     RAWBC -   ON    1.818 TB backup
+2/3   RAID0 Optl  RW     Yes     RAWBC -   ON  476.437 GB backup2
+------------------------------------------------------------------
+# Cache=RAWBC => Read-Ahead, Always-WriteBack, Cached IO (writeback safe: CacheVault present)
+
+PD LIST :
+=======
+-----------------------------------------------------------------------------------------
+EID:Slt DID State  DG       Size Intf Med SED PI SeSz Model                      Sp Type
+-----------------------------------------------------------------------------------------
+252:0    12 UBUnsp -        0 KB SATA HDD N   N  512B Fanxiang S101Q 2           U  -
+252:1    16 Onln   0    1.745 TB SATA SSD N   N  512B Micron_5200_MTFDDAK1T9TDC  U  -
+252:2    14 Onln   2  476.437 GB SATA SSD N   N  512B SK hynix SC300B SATA 512GB U  -
+252:5    13 Onln   1    1.818 TB SATA SSD N   N  512B Samsung SSD 870 EVO 2TB    U  -
+-----------------------------------------------------------------------------------------
+# 252:0 Fanxiang S101Q HDD = UBUnsp (Unconfigured Bad / unsupported) — failed/foreign, not in use
+
+Cachevault_Info :
+===============
+------------------------------------
+Model  State   Temp Mode MfgDate
+------------------------------------
+CVPM02 Optimal 30C  -    2016/11/30
+------------------------------------
+# CacheVault CVPM02 Optimal => controller write-back cache IS power-loss protected (supercap+flash)

@@ -32,6 +32,9 @@ sleds. CPU / NUMA / NIC are **identical**; storage differs (see §7). `super-c` 
   Every core reservation below takes **both** siblings (whole-core model — a physical core is
   never split between a workload and an IRQ handler).
 - NUMA distance 10 (local) / 21 (remote) — a remote-node access costs ≈ 2.1×.
+- Memory is **balanced across both nodes** on every host, but capacity/speed differ:
+  **super-a 256 GB @ 1866 MT/s** (16×16 GiB, 2DPC), **super-b/d 128 GB @ 2133 MT/s**
+  (8×16 GiB, 1DPC, 8 slots free) — see §10. All Samsung DDR4 ECC RDIMM, same part.
 
 **Device → NUMA attachment** (the whole design pivots on this)
 
@@ -51,7 +54,7 @@ Reserve whole cores in this order (all on the device's own NUMA node):
 
 | Role | Phys cores | Logical CPUs | NUMA | Why |
 |---|---|---|---|---|
-| Housekeeping (+ ZFS ZIO/ARC kthreads, kubelet, runtime, ssh) | 2 | `0-1,28-29` | 0 | keep system off the workload cores |
+| Housekeeping (bird, lldpd, sshd, kubelet, runtime, + ZFS ZIO/ARC kthreads) | 2 | `0-1,28-29` | 0 | keep system off the workload cores |
 | **NIC IRQ** (bond `eno1`+`eno2`) | 4 | `2-5,30-33` | 0 | 8 ixgbe combined queues, explicitly pinned |
 | **MegaRAID IRQ** (managed) | 2 | `6-7,34-35` | 0 | storage completions for DB p99 |
 | K8s workload — RAID/NUMA0-local (DB pods) | 6 | `8-13,36-41` | 0 | isolated |
@@ -166,7 +169,51 @@ All declarative, on top of the existing per-node modules (`configuration.nix` im
 like `networking.nix`/`sysctl.nix`. The core map is identical on a/b/d; only RAM differs
 (`zfs_arc_max` / hugepages), not the pinning.
 
-**8.1 NIC channels + rings + IRQ pinning → one oneshot service.**
+**The tuning is three complementary layers — none replaces the others:**
+
+| Layer | Governs | Mechanism |
+|---|---|---|
+| **Slices (cgroup v2 cpuset)** | *userspace* processes — bird, lldpd, sshd, kubelet, containerd, monitoring, pods | `AllowedCPUs=` on a slice; children inherit |
+| **Kernel isolation** | *kernel threads* (ZFS ZIO/ARC, ksoftirqd) + scheduler + tick | `isolcpus` / `nohz_full` / `rcu_nocbs` cmdline |
+| **IRQ affinity** | *hardirq* handlers | `smp_affinity_list` (ixgbe) + `isolcpus=managed_irq` (megaraid/nvme) |
+
+Slices are the clean way to place daemons (this is what you asked about): pin the **slice**
+once and every process in it inherits — no per-service `CPUAffinity=`. But cgroups don't
+touch kernel threads or hardirqs, so the other two layers still carry those.
+
+**8.1 CPU partitioning via systemd slices (userspace).** cgroup v2 is live (`cgroup2fs`), and
+`bird`/`lldpd` already run in `system.slice`. Confine the standard slices to the **reserved
+pool** and every host daemon — bird, lldpd, sshd, kubelet, containerd — is automatically kept
+off the workload cores:
+
+```nix
+# All system daemons (incl. bird + lldpd) -> reserved pool. One knob, no per-service pinning.
+systemd.slices.system.sliceConfig.AllowedCPUs = "0-7,26-35,54-55";
+# Interactive/ssh sessions too.
+systemd.slices.user.sliceConfig.AllowedCPUs   = "0-7,26-35,54-55";
+```
+
+> **Critical nesting gotcha.** cgroup v2 intersects `cpuset` **down** the tree — a child can
+> never use a CPU its parent forbids. So **Kubernetes pods must NOT sit under `system.slice`**,
+> or this `AllowedCPUs` would clamp them off the isolated cores. Run kubelet with the
+> **systemd** cgroup driver so `kubepods.slice` is a **top-level sibling** of `system.slice`
+> (under root `-.slice`, which stays all-CPUs); kubelet then manages the pod cpuset itself via
+> `--reserved-cpus` (§8.6). Keep the two consistent: `system.slice` `AllowedCPUs` **==**
+> kubelet `--reserved-cpus` **==** the reserved pool.
+
+Optionally carve a finer control-plane slice (bird+lldpd onto just the housekeeping cores,
+off the NIC/RAID IRQ cores) — low-volume, so usually unnecessary:
+
+```nix
+systemd.slices."controlplane".sliceConfig.AllowedCPUs = "0-1,28-29";
+systemd.services.bird.serviceConfig.Slice  = "controlplane.slice";
+systemd.services.lldpd.serviceConfig.Slice = "controlplane.slice";
+```
+
+(Leave `AllowedMemoryNodes` unset on `system.slice` — host work touches devices on **both**
+NUMA nodes, so system memory should span both.)
+
+**8.2 NIC channels + rings + IRQ pinning → one oneshot service.**
 
 > **Why not `systemd.network.links`?** A `.link` for channels/rings would be the tidy,
 > device-creation-time route — **except** these nodes already set MTU via a NixOS-generated
@@ -201,7 +248,7 @@ systemd.services.nic-tune = {
 (If a future NixOS exposes channels/rings on `networking.interfaces.<n>`, or the MTU moves
 into a hand-authored `.link`, revisit doing this at device-creation instead.)
 
-**8.2 Kernel params + IRQ policy:**
+**8.3 Kernel params + IRQ policy:**
 
 ```nix
 boot.kernelParams = [
@@ -214,19 +261,19 @@ services.irqbalance.enable = false;   # explicit: never let it move the NIC pins
 
 (irqbalance is already absent — this just keeps it that way declaratively.)
 
-**8.3 sysctl** — add to the existing `sysctl.nix`:
+**8.4 sysctl** — add to the existing `sysctl.nix`:
 
 ```nix
 "kernel.numa_balancing" = 0;   # autonuma page migration adds jitter to pinned DB pods
 ```
 
-**8.4 ZFS** (in the node's ZFS module / `zfs_design`):
+**8.5 ZFS** (in the node's ZFS module / `zfs_design`):
 
 ```nix
 boot.extraModprobeConfig = "options zfs zfs_arc_max=34359738368";  # 32 GiB — tune per host RAM
 ```
 
-**8.5 Kubelet** (forward-looking — K8s not deployed yet). Static CPU + NUMA alignment so
+**8.6 Kubelet** (forward-looking — K8s not deployed yet). Static CPU + NUMA alignment so
 Guaranteed integer-CPU pods land on exclusive, NUMA-local, isolated cores:
 
 ```
@@ -248,6 +295,9 @@ grep -E 'eno1|eno2' /proc/interrupts | \
 grep -Ec 'megasas|nvme' /proc/interrupts                            # managed count (unchanged)
 cat /proc/cmdline | grep -o 'isolcpus=[^ ]*'                        # managed_irq,domain,8-25,36-53
 cat /sys/module/zfs/parameters/zfs_arc_max                          # the cap
+systemctl show bird.service -p Slice -p AllowedCPUs                 # in system.slice, cpus=0-7,26-35,54-55
+cat /sys/fs/cgroup/system.slice/cpuset.cpus.effective              # == reserved pool
+# (once K8s is up) cat /sys/fs/cgroup/kubepods.slice/cpuset.cpus.effective  # == isolated pool, NOT clamped
 ss -ti / birdc show protocols                                       # BGP 2x Established after NIC bounce
 ```
 
@@ -258,11 +308,23 @@ latency holds or improves. Confirm bond/BGP re-established after the NIC reset.
 
 The pinning is identical on a/b/d; storage differs and needs per-host attention:
 
-- **super-a:** 256 GB; MegaRAID in **RAID** mode (SMC3108 VDs). **Anomaly:** its MegaRAID PCIe
-  link trained to **×4 of ×8** (half bandwidth) — reseat / check the riser.
-- **super-b:** **128 GB**; 3108 in **JBOD/HBA** mode (AVAGO JBOD passthrough, no HW-RAID VDs);
-  NVMe is a weaker **Samsung 980** (vs 990 EVO Plus on a/d); no SATADOM boot device seen —
-  confirm boot media. ZFS layout on b will differ from a/d.
-- **super-d:** 128 GB; MegaRAID in RAID mode, full ×8.
+- **super-a:** 256 GB; MegaRAID in **RAID** mode. **Anomaly:** its MegaRAID PCIe link trained
+  to **×4 of ×8** (half bandwidth) — reseat / check the riser. From `storcli`
+  (`captures/super-a/storcli-c0-show.txt`): three **RAID0 single-drive** VDs (`data` 1.75 TB
+  Micron 5200, `backup` 1.82 TB Samsung 870 EVO, `backup2` 476 GB SK hynix) — **no controller
+  redundancy, ZFS must provide it**; mixed enterprise/consumer SATA SSD (the 870 EVO has
+  looser tail latency). **CacheVault CVPM02 Optimal** → the controller write-back cache **is**
+  power-loss-protected (unlike the NVMe SLOG) — so a BBU-backed writeback RAID partly overlaps
+  the SLOG's job; weigh in `zfs_design`. One **failed/unsupported drive** (`252:0` Fanxiang
+  HDD, `UBUnsp`) sits in the enclosure — clean up on-site. Memory: **16×16 GiB DDR4 ECC
+  RDIMM, all 16 slots filled** (2DPC), balanced 128 GiB/node, but 2DPC dual-rank downclocks
+  to **1866 MT/s**.
+- **super-b:** **128 GB** (8×16 GiB, **1DPC → full 2133 MT/s** — faster RAM than super-a's
+  1866; 8 slots free, expandable to 256 GB but that drops it to 1866); 3108 in **JBOD/HBA**
+  mode (AVAGO JBOD passthrough, no HW-RAID VDs); NVMe is a weaker **Samsung 980** (vs 990 EVO
+  Plus on a/d); no SATADOM boot device seen — confirm boot media. ZFS layout on b will differ
+  from a/d.
+- **super-d:** 128 GB (8×16 GiB, 1DPC → 2133 MT/s, 8 slots free — same memory profile as
+  super-b); MegaRAID in RAID mode, full ×8.
 - **All:** consumer NVMe **without PLP** used as SLOG (see §7).
 - **super-c:** deferred until it boots.

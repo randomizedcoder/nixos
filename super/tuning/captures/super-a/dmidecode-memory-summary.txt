@@ -1,0 +1,23 @@
+# super-a: sudo dmidecode -t memory  (captured 2026-08-09, run by user — root)
+# via: nix shell nixpkgs#dmidecode -c sh -c 'sudo $(command -v dmidecode) -t memory'
+# (condensed — all 16 DIMMs are identical; per-slot serials in the full output)
+
+SMBIOS 3.0.0. Error Correction Type: Multi-bit ECC. Max capacity 256 GiB.
+
+Populated: 16 / 16 DIMM slots  =  256 GiB total  (fully populated)
+  Node 0 (socket P1): DIMMA1 A2 B1 B2 C1 C2 D1 D2  = 8 x 16 GiB  (128 GiB)
+  Node 1 (socket P2): DIMME1 E2 F1 F2 G1 G2 H1 H2  = 8 x 16 GiB  (128 GiB)
+  -> balanced across both NUMA nodes (4 channels/socket x 2 DIMMs/channel = 2DPC)
+
+Every DIMM identical:
+  Size            : 16 GiB, DIMM, DDR4, Rank 2 (dual-rank), 72-bit (ECC)
+  Manufacturer    : Samsung
+  Part Number     : M393A2G40DB0-CPB   (16GB 2Rx8 PC4-2133P RDIMM)
+  Rated Speed     : 2133 MT/s
+  Configured Speed: 1866 MT/s   <-- downclocked (expected: 2DPC dual-rank on Broadwell-EP)
+
+Notes:
+- super-a carries 2x the RAM of super-b/d (128 GiB) but at a LOWER clock (1866 vs the
+  ~2133 a half-populated 1DPC node would sustain) — marginal, but the p99-latency budget
+  favors memory clock; verify b/d population with `dmidecode -t memory` if it matters.
+- All ECC RDIMM, single vendor/part -> clean, matched config.

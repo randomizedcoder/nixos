@@ -1,0 +1,5 @@
+bdf	class	device	driver	numa	local_cpus	cur_speed	cur_width	max_speed	max_width
+0000:01:00.0	0x010400	RAID bus controller [0104]: Broadcom / LSI MegaRAID SAS-3 3108 [Invader] [1000:005d] (rev 02)	megaraid_sas	0	0-13,28-41	8.0 GT/s PCIe	8	8.0 GT/s PCIe	8
+0000:03:00.0	0x020000	Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)	ixgbe	0	0-13,28-41	5.0 GT/s PCIe	8	5.0 GT/s PCIe	8
+0000:03:00.1	0x020000	Ethernet controller [0200]: Intel Corporation Ethernet Controller 10-Gigabit X540-AT2 [8086:1528] (rev 01)	ixgbe	0	0-13,28-41	5.0 GT/s PCIe	8	5.0 GT/s PCIe	8
+0000:81:00.0	0x010802	Non-Volatile memory controller [0108]: Samsung Electronics Co Ltd NVMe SSD Controller PM9C1a (DRAM-less) [144d:a80d]	nvme	1	14-27,42-55	8.0 GT/s PCIe	4	32.0 GT/s PCIe	4

@@ -1,0 +1,3 @@
+slaves=eno1 eno2
+mode=802.3ad 4
+bond0.401@bond0  UP             10.241.10.11/24 fe80::ae1f:6bff:fe15:d85a/64 

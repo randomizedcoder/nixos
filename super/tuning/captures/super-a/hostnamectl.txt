@@ -1,0 +1,15 @@
+ Static hostname: super-a
+       Icon name: computer-server
+         Chassis: server 🖳
+      Machine ID: e98942a0260546f1bddaad94e1768121
+         Boot ID: ee4714527c304aa6932d813dae3c099e
+Operating System: NixOS 26.11 (Zokor)
+     CPE OS Name: cpe:/o:nixos:nixos:26.11
+          Kernel: Linux 6.18.43
+    Architecture: x86-64
+ Hardware Vendor: Supermicro
+  Hardware Model: SYS-2028TP-HC1TR
+Hardware Version: 0123456789
+Firmware Version: 3.5
+   Firmware Date: Wed 2022-04-27
+    Firmware Age: 4y 3month 1w 6d

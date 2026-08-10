@@ -1,0 +1,6 @@
+-- /sys/devices/system/node/node0
+Node 0 MemTotal:       65867328 kB
+Node 0 MemFree:        64230284 kB
+-- /sys/devices/system/node/node1
+Node 1 MemTotal:       66003820 kB
+Node 1 MemFree:        65242036 kB

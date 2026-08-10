@@ -7,6 +7,8 @@
     ./networking.nix               # LACP bond0 + VLAN401 (bond0.401), keyed off hostname
     ./routing.nix                  # BIRD BGP/ECMP/RTBH + multipath fallback default
     ./sysctl.nix                   # kernel network/TCP tuning (synced from desktop/l)
+    ./cpu-tuning.nix               # CPU core dedication: isolcpus + systemd slices + numa (tuning.md)
+    ./nic-tune.nix                 # ixgbe channels/rings + NIC-IRQ pinning (tuning.md)
   ];
 
   # Serial console over IPMI SOL (ttyS1) + local VGA. systemd auto-starts

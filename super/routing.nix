@@ -235,23 +235,37 @@ ${blackholeRoutes}
     '';
   };
 
-  # Service /32s live on TWO dedicated dummy loopbacks, NOT on `lo`. Rationale: NixOS
-  # scripted-networking's `network-addresses-lo.service` has no WantedBy and nothing starts it
-  # at boot (a real NIC's address service is WantedBy its udev device; `lo`'s is not, and
-  # `network-setup.service` doesn't exist on this release), so `lo` secondary addresses
-  # silently never apply. A dummy IS a real device, so its `network-addresses-dummyN.service`
-  # is BindsTo/WantedBy `sys-subsystem-net-devices-dummyN.device` — it applies reliably and is
-  # reboot-safe. The host answers for these /32s; the ToRs reach them via the BGP next-hop
-  # (this node's .x), so they never ARP on the L2 (arp_ignore below).
+  # BGP-advertised service /32s on TWO dedicated dummy loopbacks, NOT on `lo`. Two NixOS
+  # gotchas drove this shape:
+  #   1. `lo`: scripted-networking's `network-addresses-lo.service` has no WantedBy and nothing
+  #      starts it at boot, so `lo` secondary addresses silently never apply.
+  #   2. dummies via `networking.interfaces` + `numdummies`: the kernel `dummy` module's
+  #      numdummies param created ZERO devices on this 6.18 kernel, so the device-triggered
+  #      `network-addresses-dummyN.service` failed its BindsTo.
+  # So we create AND address the dummies in ONE explicit, idempotent oneshot (via `ip link
+  # add`, which is reliable and autoloads the module). It is reboot-safe (wantedBy
+  # multi-user.target), ordered before bird, and applies on `switch` — no manual modprobe.
+  #   dummy0 = per-node public unicast /32 ; dummy1 = internal anycast .20 + public anycast .238.
+  # The host answers for these /32s; the ToRs reach them via the BGP next-hop (this node's .x),
+  # so they never ARP on the L2 (arp_ignore below).
   boot.kernelModules = [ "dummy" ];
-  boot.extraModprobeConfig = "options dummy numdummies=2";   # create dummy0 + dummy1 at load
-  networking.interfaces.dummy0.ipv4.addresses = [
-    { address = davePublicUnicast; prefixLength = 32; }      # per-node public unicast /32
-  ];
-  networking.interfaces.dummy1.ipv4.addresses = [
-    { address = anycastVip;        prefixLength = 32; }      # internal anycast .20
-    { address = davePublicAnycast; prefixLength = 32; }      # public anycast .238
-  ];
+  systemd.services."service-loopbacks" = {
+    description = "Dummy loopbacks + BGP service /32s (dummy0=unicast, dummy1=anycast)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-pre.target" ];
+    before = [ "bird.service" ];   # addresses exist before bird's `direct` proto scans them
+    path = [ pkgs.iproute2 ];
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+    script = ''
+      ip link show dummy0 >/dev/null 2>&1 || ip link add dummy0 type dummy
+      ip link show dummy1 >/dev/null 2>&1 || ip link add dummy1 type dummy
+      ip link set dummy0 up
+      ip link set dummy1 up
+      ip addr replace ${davePublicUnicast}/32 dev dummy0
+      ip addr replace ${anycastVip}/32        dev dummy1
+      ip addr replace ${davePublicAnycast}/32 dev dummy1
+    '';
+  };
 
   boot.kernel.sysctl = {
     "net.ipv4.fib_multipath_hash_policy" = 1;   # per-flow (L4) ECMP hashing

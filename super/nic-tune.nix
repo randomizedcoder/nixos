@@ -16,33 +16,61 @@
 # NOTE: this is a oneshot service, NOT a systemd.link .link file — a .link for channels
 # would sort ahead of and SHADOW the NixOS-generated MTU .link (40-eno1.link, MTUBytes=9216),
 # because .link files are first-match-wins, not merged. Doing it in a service avoids that.
-# `ethtool -L` resets the NIC -> the bond slave flaps -> BGP briefly drops; we order this
-# BEFORE bird.service so the flap happens once and BGP establishes cleanly after it
-# (self-heals via graceful-restart regardless).
 #
-{ config, pkgs, ... }:
+# BOOT ORDERING (learned the hard way): at boot the eno1/eno2 devices don't exist when a
+# naive `After=...bond0.401.device` fires — every ethtool call hit "netlink: No such device"
+# and the tuning silently no-op'd (worked on `switch` only because the NICs were already up).
+# Following the house pattern (~/nixos/hp/hp2): order after `network-online.target` AND have the
+# script WAIT for each NIC to appear (the wait loop is the real safety net — udev rename / bond
+# assembly can lag `network-online`). `ethtool -L` resets the NIC -> bond slave flaps -> BGP
+# briefly drops; ordering BEFORE bird takes that flap before BGP comes up (self-heals via
+# graceful-restart regardless).
+#
+{ config, pkgs, lib, ... }:
 
 let
   nicIrqCpus = "2-5,30-33";   # NIC-IRQ cores (must sit inside cpu-tuning.nix reserved pool)
+
+  nicTune = pkgs.writeShellApplication {
+    name = "nic-tune";
+    runtimeInputs = [ pkgs.ethtool pkgs.iproute2 pkgs.gawk ];
+    text = ''
+      for dev in eno1 eno2; do
+        # Wait for the NIC to actually exist (boot races the udev rename / bond assembly).
+        n=0
+        while ! ip link show "$dev" >/dev/null 2>&1; do
+          n=$((n + 1))
+          if [ "$n" -ge 60 ]; then break; fi   # ~30s
+          sleep 0.5
+        done
+        if ! ip link show "$dev" >/dev/null 2>&1; then
+          echo "nic-tune: $dev did not appear, skipping" >&2
+          continue
+        fi
+
+        ethtool -L "$dev" combined 4 || true
+        ethtool -G "$dev" rx 2048 tx 2048 || true
+
+        # Resolve this NIC's IRQ numbers at runtime (they're dynamic) and pin the writable
+        # (unmanaged) ones onto the NIC-IRQ cores; tolerate a rejected write (managed IRQ).
+        awk -v d="$dev" '$0 ~ d {sub(/:/,"",$1); print $1}' /proc/interrupts | while read -r irq; do
+          echo ${nicIrqCpus} > "/proc/irq/$irq/smp_affinity_list" 2>/dev/null || true
+        done
+      done
+    '';
+  };
 in
 {
   systemd.services.nic-tune = {
     description = "ixgbe (eno1/eno2): combined=4, rings=2048, IRQs pinned to ${nicIrqCpus}";
     wantedBy = [ "multi-user.target" ];
-    after = [ "sys-subsystem-net-devices-bond0.401.device" ];
-    before = [ "bird.service" ];          # take the channel-reset flap before BGP comes up
-    path = [ pkgs.ethtool pkgs.gawk ];
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
-    script = ''
-      for i in eno1 eno2; do
-        ethtool -L "$i" combined 4 || true
-        ethtool -G "$i" rx 2048 tx 2048 || true
-        # Resolve this NIC's IRQ numbers at runtime (they're dynamic) and pin the
-        # writable (unmanaged) ones; tolerate a rejected write in case one is managed.
-        for irq in $(awk -v d="$i" '$0 ~ d {sub(/:/,"",$1); print $1}' /proc/interrupts); do
-          echo ${nicIrqCpus} > /proc/irq/"$irq"/smp_affinity_list 2>/dev/null || true
-        done
-      done
-    '';
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    before = [ "bird.service" ];                          # take the channel-reset flap before BGP
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = lib.getExe nicTune;
+    };
   };
 }

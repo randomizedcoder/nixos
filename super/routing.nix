@@ -73,6 +73,27 @@ let
   ];
   blackholeRoutes =
     lib.concatMapStringsSep "\n" (p: "        route ${p} blackhole;") blackholeList;
+
+  # Dummy-loopback bring-up as a proper derivation (writeShellApplication): shellcheck runs at
+  # BUILD time and the runtime PATH (iproute2) is baked in, so the service can never ship a
+  # broken script or an env-dependent one. Idempotent: creates dummy0/dummy1 only if missing,
+  # and `ip addr replace` re-asserts the /32s without erroring if already present.
+  #   dummy0 = per-node public unicast ; dummy1 = internal anycast .20 + public anycast .238.
+  serviceLoopbacks = pkgs.writeShellApplication {
+    name = "service-loopbacks";
+    runtimeInputs = [ pkgs.iproute2 ];
+    text = ''
+      for dev in dummy0 dummy1; do
+        if ! ip link show "$dev" >/dev/null 2>&1; then
+          ip link add "$dev" type dummy
+        fi
+        ip link set "$dev" up
+      done
+      ip addr replace ${davePublicUnicast}/32 dev dummy0
+      ip addr replace ${anycastVip}/32        dev dummy1
+      ip addr replace ${davePublicAnycast}/32 dev dummy1
+    '';
+  };
 in
 {
   # LLDP so the node shows up in the ToRs' neighbour tables (and we can see the ToRs).
@@ -254,17 +275,11 @@ ${blackholeRoutes}
     wantedBy = [ "multi-user.target" ];
     after = [ "network-pre.target" ];
     before = [ "bird.service" ];   # addresses exist before bird's `direct` proto scans them
-    path = [ pkgs.iproute2 ];
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
-    script = ''
-      ip link show dummy0 >/dev/null 2>&1 || ip link add dummy0 type dummy
-      ip link show dummy1 >/dev/null 2>&1 || ip link add dummy1 type dummy
-      ip link set dummy0 up
-      ip link set dummy1 up
-      ip addr replace ${davePublicUnicast}/32 dev dummy0
-      ip addr replace ${anycastVip}/32        dev dummy1
-      ip addr replace ${davePublicAnycast}/32 dev dummy1
-    '';
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = lib.getExe serviceLoopbacks;   # shellcheck'd derivation (see let-block)
+    };
   };
 
   boot.kernel.sysctl = {

@@ -153,10 +153,11 @@ in
 
       protocol device { }
 
-      # Pick up the originated addresses from loopback so BGP can advertise them. The match
-      # (ORIGINATE || DAVE_PUBLIC) is exactly the VIP + public /32s we put on lo (not 127/8).
+      # Pick up the originated addresses from the service dummies so BGP can advertise them
+      # (dummy0 = per-node unicast, dummy1 = anycast .20/.238). The match (ORIGINATE ||
+      # DAVE_PUBLIC) is exactly those /32s. On dummies, NOT lo — see the interface block below.
       protocol direct {
-        interface "lo";
+        interface "dummy0", "dummy1";
         ipv4 { import where net ~ ORIGINATE || net ~ DAVE_PUBLIC; };
       }
 
@@ -234,12 +235,22 @@ ${blackholeRoutes}
     '';
   };
 
-  # Anycast VIP on loopback: the host answers for it; the ToRs reach it via the BGP
-  # next-hop (this node's .x), so it never needs to ARP on the L2.
-  networking.interfaces.lo.ipv4.addresses = [
-    { address = anycastVip;        prefixLength = 32; }
-    { address = davePublicUnicast; prefixLength = 32; }   # this node's public unicast /32
-    { address = davePublicAnycast; prefixLength = 32; }   # shared public anycast /32
+  # Service /32s live on TWO dedicated dummy loopbacks, NOT on `lo`. Rationale: NixOS
+  # scripted-networking's `network-addresses-lo.service` has no WantedBy and nothing starts it
+  # at boot (a real NIC's address service is WantedBy its udev device; `lo`'s is not, and
+  # `network-setup.service` doesn't exist on this release), so `lo` secondary addresses
+  # silently never apply. A dummy IS a real device, so its `network-addresses-dummyN.service`
+  # is BindsTo/WantedBy `sys-subsystem-net-devices-dummyN.device` — it applies reliably and is
+  # reboot-safe. The host answers for these /32s; the ToRs reach them via the BGP next-hop
+  # (this node's .x), so they never ARP on the L2 (arp_ignore below).
+  boot.kernelModules = [ "dummy" ];
+  boot.extraModprobeConfig = "options dummy numdummies=2";   # create dummy0 + dummy1 at load
+  networking.interfaces.dummy0.ipv4.addresses = [
+    { address = davePublicUnicast; prefixLength = 32; }      # per-node public unicast /32
+  ];
+  networking.interfaces.dummy1.ipv4.addresses = [
+    { address = anycastVip;        prefixLength = 32; }      # internal anycast .20
+    { address = davePublicAnycast; prefixLength = 32; }      # public anycast .238
   ];
 
   boot.kernel.sysctl = {

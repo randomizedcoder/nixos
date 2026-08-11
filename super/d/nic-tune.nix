@@ -73,6 +73,11 @@ in
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     before = [ "bird.service" ];                          # take the channel-reset flap before BGP
+    # Do NOT restart on `switch`: `ethtool -L` resets the live NIC -> bond/BGP flap. At boot this
+    # runs before bird (harmless); on a rebuild the tuning is already applied, so re-running only
+    # causes a disruptive flap. Changes here therefore take effect on the next reboot (or a
+    # manual `systemctl restart nic-tune`), not on `switch`.
+    restartIfChanged = false;
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;

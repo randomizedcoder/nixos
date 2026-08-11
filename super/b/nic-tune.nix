@@ -33,17 +33,18 @@ let
 
   nicTune = pkgs.writeShellApplication {
     name = "nic-tune";
-    runtimeInputs = [ pkgs.ethtool pkgs.iproute2 pkgs.gawk ];
+    runtimeInputs = [ pkgs.ethtool ];   # ethtool is the only external tool; parsing is pure bash
     text = ''
       for dev in eno1 eno2; do
-        # Wait for the NIC to actually exist (boot races the udev rename / bond assembly).
+        # Wait for the NIC to appear (udev rename / bond assembly can lag network-online).
+        # Use the sysfs node directly — no need to shell out to `ip`.
         n=0
-        while ! ip link show "$dev" >/dev/null 2>&1; do
+        while [[ ! -e "/sys/class/net/$dev" ]]; do
           n=$((n + 1))
-          if [ "$n" -ge 60 ]; then break; fi   # ~30s
+          if [[ "$n" -ge 60 ]]; then break; fi   # ~30s
           sleep 0.5
         done
-        if ! ip link show "$dev" >/dev/null 2>&1; then
+        if [[ ! -e "/sys/class/net/$dev" ]]; then
           echo "nic-tune: $dev did not appear, skipping" >&2
           continue
         fi
@@ -51,11 +52,16 @@ let
         ethtool -L "$dev" combined 4 || true
         ethtool -G "$dev" rx 2048 tx 2048 || true
 
-        # Resolve this NIC's IRQ numbers at runtime (they're dynamic) and pin the writable
-        # (unmanaged) ones onto the NIC-IRQ cores; tolerate a rejected write (managed IRQ).
-        awk -v d="$dev" '$0 ~ d {sub(/:/,"",$1); print $1}' /proc/interrupts | while read -r irq; do
+        # Pin this NIC's UNMANAGED IRQs onto the NIC-IRQ cores. Parse /proc/interrupts with
+        # bash builtins (no awk): match lines mentioning the NIC, take the field before the
+        # first ':' as the IRQ number. Tolerate a rejected write (a managed IRQ).
+        while read -r line; do
+          [[ "$line" == *"$dev"* ]] || continue
+          irq="''${line%%:*}"          # everything before the first colon
+          irq="''${irq// /}"           # strip the leading padding
+          [[ "$irq" =~ ^[0-9]+$ ]] || continue
           echo ${nicIrqCpus} > "/proc/irq/$irq/smp_affinity_list" 2>/dev/null || true
-        done
+        done < /proc/interrupts
       done
     '';
   };

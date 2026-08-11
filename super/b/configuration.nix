@@ -9,6 +9,7 @@
     ./sysctl.nix                   # kernel network/TCP tuning (synced from desktop/l)
     ./cpu-tuning.nix               # CPU core dedication: isolcpus + systemd slices + numa (tuning.md)
     ./nic-tune.nix                 # ixgbe channels/rings + NIC-IRQ pinning (tuning.md)
+    ./nginx-anycast.nix            # TEMP: anycast smoke-test (nginx on 160.72.197.238, self-signed)
   ];
 
   # Serial console over IPMI SOL (ttyS1) + local VGA. systemd auto-starts

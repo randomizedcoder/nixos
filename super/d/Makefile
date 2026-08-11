@@ -7,7 +7,7 @@ ACTUAL_HOSTNAME := $(shell hostname)
 
 # --- from your WORKSTATION ---
 sync:
-	cp ../networking.nix ../routing.nix ../sysctl.nix ../cpu-tuning.nix ../nic-tune.nix ../nginx-anycast.nix ./
+	cp ../networking.nix ../routing.nix ../sysctl.nix ../nix-settings.nix ../cpu-tuning.nix ../nic-tune.nix ../nginx-anycast.nix ./
 	rsync -av --exclude '*.2026_*' --exclude 'result' ./ das@$(HOST):nixos/super/$(NAME)/
 
 # Push, then flake-switch over SSH. NOTE: the network restart mid-switch will close this

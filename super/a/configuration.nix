@@ -7,6 +7,7 @@
     ./networking.nix               # LACP bond0 + VLAN401 (bond0.401), keyed off hostname
     ./routing.nix                  # BIRD BGP/ECMP/RTBH + multipath fallback default
     ./sysctl.nix                   # kernel network/TCP tuning (synced from desktop/l)
+    ./nix-settings.nix             # nix daemon tuning + GC (auto-optimise, cores, gc)
     ./cpu-tuning.nix               # CPU core dedication: isolcpus + systemd slices + numa (tuning.md)
     ./nic-tune.nix                 # ixgbe channels/rings + NIC-IRQ pinning (tuning.md)
     ./nginx-anycast.nix            # TEMP: anycast smoke-test (nginx on 160.72.197.238, self-signed)
@@ -48,9 +49,6 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  # Enable flakes + the new nix CLI persistently, so future rebuilds don't need the
-  # inline `--option extra-experimental-features ...` bootstrap flag.
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   environment.systemPackages = with pkgs; [
     # shell ergonomics

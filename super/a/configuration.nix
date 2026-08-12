@@ -11,6 +11,8 @@
     ./cpu-tuning.nix               # CPU core dedication: isolcpus + systemd slices + numa (tuning.md)
     ./nic-tune.nix                 # ixgbe channels/rings + NIC-IRQ pinning (tuning.md)
     ./nginx-anycast.nix            # TEMP: anycast smoke-test (nginx on 160.72.197.238, self-signed)
+    ./firewall.nix                 # nftables host firewall: default-drop + ASA-matrix services + SSH knock + WG plumbing
+    ./bogon-refresh.nix            # fills firewall.nix bogon sets from Team-Cymru (weekly timer)
   ];
 
   # Serial console over IPMI SOL (ttyS1) + local VGA. systemd auto-starts

@@ -52,6 +52,7 @@
       ./blackbox.nix
       ./pdns-recursor.nix
       ./home-assistant.nix
+      ./iperf2.nix
     ];
 
   # Bootloader.

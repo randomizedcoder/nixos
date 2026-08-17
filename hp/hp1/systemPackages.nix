@@ -39,5 +39,14 @@
     # PPPoE testing for series3-flowdis-fastpath v4 netconf-pppoe.nix
     ppp
     rp-pppoe
+    # design 32 real-hardware RoCEv2 integration: RDMA userspace (ibv_devices,
+    # show_gids), raw-verbs baselines (qperf rc_bw/rc_lat over verbs), PTP CLI
+    # (pmc/phc_ctl), and ConnectX firmware/GID tools (mstflint). rdma-core is
+    # also pulled in by services.urp, listed here so it is present even with
+    # the module disabled.
+    rdma-core
+    qperf
+    linuxptp
+    mstflint
   ];
 }

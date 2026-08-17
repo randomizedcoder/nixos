@@ -49,6 +49,9 @@
       #./firewall-test-phase1.nix
       # INSECURE: passwordless root SSH for isolated lab network
       ./sshd-INSECURE.nix
+      # design 32: urp acceptor endpoint + PTP grandmaster (lab time sync)
+      ./urp.nix
+      ./ptp.nix
     ];
 
   # Bootloader.

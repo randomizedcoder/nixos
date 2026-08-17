@@ -38,6 +38,9 @@
       #./k8s_master.nix
       # INSECURE: passwordless root SSH for isolated lab network
       ./sshd-INSECURE.nix
+      # design 32: urp initiator endpoint + PTP slave (lab time sync)
+      ./urp.nix
+      ./ptp.nix
     ];
 
   # Bootloader.

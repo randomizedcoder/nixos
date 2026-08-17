@@ -22,12 +22,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # uds-rdma-proxy provides nixosModules.urp: builds urp.ko against this
-    # host's netnext kernel, loads the RDMA stack, and materialises the
-    # declarative urp endpoints (design 32 real-hardware integration).
+    # host's kernel (linuxPackages_latest), loads the RDMA stack, and
+    # materialises the declarative urp endpoints (design 32 real-hardware
+    # integration).
     # Refresh after pushing new urp changes with:
     #   nix flake update uds-rdma-proxy && sudo nixos-rebuild switch --flake .#hp3
+    # Pinned to design-32-phase2-results for the two real-HW data-path fixes
+    # (bd133dd); move back to /main once that branch merges.
     uds-rdma-proxy = {
-      url = "github:randomizedcoder/uds-rdma-proxy/main";
+      url = "github:randomizedcoder/uds-rdma-proxy/design-32-phase2-results";
       inputs.nixpkgs.follows = "nixpkgs";
       # NB: do NOT `follows`-prune redpanda/microvm. nixosModules.urp forces
       # the flake's `packages` attrset (for urp-cli), which spreads in

@@ -36,6 +36,8 @@
       ./nodeExporter.nix
       ./prometheus.nix
       ./grafana.nix
+      ./snmp-exporter.nix
+      ./unpoller.nix
       ./docker-daemon.nix
       #./k8s_master.nix
       #./k8s_node.nix

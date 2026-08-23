@@ -58,6 +58,9 @@ let
     "10.33.0.0/24"     # LADC-Seddon
     "10.35.0.0/24"     # Seddon-MGMT
     "20.200.10.0/24"   # LADC-MNC-DMZ
+    "10.241.10.0/24"   # VLAN 401 — Supermicro node DATA plane (super-a..d = .10..13).
+                       # Needed to SSH the node OS (in-band storcli/RAID audit). May not
+                       # pass if the ASA won't NAT-exempt it; harmless if so (see below).
     # 10.10.250.0/24 is already pushed by MNC-LADC's own split-tunnel.
     # These are all ASA-connected subnets; MNC-LADCPolicy has no vpn-filter, so
     # the ASA forwards them. A route that the ASA won't NAT-exempt simply won't
@@ -238,6 +241,8 @@ in
         nftables
         bind      # dig, host
         curl
+        ipmitool  # `nix run .#ipmi`/.#sol drive ipmitool INSIDE the container (IPMI is
+                  # UDP/623, only reachable over tun0 in this netns). Must stay on PATH.
         less
         vim
       ];

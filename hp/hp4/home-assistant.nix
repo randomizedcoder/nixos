@@ -98,6 +98,68 @@
       # Includes dependencies for a basic setup
       # https://www.home-assistant.io/integrations/default_config/
       default_config = {};
+
+      # Automations are declared here (nix-managed) so they survive rebuilds.
+      # This config block is regenerated into /var/lib/hass/configuration.yaml on
+      # every service start, which is why UI-managed automations.yaml gets dropped
+      # unless referenced with `automation = "!include automations.yaml"`. We keep
+      # them declarative instead. NOTE: read-only in the HA UI editor by design.
+      # Times are local (hp4 = America/Los_Angeles, DST-aware).
+      automation = [
+        # --- Lounge lights: ON 16:30, OFF 22:30 ---
+        {
+          alias = "Lounge lights ON 16:30";
+          triggers = [ { trigger = "time"; at = "16:30:00"; } ];
+          conditions = [ ];
+          actions = [
+            { action = "switch.turn_on";
+              target.entity_id = [ "switch.a1" "switch.a2" ]; }
+          ];
+          mode = "single";
+        }
+        {
+          alias = "Lounge lights OFF 22:30";
+          triggers = [ { trigger = "time"; at = "22:30:00"; } ];
+          conditions = [ ];
+          actions = [
+            { action = "switch.turn_off";
+              target.entity_id = [ "switch.a1" "switch.a2" ]; }
+          ];
+          mode = "single";
+        }
+
+        # --- Weekly device power-cycle: Wednesday 04:00 (off -> wait 30s -> on) ---
+        {
+          alias = "Weekly device reset (Wed 04:00)";
+          triggers = [ { trigger = "time"; at = "04:00:00"; } ];
+          conditions = [ { condition = "time"; weekday = [ "wed" ]; } ];
+          actions = [
+            { action = "switch.turn_off";
+              continue_on_error = true;              # don't abort on an offline device
+              target.entity_id = [
+                "switch.a3"                            # A3 TVCabinetBigTV
+                "switch.tz3000_okaz9tjs_ts011f_switch" # A4 MasterBedroomTV
+                "switch.a9"                            # A9 PlayRoomTV
+                "switch.a11"                           # A11 PlayRoomCamera
+                "switch.a12"                           # A12 FrontCamera
+                "switch.third_reality_inc_3rsp02064z"  # A6 Verizon5G
+              ]; }
+            { delay = "00:00:30"; }
+            { action = "switch.turn_on";
+              continue_on_error = true;
+              target.entity_id = [
+                "switch.a3"
+                "switch.tz3000_okaz9tjs_ts011f_switch"
+                "switch.a9"
+                "switch.a11"
+                "switch.a12"
+                "switch.third_reality_inc_3rsp02064z"
+              ]; }
+          ];
+          mode = "single";
+        }
+      ];
+
       recorder = {
         db_url = "postgresql://@/hass";
         purge_keep_days = 3650;

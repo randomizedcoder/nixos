@@ -32,10 +32,8 @@
     # integration).
     # Refresh after pushing new urp changes with:
     #   nix flake update uds-rdma-proxy && sudo nixos-rebuild switch --flake .#hp1
-    # Pinned to design-32-phase2-results for the two real-HW data-path fixes
-    # (bd133dd); move back to /main once that branch merges.
     uds-rdma-proxy = {
-      url = "github:randomizedcoder/uds-rdma-proxy/design-32-phase2-results";
+      url = "github:randomizedcoder/uds-rdma-proxy/main";
       inputs.nixpkgs.follows = "nixpkgs";
       # NB: do NOT `follows`-prune redpanda/microvm. nixosModules.urp forces
       # the flake's `packages` attrset (for urp-cli), which spreads in

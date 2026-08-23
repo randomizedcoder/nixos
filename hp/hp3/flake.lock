@@ -288,16 +288,16 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1786938676,
-        "narHash": "sha256-Ff0zYOdWE8gc2zl84mEnDmkinmu7GfACcenUgASfvTo=",
+        "lastModified": 1787200495,
+        "narHash": "sha256-zNpPgGNQLIFWXTSWOrSMg6nJLQwfsNoiGHUFHhscDVA=",
         "owner": "randomizedcoder",
         "repo": "uds-rdma-proxy",
-        "rev": "bd133dd1cd2dc0ad8a5d26526e552ec1d1228b48",
+        "rev": "4349465c59275e4e843e5f49476975971ee397f7",
         "type": "github"
       },
       "original": {
         "owner": "randomizedcoder",
-        "ref": "design-32-phase2-results",
+        "ref": "main",
         "repo": "uds-rdma-proxy",
         "type": "github"
       }

@@ -58,14 +58,24 @@
       #./mq-cake-module.nix
       # On-demand AnyConnect VPN via OpenConnect
       ./openconnect-vpn.nix
-      # On-demand NordLayer VPN via OpenVPN
-      ./nordlayer-vpn.nix
+      # On-demand NordLayer VPN via OpenVPN — DISABLED 2026-08-22.
+      # This host-side daemon is IPv4-only and installs a `blackhole default`
+      # route in the IPv6 `local` table as leak-protection whenever it runs
+      # (even disconnected), which killed all native IPv6 on the host
+      # (test-ipv6.com 0/10). It was unused: the real VPN workflow runs inside
+      # the nordlayer-sandbox.nix container (`vpn-jump`). Its own header already
+      # called it "transitional … can be removed" once the sandbox is the entry
+      # point. Removing it restores native IPv6; the container VPN is unaffected.
+      #./nordlayer-vpn.nix
       # Direct OpenVPN connection to NordLayer (alternative to the
       # proprietary daemon above — coexists, autoStart=false).
       ./nordlayer-openvpn.nix
       # Lets LAN traffic survive nordlayer's kill-switch (SSH between
       # machines on the local network while the VPN is connected).
-      ./nordlayer-lan-bypass.nix
+      # DISABLED 2026-08-22: only meaningful with the host daemon above, which
+      # is now disabled. The sandbox container still imports it internally
+      # (nordlayer-sandbox.nix), so container VPN LAN-bypass is unaffected.
+      #./nordlayer-lan-bypass.nix
       # Sandboxed nordlayer in a systemd-nspawn container — the
       # recommended entry point for VPN access. The container has its own
       # netns/routing/firewall so nordlayer can't disrupt the host.

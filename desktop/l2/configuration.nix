@@ -275,12 +275,18 @@
   #   IPQoS throughput
   # '';
 
-  # LLDP for cable/port identification
-  services.lldpd.enable = true;
+  # LLDP for cable/port identification.
+  # NOTE: xdp2's physical-testbed force-DISABLES lldpd when
+  # disableNonEssentialServices=true (it sends frames on ALL NICs every 30s,
+  # polluting perf-measurement windows). We re-assert it at a HIGHER override
+  # priority (mkOverride 40 beats the module's mkForce=50), but SCOPE it to only
+  # the home-LAN management NIC (enp1s0) — so l2 is visible via LLDP on the
+  # EX2200 (ge-0/0/11) while the Mellanox test NICs (enp35s0f*) stay LLDP-silent
+  # and measurements stay clean.
+  services.lldpd.enable = lib.mkOverride 40 true;
   environment.etc."lldpd.conf".text = ''
-    # Transmit LLDP on all interfaces (not just those receiving LLDP)
-    configure system interface pattern *
-    # Also enable CDP for Cisco switches
+    # Only manage the home-LAN NIC; leave the perf-test NICs untouched.
+    configure system interface pattern enp1s0
     configure lldp tx-interval 30
     configure lldp tx-hold 4
   '';

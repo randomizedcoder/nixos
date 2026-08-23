@@ -104,7 +104,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "unpoller_device_port_receive_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "expr": "rate(unpoller_device_port_receive_bytes_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])*8",
           "legendFormat": "3 \u00b7 Firewall UXG \u2190 Internet  \u25bcin"
         },
         {
@@ -113,7 +113,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "unpoller_device_port_transmit_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "expr": "rate(unpoller_device_port_transmit_bytes_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])*8",
           "legendFormat": "3 \u00b7 Firewall UXG \u2190 Internet  \u25b2out"
         },
         {
@@ -223,6 +223,24 @@
           },
           "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])*8",
           "legendFormat": "8 \u00b7 EX2200 \u2192 l  \u25b2out"
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])*8",
+          "legendFormat": "8b \u00b7 EX2200 \u2192 l2 (LenovoP620)  \u25bcin"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])*8",
+          "legendFormat": "8b \u00b7 EX2200 \u2192 l2 (LenovoP620)  \u25b2out"
         }
       ]
     },
@@ -350,6 +368,15 @@
           },
           "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])",
           "legendFormat": "8 \u00b7 EX2200 \u2192 l"
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])",
+          "legendFormat": "8b \u00b7 EX2200 \u2192 l2 (LenovoP620)"
         }
       ]
     },
@@ -924,7 +951,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "unpoller_device_port_receive_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "expr": "rate(unpoller_device_port_receive_bytes_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])*8",
           "legendFormat": "in (bps)"
         },
         {
@@ -933,7 +960,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "unpoller_device_port_transmit_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "expr": "rate(unpoller_device_port_transmit_bytes_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])*8",
           "legendFormat": "out (bps)"
         },
         {
@@ -2215,6 +2242,495 @@
           "legendFormat": "out discards"
         }
       ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "8b \u00b7 EX2200 \u2192 l2 (LenovoP620)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/0/11\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Interface detail \u2014 speed, errors & discards (SNMP interfaces)",
+      "description": "Per-interface link speed and cumulative error/discard counters for the SNMP-monitored hops. Any non-zero error/discard cell turns red. Duplex is not shown (not in the if_mib SNMP walk); all links are switched full-duplex. The UXG Internet port is unpoller \u2014 see panels above.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "ifHighSpeed{instance=\"172.16.50.17\",ifName=~\"ether7|sfp-sfpplus1\"} or ifHighSpeed{instance=\"172.16.50.12\",ifName=~\"xe-0/1/1|ge-0/0/0|xe-0/1/0|ge-0/0/5\"} or ifHighSpeed{instance=\"172.16.50.11\",ifName=~\"ge-0/1/1|ge-0/1/0|ge-0/0/11\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "ifInErrors{instance=\"172.16.50.17\",ifName=~\"ether7|sfp-sfpplus1\"} or ifInErrors{instance=\"172.16.50.12\",ifName=~\"xe-0/1/1|ge-0/0/0|xe-0/1/0|ge-0/0/5\"} or ifInErrors{instance=\"172.16.50.11\",ifName=~\"ge-0/1/1|ge-0/1/0|ge-0/0/11\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "ifOutErrors{instance=\"172.16.50.17\",ifName=~\"ether7|sfp-sfpplus1\"} or ifOutErrors{instance=\"172.16.50.12\",ifName=~\"xe-0/1/1|ge-0/0/0|xe-0/1/0|ge-0/0/5\"} or ifOutErrors{instance=\"172.16.50.11\",ifName=~\"ge-0/1/1|ge-0/1/0|ge-0/0/11\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "ifInDiscards{instance=\"172.16.50.17\",ifName=~\"ether7|sfp-sfpplus1\"} or ifInDiscards{instance=\"172.16.50.12\",ifName=~\"xe-0/1/1|ge-0/0/0|xe-0/1/0|ge-0/0/5\"} or ifInDiscards{instance=\"172.16.50.11\",ifName=~\"ge-0/1/1|ge-0/1/0|ge-0/0/11\"}",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "ifOutDiscards{instance=\"172.16.50.17\",ifName=~\"ether7|sfp-sfpplus1\"} or ifOutDiscards{instance=\"172.16.50.12\",ifName=~\"xe-0/1/1|ge-0/0/0|xe-0/1/0|ge-0/0/5\"} or ifOutDiscards{instance=\"172.16.50.11\",ifName=~\"ge-0/1/1|ge-0/1/0|ge-0/0/11\"}",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "__name__": true,
+              "ifDescr": true,
+              "ifIndex": true
+            },
+            "renameByName": {
+              "instance": "Device (IP)",
+              "ifName": "Interface",
+              "ifAlias": "Description",
+              "Value #A": "Speed (Mbit/s)",
+              "Value #B": "In errors",
+              "Value #C": "Out errors",
+              "Value #D": "In discards",
+              "Value #E": "Out discards"
+            },
+            "indexByName": {
+              "instance": 0,
+              "ifName": 1,
+              "ifAlias": 2,
+              "Value #A": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "Value #D": 6,
+              "Value #E": 7
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Speed (Mbit/s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "In errors"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "In discards"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Device (IP)"
+          }
+        ]
+      }
     }
   ]
 }

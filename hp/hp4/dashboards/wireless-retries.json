@@ -1,0 +1,503 @@
+{
+  "title": "Wireless Retries",
+  "uid": "wireless-retries",
+  "tags": [
+    "network",
+    "wireless",
+    "unifi",
+    "retries",
+    "sansovino"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Radio retry ratio % (retries \u00f7 TX packets) \u2014 the RF-health signal",
+      "description": "Per-radio TX retry ratio, computed by Prometheus from counters (rate of transmit_retries_total \u00f7 rate of transmit_packets_total, 15m window). Normalised for traffic, so this is meaningful regardless of how busy a radio is: a few % is normal; sustained double digits means interference, weak signal, or range. Can exceed 100% \u2014 a frame retried 3\u00d7 counts as 3 retries for 1 packet. ng=2.4GHz, na=5GHz, 6e=6GHz.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "lineWidth": 1
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(label_replace(label_replace(sum by (name, radio) (rate(unpoller_device_vap_transmit_retries_total[15m])) / sum by (name, radio) (rate(unpoller_device_vap_transmit_packets_total[15m])) * 100,\"band\",\"2.4 GHz\",\"radio\",\"ng\"),\"band\",\"5 GHz\",\"radio\",\"na\"),\"band\",\"6 GHz\",\"radio\",\"6e\")",
+          "legendFormat": "{{name}} \u00b7 {{band}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Radio retries per second (absolute)",
+      "description": "Raw TX retries/s per radio (rate of transmit_retries_total). Context for the ratio above \u2014 high absolute retries at a LOW ratio just means a busy healthy radio.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 6,
+            "showPoints": "never",
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(label_replace(label_replace(sum by (name, radio) (rate(unpoller_device_vap_transmit_retries_total[5m])),\"band\",\"2.4 GHz\",\"radio\",\"ng\"),\"band\",\"5 GHz\",\"radio\",\"na\"),\"band\",\"6 GHz\",\"radio\",\"6e\")",
+          "legendFormat": "{{name}} \u00b7 {{band}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Radios ranked by retry ratio (worst first)",
+      "description": "Current per-radio retry ratio and absolute retries/s, worst at the top. Ratio cells: green < 10%, yellow < 25%, red above.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(label_replace(label_replace(sum by (name, radio) (rate(unpoller_device_vap_transmit_retries_total[15m])) / sum by (name, radio) (rate(unpoller_device_vap_transmit_packets_total[15m])) * 100,\"band\",\"2.4 GHz\",\"radio\",\"ng\"),\"band\",\"5 GHz\",\"radio\",\"na\"),\"band\",\"6 GHz\",\"radio\",\"6e\")",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(label_replace(label_replace(sum by (name, radio) (rate(unpoller_device_vap_transmit_retries_total[15m])),\"band\",\"2.4 GHz\",\"radio\",\"ng\"),\"band\",\"5 GHz\",\"radio\",\"na\"),\"band\",\"6 GHz\",\"radio\",\"6e\")",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "radio": true,
+              "job": true,
+              "__name__": true,
+              "instance": true
+            },
+            "renameByName": {
+              "name": "AP",
+              "band": "Band",
+              "Value #A": "Retry ratio %",
+              "Value #B": "Retries/s"
+            },
+            "indexByName": {
+              "name": 0,
+              "band": 1,
+              "Value #A": 2,
+              "Value #B": 3
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Retry ratio %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Retries/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "cps"
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Retry ratio %",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Top wireless clients by retry ratio % (drill-down)",
+      "description": "The 12 wireless clients with the highest TX retry ratio (15m window). This is where a bad radio ratio usually traces to \u2014 a specific device that is far, obstructed, or cheap. Legend: client @ AP.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk(12, sum by (name, ip, ap_name, network, oui) (rate(unpoller_client_transmit_retries_total{wired=\"false\"}[15m])) / sum by (name, ip, ap_name, network, oui) (rate(unpoller_client_transmit_packets_total{wired=\"false\"}[15m])) * 100)",
+          "legendFormat": "{{name}} @ {{ap_name}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Wireless clients ranked by retry ratio (worst first)",
+      "description": "Every wireless client, worst retry ratio at the top, with the AP it is on, SSID, vendor and IP \u2014 so a problem device is identifiable at a glance.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (name, ip, ap_name, network, oui) (rate(unpoller_client_transmit_retries_total{wired=\"false\"}[15m])) / sum by (name, ip, ap_name, network, oui) (rate(unpoller_client_transmit_packets_total{wired=\"false\"}[15m])) * 100",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (name, ip, ap_name, network, oui) (rate(unpoller_client_transmit_retries_total{wired=\"false\"}[15m]))",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "__name__": true,
+              "instance": true
+            },
+            "renameByName": {
+              "name": "Client",
+              "ip": "IP",
+              "ap_name": "AP",
+              "network": "SSID",
+              "oui": "Vendor",
+              "Value #A": "Retry ratio %",
+              "Value #B": "Retries/s"
+            },
+            "indexByName": {
+              "name": 0,
+              "ap_name": 1,
+              "network": 2,
+              "oui": 3,
+              "ip": 4,
+              "Value #A": 5,
+              "Value #B": 6
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Retry ratio %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Retries/s"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "cps"
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Retry ratio %",
+            "desc": true
+          }
+        ]
+      }
+    }
+  ]
+}

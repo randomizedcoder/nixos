@@ -59,119 +59,13 @@ let
   # Flatten the nested list structure
   flatWireguardTargets = lib.flatten wireguardTargets;
 
-  # Define targets in a structured way (matching smokeping.nix)
-  targets = {
-    # DNS Servers - ICMP ping testing
-    "DNSServers" = {
-      title = "DNS Server Connectivity (ICMP Ping)";
-      menu = "DNS Servers";
-      targets = {
-        "Google_DNS_IPv4" = {
-          name = "Google DNS IPv4";
-          host = "8.8.8.8";
-        };
-        "Google_DNS_IPv6" = {
-          name = "Google DNS IPv6";
-          host = "2001:4860:4860::8888";
-        };
-        "Cloudflare_DNS_IPv4" = {
-          name = "Cloudflare DNS IPv4";
-          host = "1.1.1.1";
-        };
-        "Cloudflare_DNS_IPv6" = {
-          name = "Cloudflare DNS IPv6";
-          host = "2606:4700:4700::1111";
-        };
-        "Cloudflare_DNS_Secondary_IPv4" = {
-          name = "Cloudflare DNS Secondary IPv4";
-          host = "1.0.0.1";
-        };
-        "Cloudflare_DNS_Secondary_IPv6" = {
-          name = "Cloudflare DNS Secondary IPv6";
-          host = "2606:4700:4700::1001";
-        };
-      };
-    };
+  # Shared single-source-of-truth ICMP target list (v4+v6 devices + APs), imported
+  # from network-targets.nix so blackbox and smokeping never drift again. blackbox
+  # keeps its own HTTP/DNS probe targets below (their module syntax is blackbox-
+  # specific). This is what gives blackbox parity: every internal device + AP, v4+v6.
+  nt = import ./network-targets.nix { inherit lib; };
 
-    # Internet Connectivity
-    "Internet" = {
-      title = "Internet Connectivity Monitoring";
-      menu = "Internet Connectivity";
-      targets = {
-        "Google_IPv4" = {
-          name = "Google.com IPv4";
-          host = "142.250.190.78";
-        };
-        "Google_IPv6" = {
-          name = "Google.com IPv6";
-          host = "2607:f8b0:4007:811::200e";
-        };
-        "Facebook_IPv6" = {
-          name = "Facebook IPv6";
-          host = "2a03:2880:f10d:183:face:b00c:0:25de";
-        };
-        "Yahoo_IPv6" = {
-          name = "Yahoo IPv6";
-          host = "2001:4998:24:120d::1:0";
-        };
-        "crowncastle-ic-386848" = {
-          name = "crowncastle-ic-386848";
-          host = "62.115.8.253";
-        };
-        "SidenLAX1" = {
-          name = "SidenLAX1";
-          host = "160.72.7.68";
-        };
-        "SidenLAX1_Internal" = {
-          name = "SidenLAX1_Internal";
-          host = "160.72.7.65";
-        };
-        "SidenLAX_dcops0_93" = {
-          name = "SidenLAX_dcops0_93";
-          host = "160.72.7.93";
-        };
-        "SidenLAX_dcops1_94" = {
-          name = "SidenLAX_dcops1_94";
-          host = "160.72.7.94";
-        };
-      };
-    };
-
-    # Network Devices and Gateways
-    "NetworkDevices" = {
-      title = "Network Devices and Gateways";
-      menu = "Network Devices";
-      targets = {
-        "SpectrumLAG60_4" = {
-          name = "SpectrumLAG60_4";
-          host = "76.167.31.29";
-        };
-        "SpectrumLAG60_6" = {
-          name = "SpectrumLAG60_6";
-          host = "2605:e000:0:4::8:1d5";
-        };
-        "SpectrumGateway4" = {
-          name = "SpectrumGateway4";
-          host = "172.88.16.1";
-        };
-        "SpectrumGateway6" = {
-          name = "SpectrumGateway6";
-          host = "2605:e000:2fc0:f::1";
-        };
-        "RouterUSGdefault" = {
-          name = "RouterUSGdefault";
-          host = "172.16.50.1";
-        };
-        "Juniper2300" = {
-          name = "Juniper2300";
-          host = "172.16.50.12";
-        };
-        "Juniper2200_office" = {
-          name = "Juniper2200-office";
-          host = "172.16.50.11";
-        };
-      };
-    };
+  targets = nt.categories // {
 
     # HTTP Site Monitoring
     "HTTP" = {

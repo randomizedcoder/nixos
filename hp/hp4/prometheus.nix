@@ -6,6 +6,20 @@ let
   # SNMP exporter hostname (multi-target scrape passes device IP via __param_target)
   snmpHost = "localhost:${toString config.services.prometheus.exporters.snmp.port}";
 
+  # Shared single-source-of-truth device/host list (v4+v6) — same file smokeping.nix
+  # and blackbox.nix import, so blackbox now ICMP-probes every internal device + AP
+  # (both families), in lockstep with smokeping. Add a device once in that file.
+  nt = import ./network-targets.nix { inherit lib; };
+
+  # Build blackbox ICMP static_configs for one family, one static_config per category
+  # so each target keeps a `category` label (DNSServers / Internet / NetworkDevices /
+  # AccessPoints) for grouping in Grafana. family = "ip4" | "ip6".
+  icmpStaticConfigs = family:
+    map (g: {
+      targets = g.hosts;
+      labels = { job = "blackbox"; category = "ICMP_${if family == "ip6" then "IPv6" else "IPv4"}_${g.category}"; };
+    }) (lib.filter (g: g.hosts != [ ]) (nt.byFamilyAndCategory family));
+
 in {
   # Prometheus configuration with blackbox integration
   # https://wiki.nixos.org/wiki/Prometheus
@@ -82,15 +96,9 @@ in {
         params = {
           module = [ "icmp_v4" ];
         };
-        static_configs = [
-          {
-            targets = [ "8.8.8.8" "1.1.1.1" "142.250.190.78" ];
-            labels = {
-              job = "blackbox";
-              category = "ICMP_IPv4";
-            };
-          }
-        ];
+        # All IPv4 ICMP targets from the shared list (DNS servers, internet anchors,
+        # network devices, and every access point) — grouped by category label.
+        static_configs = icmpStaticConfigs "ip4";
         scrape_timeout = "10s";
         honor_labels = true;
         relabel_configs = [
@@ -114,15 +122,9 @@ in {
         params = {
           module = [ "icmp_v6" ];
         };
-        static_configs = [
-          {
-            targets = [ "2001:4860:4860::8888" "2606:4700:4700::1111" "2607:f8b0:4007:811::200e" ];
-            labels = {
-              job = "blackbox";
-              category = "ICMP_IPv6";
-            };
-          }
-        ];
+        # All IPv6 ICMP targets from the shared list (internal device mgmt v6 + AP
+        # SLAAC EUI-64 + external v6 anchors) — grouped by category label.
+        static_configs = icmpStaticConfigs "ip6";
         scrape_timeout = "10s";
         honor_labels = true;
         relabel_configs = [

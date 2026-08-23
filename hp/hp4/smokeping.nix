@@ -417,7 +417,12 @@ in {
     sliceConfig = {
       MemoryHigh = "200M";
       MemoryMax = "300M";
-      CPUQuota = "20%";
+      # The Curl probe forks ~80 short-lived curl+TLS processes per 300s cycle
+      # (HTTP targets x 20 pings). TLS handshakes are CPU-bound and bursty at the
+      # top of each cycle. A 20% cap stretched each ~90ms fetch to ~900ms, which
+      # showed up as a bogus ~1s "HTTP latency". Smokeping's *average* CPU use is
+      # tiny; give the burst 2 cores of headroom so timings reflect the network.
+      CPUQuota = "200%";
       TasksMax = 200;
     };
   };
@@ -430,7 +435,9 @@ in {
       Slice = "smokeping.slice";
       MemoryHigh = "200M";
       MemoryMax = "300M";
-      CPUQuota = "20%";
+      # Match the slice: 20% throttled the Curl probe's bursty TLS handshakes and
+      # inflated HTTP timings ~10x (bogus ~1s). See the slice comment above.
+      CPUQuota = "200%";
       TasksMax = 200;
 
       # Process limits

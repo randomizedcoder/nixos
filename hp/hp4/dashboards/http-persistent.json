@@ -1,0 +1,84 @@
+{
+  "title": "HTTP Latency — Persistent vs Cold (v4/v6)",
+  "uid": "http-persistent",
+  "tags": ["http", "latency", "sansovino"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Warm request latency (reused connection) — the real page latency",
+      "description": "TTFB of a request over an already-open TCP+TLS connection, per site and family. This is what a repeated page load actually costs — it should sit near the network RTT (~10-20ms), NOT the cold setup time.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 8, "showPoints": "never", "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "mean", "max"] }, "tooltip": { "mode": "multi", "sort": "asc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "http_persistent_warm_seconds", "legendFormat": "{{host}} {{family}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Cold connection setup cost (TCP + TLS handshake)",
+      "description": "time_appconnect of the first request = the TCP + TLS handshake overhead paid on every NEW connection. Smokeping/blackbox pay this on every probe; a warm request does not.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 8, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "http_persistent_setup_seconds", "legendFormat": "{{host}} {{family}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Warm vs Cold snapshot (per site / family)",
+      "description": "The gap between Cold and Warm is pure connection-setup overhead. Warm ≈ real latency to the edge.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 10 },
+      "options": { "showHeader": true, "sortBy": [ { "displayName": "Warm", "desc": true } ] },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Warm" }, "properties": [ { "id": "unit", "value": "s" }, { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.05 }, { "color": "red", "value": 0.15 } ] } } ] },
+          { "matcher": { "id": "byName", "options": "Cold total" }, "properties": [ { "id": "unit", "value": "s" } ] },
+          { "matcher": { "id": "byName", "options": "Setup (TCP+TLS)" }, "properties": [ { "id": "unit", "value": "s" } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "http_persistent_warm_seconds", "format": "table", "instant": true },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "http_persistent_setup_seconds", "format": "table", "instant": true },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "http_persistent_cold_total_seconds", "format": "table", "instant": true }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "renameByName": {
+              "host": "Site",
+              "family": "Family",
+              "Value #A": "Warm",
+              "Value #B": "Setup (TCP+TLS)",
+              "Value #C": "Cold total"
+            },
+            "indexByName": {
+              "host": 0,
+              "family": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -39,6 +39,7 @@
       ./snmp-exporter.nix
       ./unpoller.nix
       ./mtr-exporter.nix
+      ./http-persistent.nix
       ./docker-daemon.nix
       #./k8s_master.nix
       #./k8s_node.nix

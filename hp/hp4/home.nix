@@ -130,13 +130,16 @@
 
   programs.git = {
     enable = true;
-    userEmail = "dave.seddon.ca@gmail.com";
-    userName = "randomizedcoder ";
+    # 26.05 home-manager: userEmail/userName renamed to settings.user.*
+    settings.user.email = "dave.seddon.ca@gmail.com";
+    settings.user.name = "randomizedcoder ";
     #signing.key = "GPG-KEY-ID";
     #signing.signByDefault = true;
   };
 
-  nixpkgs.config.allowUnfree = true;
+  # nixpkgs.config here is ignored (and warned about) under home-manager.useGlobalPkgs,
+  # which reuses the system pkgs — allowUnfree is already set at the system level
+  # (configuration.nix / flake.nix), so this home-level setting is removed.
 
   programs.home-manager.enable = true;
   home.stateVersion = "24.11";

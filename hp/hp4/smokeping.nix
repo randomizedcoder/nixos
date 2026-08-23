@@ -169,28 +169,35 @@ let
       };
     };
 
-    # Add HTTP category and targets
+    # HTTP connection-SETUP timing (cold TCP+TLS handshake).
+    #
+    # NOTE: Smokeping's Curl probe forks a fresh `curl` for every ping, so it always opens
+    # a NEW TCP+TLS connection and measures the ~2-3 round-trip + crypto SETUP cost (~50ms
+    # to a ~10ms-away edge). It is NOT page latency - a warm request to these edges is
+    # ~10-25ms. Real warm/persistent HTTP latency (v4+v6) lives in Grafana:
+    # "HTTP Latency - Persistent vs Cold (v4/v6)" (uid http-persistent). Keep this section
+    # as a fresh-connection reachability + TLS-handshake health check, honestly labelled.
     "HTTP" = {
-      title = "HTTP Site Monitoring";
-      menu = "HTTP Sites";
+      title = "HTTP Connection Setup - cold TCP+TLS handshake (NOT page latency; see Grafana http-persistent)";
+      menu = "HTTP Setup (cold)";
       targets = {
         "Google_HTTP" = {
-          name = "Google HTTP";
+          name = "Google - cold connection setup (TCP+TLS)";
           host = "google.com";
           probe = "Curl";
         };
         "IBM_HTTP" = {
-          name = "IBM HTTP";
+          name = "IBM - cold connection setup (TCP+TLS)";
           host = "ibm.com";
           probe = "Curl";
         };
         "Yahoo_HTTP" = {
-          name = "Yahoo HTTP";
+          name = "Yahoo - cold connection setup (TCP+TLS)";
           host = "yahoo.com";
           probe = "Curl";
         };
         "Facebook_HTTP" = {
-          name = "Facebook HTTP";
+          name = "Facebook - cold connection setup (TCP+TLS)";
           host = "facebook.com";
           probe = "Curl";
         };

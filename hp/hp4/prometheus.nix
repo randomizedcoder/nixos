@@ -24,9 +24,9 @@ in {
       {
         job_name = "snmp-crs310";
         metrics_path = "/snmp";
-        # CRS310 is fast (~0.6s/walk) — poll every minute; 30s timeout is ample.
-        scrape_interval = "60s";
-        scrape_timeout = "30s";
+        # CRS310 is fast (~0.6s/walk) — high-resolution 10s polling; 8s timeout (< interval).
+        scrape_interval = "10s";
+        scrape_timeout = "8s";
         params = { module = [ "if_mib" ]; auth = [ "crs310_v3" ]; };
         static_configs = [{ targets = [ "172.16.50.17" ]; }];
         relabel_configs = [

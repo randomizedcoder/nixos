@@ -20,11 +20,16 @@ let
 
   probe = pkgs.writeShellApplication {
     name = "http-persistent-probe";
-    runtimeInputs = [ pkgs.curl pkgs.coreutils ];
+    runtimeInputs = [ pkgs.curl pkgs.coreutils pkgs.gawk ];
     text = ''
       set -u
       OUT="${textfileDir}/http_persistent.prom"
-      TMP="$OUT.$$"
+      # Fixed temp name (not $$-suffixed): the timer runs this oneshot sequentially, so a
+      # single reusable temp can't collide, and a failed run leaves at most one stale
+      # .tmp (ignored by the collector, which only reads *.prom) instead of piling up.
+      TMP="$OUT.tmp"
+      # Clean up any orphaned PID-suffixed temps (from the pre-gawk-fix failed runs).
+      rm -f "$OUT".[0-9]*
       : > "$TMP"
       {
         echo "# HELP http_persistent_warm_seconds Median warm (reused-connection) HTTP request time."

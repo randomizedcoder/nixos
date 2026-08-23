@@ -78,7 +78,7 @@
       "gridPos": { "h": 8, "w": 6, "x": 12, "y": 9 },
       "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "targets": [
-        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count by (instance) (ifOperStatus{instance=~\"$instance\", ifOperStatus=\"up\"} == 1)", "legendFormat": "{{instance}}" }
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count by (instance) (ifOperStatus{instance=~\"$instance\"} == 1)", "legendFormat": "{{instance}}" }
       ]
     },
     {

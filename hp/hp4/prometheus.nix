@@ -58,6 +58,12 @@ in {
           targets = [ "localhost:${toString config.services.prometheus.exporters.unpoller.port}" ];
         }];
       }
+      # --- Per-hop path monitoring (mtr-exporter) to google/facebook/ibm/yahoo, v4+v6 ---
+      {
+        job_name = "mtr";
+        scrape_interval = "60s";
+        static_configs = [{ targets = [ "localhost:9142" ]; }];
+      }
       {
         job_name = "node";
         static_configs = [{

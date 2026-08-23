@@ -203,14 +203,26 @@ let
       menu = "DNS Resolution";
       targets = {
         "Google_DNS_Lookup" = {
-          name = "Google DNS - google.com lookup";
+          name = "Google DNS IPv4 - google.com lookup";
           host = "8.8.8.8";
           probe = "DNS";
           lookup = "google.com";
         };
+        "Google_DNS_Lookup_IPv6" = {
+          name = "Google DNS IPv6 - google.com lookup";
+          host = "2001:4860:4860::8888";
+          probe = "DNS";
+          lookup = "google.com";
+        };
         "Cloudflare_DNS_Lookup" = {
-          name = "Cloudflare DNS - google.com lookup";
+          name = "Cloudflare DNS IPv4 - google.com lookup";
           host = "1.1.1.1";
+          probe = "DNS";
+          lookup = "google.com";
+        };
+        "Cloudflare_DNS_Lookup_IPv6" = {
+          name = "Cloudflare DNS IPv6 - google.com lookup";
+          host = "2606:4700:4700::1111";
           probe = "DNS";
           lookup = "google.com";
         };

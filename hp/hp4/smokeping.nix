@@ -16,6 +16,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # IPv6 GUA prefix delegated by Charter to the management VLAN (2603:8002:ea00:6800::/64).
+  # Devices SLAAC EUI-64 addresses in it (host bits derived from MAC), except the UXG which
+  # uses ::1. NOTE: this is an ISP-delegated prefix — if Charter re-delegates a new prefix,
+  # update THIS one line and every v6 target below follows. (User accepted GUA over ULA.)
+  v6pfx = "2603:8002:ea00:6800";
+
   # Define targets in a structured way
   # Modern fping handles both IPv4 and IPv6 automatically
   targets = {
@@ -117,33 +123,46 @@ let
           host = "2605:e000:2fc0:f::1";
         };
         "RouterUSGdefault" = {
-          name = "RouterUSGdefault";
+          name = "Gateway Pro / USG (IPv4)";
           host = "172.16.50.1";
+        };
+        # The UXG uses ::1 on the LAN (not an EUI-64 SLAAC addr); verified reachable (~0.2ms).
+        "RouterUSGdefault_v6" = {
+          name = "Gateway Pro / USG (IPv6)";
+          host = "${v6pfx}::1";
         };
         "Juniper2300" = {
           name = "Juniper2300";
           host = "172.16.50.12";
         };
+        # Juniper2300_v6: EX2300 has only a link-local today — pending static GUA config.
         "Juniper2200_office" = {
           name = "Juniper2200-office";
           host = "172.16.50.11";
         };
+        # Juniper2200_v6: EX2200 pending static GUA config (also needs legacy SSH ciphers).
         "CRS310" = {
           name = "CRS310 (MikroTik WAN)";
           host = "172.16.50.17";
         };
+        # CRS310_v6: Mikrotik has no global v6 yet — pending static GUA on the mgmt bridge.
         "CloudKey" = {
           name = "Cloud Key Controller";
           host = "172.16.50.5";
         };
         "USW_8_PoE_150W" = {
-          name = "US-8-150W Switch";
+          name = "US-8-150W Switch (IPv4)";
           host = "172.16.50.201";
+        };
+        "USW_8_PoE_150W_v6" = {
+          name = "US-8-150W Switch (IPv6)";
+          host = "${v6pfx}:b6fb:e4ff:fecf:f7c9";
         };
         "USW_Flex_2_5G" = {
           name = "USW Flex 2.5G Switch";
           host = "172.16.50.151";
         };
+        # USW_Flex_2_5G_v6: has v6 but not on its EUI-64 addr (privacy?) — needs its real address.
         "Netgear_GS108PEv3" = {
           name = "Netgear GS108PEv3";
           host = "172.16.50.119";
@@ -153,19 +172,29 @@ let
 
     # UniFi Access Points (management IPs on 172.16.50.0/24)
     "AccessPoints" = {
-      title = "UniFi Access Points (ICMP Ping)";
+      title = "UniFi Access Points (ICMP Ping, IPv4 + IPv6)";
       menu = "Access Points";
+      # IPv6 hosts are the APs' SLAAC EUI-64 globals (host bits from each MAC), verified
+      # reachable via fping. AC Pro Cabinet Downstairs (172.16.50.135) removed 2026-08-23.
       targets = {
-        "AP_U7Pro_Dave" = { name = "U7 Pro Dave's Office"; host = "172.16.50.237"; };
-        "AP_U7Pro_Downstairs" = { name = "U7 Pro Downstairs"; host = "172.16.50.67"; };
-        "AP_U6Plus" = { name = "U6+"; host = "172.16.50.53"; };
-        "AP_ACPro_Naomi" = { name = "AC Pro Naomi"; host = "172.16.50.107"; };
-        "AP_ACPro_WestBed" = { name = "AC Pro West Bed"; host = "172.16.50.189"; };
-        "AP_ACLR_Balcony" = { name = "AC LR Balcony"; host = "172.16.50.163"; };
-        "AP_ACPro_EastBed" = { name = "AC Pro East Bed"; host = "172.16.50.113"; };
-        "AP_ACPro_Rack" = { name = "AC Pro Rack"; host = "172.16.50.148"; };
-        "AP_ACPro_Downstairs" = { name = "AC Pro Downstairs"; host = "172.16.50.238"; };
-        # AC Pro Cabinet Downstairs (172.16.50.135) removed 2026-08-23 — device decommissioned.
+        "AP_U7Pro_Dave"        = { name = "U7 Pro Dave's Office (IPv4)"; host = "172.16.50.237"; };
+        "AP_U7Pro_Dave_v6"     = { name = "U7 Pro Dave's Office (IPv6)"; host = "${v6pfx}:9e05:d6ff:feb0:3466"; };
+        "AP_U7Pro_Downstairs"    = { name = "U7 Pro Downstairs (IPv4)"; host = "172.16.50.67"; };
+        "AP_U7Pro_Downstairs_v6" = { name = "U7 Pro Downstairs (IPv6)"; host = "${v6pfx}:9e05:d6ff:feaf:1795"; };
+        "AP_U6Plus"    = { name = "U6+ (IPv4)"; host = "172.16.50.53"; };
+        "AP_U6Plus_v6" = { name = "U6+ (IPv6)"; host = "${v6pfx}:f6e2:c6ff:fe43:2c88"; };
+        "AP_ACPro_Naomi"    = { name = "AC Pro Naomi (IPv4)"; host = "172.16.50.107"; };
+        "AP_ACPro_Naomi_v6" = { name = "AC Pro Naomi (IPv6)"; host = "${v6pfx}:f29f:c2ff:fe70:e645"; };
+        "AP_ACPro_WestBed"    = { name = "AC Pro West Bed (IPv4)"; host = "172.16.50.189"; };
+        "AP_ACPro_WestBed_v6" = { name = "AC Pro West Bed (IPv6)"; host = "${v6pfx}:feec:daff:fe80:4c55"; };
+        "AP_ACLR_Balcony"    = { name = "AC LR Balcony (IPv4)"; host = "172.16.50.163"; };
+        "AP_ACLR_Balcony_v6" = { name = "AC LR Balcony (IPv6)"; host = "${v6pfx}:76ac:b9ff:fe2c:c53a"; };
+        "AP_ACPro_EastBed"    = { name = "AC Pro East Bed (IPv4)"; host = "172.16.50.113"; };
+        "AP_ACPro_EastBed_v6" = { name = "AC Pro East Bed (IPv6)"; host = "${v6pfx}:e263:daff:fea6:54d3"; };
+        "AP_ACPro_Rack"    = { name = "AC Pro Rack (IPv4)"; host = "172.16.50.148"; };
+        "AP_ACPro_Rack_v6" = { name = "AC Pro Rack (IPv6)"; host = "${v6pfx}:feec:daff:fef3:22b0"; };
+        "AP_ACPro_Downstairs"    = { name = "AC Pro Downstairs (IPv4)"; host = "172.16.50.238"; };
+        "AP_ACPro_Downstairs_v6" = { name = "AC Pro Downstairs (IPv6)"; host = "${v6pfx}:f29f:c2ff:fea9:56ca"; };
       };
     };
 

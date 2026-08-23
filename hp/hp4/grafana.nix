@@ -29,6 +29,13 @@
         admin_email = "admin@localhost";
         # Disable initial admin creation to prevent password resets
         disable_initial_admin_creation = false;
+        # 26.05 requires an explicit secret_key (the built-in default was removed).
+        # This is a LAN monitoring box whose Grafana DB holds nothing sensitive
+        # (datasources/dashboards are provisioned declaratively, no stored creds), and
+        # admin_password is already "admin" above — so we pin the old built-in default
+        # value. This keeps any already-encrypted DB secrets decryptable across the
+        # upgrade. Switch to a file-provider ($__env) if real secrets ever land here.
+        secret_key = "SW2YcwTIb9zpOOhoPsMm";
       };
 
       # User settings

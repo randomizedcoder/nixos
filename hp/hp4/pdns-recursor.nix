@@ -19,16 +19,23 @@
     api.port = 8082;
     api.allowFrom = [ "127.0.0.1" "::1" ];
 
-    # Configure DNS settings for proper DNSSEC validation
+    # DNSSEC validation. 26.05 / Recursor 5.x exposes this as the dedicated
+    # `dnssecValidation` option (the module maps it to settings.dnssec.validation);
+    # setting it under `settings` directly now collides with that internal definition.
+    dnssecValidation = "validate";
+
+    # Recursor 5.x replaced the flat pdns-recursor.conf keys with nested YAML
+    # (pdns-recursor.yml). Migrated from the old 24.11 flat settings:
+    #   query-local-address = "::"  -> outgoing.source_address (sequence)
+    #   security-poll-suffix = ""   -> recursor.security_poll_suffix (string)
+    #   dnssec = "validate"         -> dnssecValidation option above
     settings = {
-      # Enable DNSSEC validation
-      dnssec = "validate";
-      # Set query local address to enable IPv6 for outgoing queries
-      query-local-address = "::";
-      # Disable security polling to avoid external queries
-      security-poll-suffix = "";
+      # Source outgoing queries from IPv6 (preserves the old query-local-address = "::").
+      outgoing.source_address = [ "::" ];
+      # Disable security-status polling so the recursor makes no external telemetry query.
+      recursor.security_poll_suffix = "";
       # Configure forward zones for specific domains if needed
-      # forward-zones = "example.com=172.16.50.1";
+      # recursor.forward_zones = [ { zone = "example.com"; forwarders = [ "172.16.50.1" ]; } ];
     };
 
     # Export /etc/hosts entries
@@ -62,7 +69,10 @@
   # Configure system to use local pdns-recursor
   #networking.nameservers = [ "::1" "127.0.0.1" ];
   networking.nameservers = [ "172.16.50.1" ];
-  networking.resolvconf.useLocalResolver = true;
+  # 26.05: resolvconf and a manual environment.etc."resolv.conf" now conflict (assertion).
+  # We manage /etc/resolv.conf by hand below (already points at the local ::1/127.0.0.1
+  # resolver), so disable resolvconf entirely rather than letting it fight us for the file.
+  networking.resolvconf.enable = false;
 
   environment.etc."resolv.conf".text = ''
     # pdns

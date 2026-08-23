@@ -18,7 +18,9 @@
 
     recommendedProxySettings = true;
     recommendedTlsSettings = true;
-    recommendedZstdSettings = true;
+    # 26.05: recommendedZstdSettings was removed (zstd module unmaintained/buggy).
+    # experimentalZstdSettings applies the identical config under the new name.
+    experimentalZstdSettings = true;
     recommendedGzipSettings = true;
     recommendedOptimisation = true;
     recommendedBrotliSettings = true;

@@ -27,7 +27,7 @@
     lldpd
     #snmp seems to be needed by lldpd
     net-snmp
-    neofetch
+    fastfetch  # 26.05: neofetch removed upstream (unmaintained); fastfetch is the replacement
     #
     ffmpeg-full
     radeontop  # GPU monitoring tool

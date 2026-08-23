@@ -4,10 +4,17 @@
 # Network-performance tuning: give the on-board NIC a dedicated CPU core.
 #
 # This box runs an iperf2 server for network testing, so it should deliver
-# clean, repeatable numbers. The Pi 4's built-in 1 GbE (`eth0`, the on-SoC
-# bcmgenet MAC) is effectively a single-queue NIC and by default its interrupt
-# lands on CPU0, next to the SD-card controller. Under any other load that core
+# clean, repeatable numbers. The Pi 4's built-in 1 GbE (the on-SoC bcmgenet
+# MAC) presents as `end0` under this kernel's predictable naming (NOT the
+# legacy `eth0` - verified on real hardware, kernel 6.18). It has two GIC-level
+# hard IRQs (rx + tx rings) and 1 RX + 5 TX queues; by default both IRQs land
+# on CPU0, next to the SD-card controller. Under any other load that core
 # becomes the bottleneck and throughput/latency get noisy.
+#
+# The steering script below is queue/IRQ-count agnostic: it pins *every* IRQ
+# whose /proc/interrupts line mentions the NIC and iterates *all* rx-*/tx-*
+# queues, so it covers the Pi 4's 2 IRQs + 6 queues and the Pi 5's single
+# IRQ/queue identically.
 #
 # Strategy (Pi 4 = 4 cores):
 #   CPU 0-2 : system.slice + user.slice + everything else (monitoring, rebuilds)
@@ -21,14 +28,14 @@
 # "2-3" to give iperf2 two cores for high-PPS/multi-stream), or move iperf2 to
 # CPU2 and keep only the IRQ on CPU3 for true IRQ/app parallelism.
 #
-# NB: `nic` is the wired interface name. On the Pi 4 it is normally `eth0`; if
-# `ip -brief link` on your board shows something else, change it here.
+# NB: `nic` is the wired interface name. On this Pi 4 (kernel 6.18) it is
+# `end0`; if `ip -brief link` on your board shows something else, change it here.
 #
 { config, pkgs, lib, ... }:
 
 let
   # Wired NIC to pin, and the core dedicated to it + iperf2.
-  nic = "eth0";
+  nic = "end0";
   netCore = 3;
   otherCores = "0-${toString (netCore - 1)}"; # "0-2"
   # CPU affinity mask (hex, no 0x) for a single core: 2^netCore. Nix has no
@@ -87,8 +94,8 @@ in
       done
 
       # (b) RPS (receive) + XPS (transmit) steering to the network core. This
-      #     is the reliable lever for a single-queue NIC: the rx/tx softirq
-      #     work runs on CPU$CORE even if the hard IRQ stays on CPU0.
+      #     is the reliable lever regardless of queue count: the rx/tx softirq
+      #     work runs on CPU$CORE even if a hard IRQ stays on CPU0.
       for q in /sys/class/net/"$NIC"/queues/rx-*/rps_cpus; do
         [ -e "$q" ] && echo "$MASK" > "$q" 2>/dev/null && echo "RPS $q -> $MASK"
       done

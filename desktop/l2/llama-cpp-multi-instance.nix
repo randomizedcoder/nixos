@@ -53,9 +53,19 @@ let
         else
           basePackage;
 
+      # Current nixpkgs llama-cpp no longer re-exports {rocm,cuda,vulkan}Support
+      # in passthru (only tests/updateScript remain), so passthru-based GPU
+      # detection silently fails -> needsGpu=false -> "--gpu-layers 0" and no
+      # GPU device access. Fall back to explicit instance intent: a non-null
+      # rocmGpuTargets means this instance is meant to run on a ROCm GPU.
       useCuda = pkg.passthru.cudaSupport or false;
-      useRocm = pkg.passthru.rocmSupport or false;
-      useVulkan = pkg.passthru.vulkanSupport or false;
+      useRocm = (pkg.passthru.rocmSupport or false) || (inst.rocmGpuTargets != null);
+      # Same passthru-detection failure as ROCm above: fall back to explicit intent.
+      # Setting GGML_VK_VISIBLE_DEVICES on an instance means it targets a Vulkan GPU
+      # (RADV), so it needs --gpu-layers > 0 and /dev/dri access (e.g. the MI50, whose
+      # ROCm runtime is broken on gfx906 — see llama-service.nix).
+      useVulkan =
+        (pkg.passthru.vulkanSupport or false) || (inst.environment ? GGML_VK_VISIBLE_DEVICES);
       needsGpu = useCuda || useRocm || useVulkan;
 
       deviceRules =

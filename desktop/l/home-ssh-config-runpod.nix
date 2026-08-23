@@ -42,8 +42,8 @@
     # (Host 100.* below) forwards through it. Dev uses dev-runpod-jump instead
     # (see the DEV fleet block below).
     Host runpod-jump
-      Hostname 44.197.169.91
-      User ubuntu
+      Hostname doc-ssh1.runpod.io
+      User rp_das
       IdentityFile ~/.ssh/id_ed25519_runpod
       IdentitiesOnly yes
       ProxyJump vpn-jump
@@ -63,8 +63,8 @@
     # collapses at -P 40 over the VPN. Full rationale + measurements:
     # runpod/fleet-snapshots scripts/fleet-snapshot/README.md "SOCKS fast path".
     Host fleet-socks
-      Hostname 44.197.169.91
-      User ubuntu
+      Hostname doc-ssh1.runpod.io
+      User rp_das
       IdentityFile ~/.ssh/id_ed25519_runpod
       IdentitiesOnly yes
       ProxyJump vpn-jump

@@ -89,8 +89,11 @@
       # (llama-cpp-mi50 / llama-cpp-w5700) were crash-looping with a GPF in
       # libamdhip64 (ROCm/HIP) on the net-next 7.2-rc1 kernel, hanging amdgpu
       # and tripping the sp5100_tco hardware watchdog → reboot loop (~7 min).
-      # Re-enable once the ROCm/amdgpu stack is stable on this kernel.
-      # ./llama-service.nix
+      # FIXED by using the VULKAN backend (not ROCm/HIP) for the MI50 llama.cpp
+      # instance — the same reason ollama-vulkan is safe. Serves qwen3-coder-30B-A3B
+      # with `--jinja` so tool calls parse. The MI50 holds ONE model, so this and
+      # ./ollama-service.nix are MUTUALLY EXCLUSIVE — enable exactly one.
+      ./llama-service.nix
       #./fan2go.nix
       # agent-seddon remote seam fleet — opens the gRPC gateway port for l.
       ./agent-seam.nix
@@ -99,7 +102,10 @@
       # not the kernel; with that card removed the MI50 works on net-next.
       ./gpu-stable.nix
       # ollama serving the MI50 (32GB) over Vulkan on :11434.
-      ./ollama-service.nix
+      # DISABLED: mutually exclusive with ./llama-service.nix above (one MI50, one
+      # model). Re-enable this and comment out ./llama-service.nix to switch back to
+      # ollama (mistral-small etc.). Only one may own the MI50 at a time.
+      # ./ollama-service.nix
       # NIC configuration — Mellanox ports are now owned by xdp2.testbed.
       ./network-interfaces.nix
       ./ethtool-nics.nix

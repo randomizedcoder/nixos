@@ -26,9 +26,24 @@
       url = "github:randomizedcoder/xdp2/merge/matrix-physical-testbed";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # uds-rdma-proxy provides nixosModules.urp: builds urp.ko against this
+    # host's kernel (linuxPackages_latest), loads the RDMA stack, and
+    # materialises the declarative urp endpoints (design 32 real-hardware
+    # integration).
+    # Refresh after pushing new urp changes with:
+    #   nix flake update uds-rdma-proxy && sudo nixos-rebuild switch --flake .#hp1
+    uds-rdma-proxy = {
+      url = "github:randomizedcoder/uds-rdma-proxy/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+      # NB: do NOT `follows`-prune redpanda/microvm. nixosModules.urp forces
+      # the flake's `packages` attrset (for urp-cli), which spreads in
+      # `microvms.packages` and `redpandaUdsTest`; those guards are not
+      # follows-safe, so pruning breaks eval. Both inputs are only *fetched*
+      # (source), never built into this host's closure.
+    };
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, xdp2, ... }:
+  outputs = inputs@{ nixpkgs, home-manager, xdp2, uds-rdma-proxy, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -43,6 +58,7 @@
         modules = [
           ./configuration.nix
           xdp2.nixosModules.physical-testbed
+          uds-rdma-proxy.nixosModules.urp
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;

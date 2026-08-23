@@ -1,0 +1,5 @@
+NAME ONE-SIZE ALL-SIZE WAYS TYPE        LEVEL  SETS PHY-LINE COHERENCY-SIZE
+L1d       32K     896K    8 Data            1    64        1             64
+L1i       32K     896K    8 Instruction     1    64        1             64
+L2       256K       7M    8 Unified         2   512        1             64
+L3        35M      70M   20 Unified         3 28672        1             64

@@ -398,7 +398,6 @@
     gnomeExtensions.tray-icons-reloaded
     gnomeExtensions.vitals
     gnomeExtensions.dash-to-panel
-    gnomeExtensions.sound-output-device-chooser
     gnomeExtensions.space-bar
     # https://github.com/AstraExt/astra-monitor
     gnomeExtensions.astra-monitor
@@ -439,7 +438,6 @@
     # https://wiki.nixos.org/wiki/Flameshot
     grim # screenshot functionality
     slurp # screenshot functionality
-    simplescreenrecorder
     # https://wiki.nixos.org/wiki/Gpu-screen-recorder
     gpu-screen-recorder # CLI
     gpu-screen-recorder-gtk # GUI
@@ -528,7 +526,6 @@
     stockfish # for xboard
     #pychess
     gnome-chess
-    arena
     # Audio utilities for chess applications (xboard uses aplay for sound effects)
     alsa-utils
 

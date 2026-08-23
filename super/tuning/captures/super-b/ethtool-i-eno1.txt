@@ -1,0 +1,10 @@
+driver: ixgbe
+version: 6.18.43
+firmware-version: 0x800003e2
+expansion-rom-version: 
+bus-info: 0000:03:00.0
+supports-statistics: yes
+supports-test: yes
+supports-eeprom-access: yes
+supports-register-dump: yes
+supports-priv-flags: yes

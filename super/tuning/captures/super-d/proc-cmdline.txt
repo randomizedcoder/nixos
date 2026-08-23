@@ -1,0 +1,1 @@
+initrd=\EFI\nixos\jw1ddylkwmx8pr1b9cf2jb118zpk20hx-initrd-linux-6.18.43-initrd.efi init=/nix/store/y8vfx3vhs4bz1sfn2sp428720zb4yslz-nixos-system-super-d-26.11.20260807.f13ff45/init console=tty0 console=ttyS1,115200 root=fstab loglevel=4 lsm=landlock,yama,bpf

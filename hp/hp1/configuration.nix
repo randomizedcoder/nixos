@@ -49,6 +49,9 @@
       #./firewall-test-phase1.nix
       # INSECURE: passwordless root SSH for isolated lab network
       ./sshd-INSECURE.nix
+      # design 32: urp acceptor endpoint + PTP grandmaster (lab time sync)
+      ./urp.nix
+      ./ptp.nix
     ];
 
   # Bootloader.
@@ -63,7 +66,12 @@
   # https://nixos.wiki/wiki/Linux_kernel
   # Pinned to linuxPackages_latest so hp1 + hp2 + hp3 + hp5 all run the
   # same newest kernel (xdp2 docs/physical-testbed.md §3).
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #
+  # RESTORED (2026-08-16): back to nixpkgs' linuxPackages_latest for the
+  # uds-rdma-proxy real-HW testing (design 32). The custom net-next kernel
+  # below was for a separate flow_dissector fast-path A/B and is parked.
+  # To resume that testing, re-enable the ./netnext-kernel.nix line.
   #
   # TEMPORARY (2026-05-24): switched to a custom net-next 7.1.0-rc4
   # kernel built from the flow-keys-compat-reorder branch's
@@ -75,7 +83,7 @@
   # above after testing is complete.
   # series4 net-next kernel (series4-rfc-tail-v2), replacing ./test-kernel
   # for the flow_dissector fast-path perf A/B. See ./netnext-kernel.nix.
-  boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
+  #boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
   # for the option reference and trade-offs. hp1 mirrors hp2's "generator"

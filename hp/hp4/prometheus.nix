@@ -3,6 +3,8 @@
 let
   # Blackbox exporter hostname
   blackboxHost = "localhost:${toString config.services.prometheus.exporters.blackbox.port}";
+  # SNMP exporter hostname (multi-target scrape passes device IP via __param_target)
+  snmpHost = "localhost:${toString config.services.prometheus.exporters.snmp.port}";
 
 in {
   # Prometheus configuration with blackbox integration
@@ -13,8 +15,41 @@ in {
   services.prometheus = {
     enable = true;
     # openFirewall = true; # doesn't exist
+    retentionTime = "90d"; # keep 90 days of history for network-device metrics
     globalConfig.scrape_interval = "10s"; # Keep node exporter at 10s
     scrapeConfigs = [
+      # --- Network devices via SNMP (snmp_exporter multi-target) ---
+      # CRS310 uses SNMPv3 (auth crs310_v3); Junipers use SNMPv2c (auth juniper_v2).
+      # Two jobs because they need different `auth` params. See snmp-exporter.nix.
+      {
+        job_name = "snmp-crs310";
+        metrics_path = "/snmp";
+        params = { module = [ "if_mib" ]; auth = [ "crs310_v3" ]; };
+        static_configs = [{ targets = [ "172.16.50.17" ]; }];
+        relabel_configs = [
+          { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+          { source_labels = [ "__param_target" ]; target_label = "instance"; }
+          { target_label = "__address__"; replacement = snmpHost; }
+        ];
+      }
+      {
+        job_name = "snmp-juniper";
+        metrics_path = "/snmp";
+        params = { module = [ "if_mib" ]; auth = [ "juniper_v2" ]; };
+        static_configs = [{ targets = [ "172.16.50.12" "172.16.50.11" ]; }];
+        relabel_configs = [
+          { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+          { source_labels = [ "__param_target" ]; target_label = "instance"; }
+          { target_label = "__address__"; replacement = snmpHost; }
+        ];
+      }
+      # --- UniFi (gateway, switches, APs, clients) via unpoller ---
+      {
+        job_name = "unpoller";
+        static_configs = [{
+          targets = [ "localhost:${toString config.services.prometheus.exporters.unpoller.port}" ];
+        }];
+      }
       {
         job_name = "node";
         static_configs = [{

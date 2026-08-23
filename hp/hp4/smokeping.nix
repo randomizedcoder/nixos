@@ -128,6 +128,44 @@ let
           name = "Juniper2200-office";
           host = "172.16.50.11";
         };
+        "CRS310" = {
+          name = "CRS310 (MikroTik WAN)";
+          host = "172.16.50.17";
+        };
+        "CloudKey" = {
+          name = "Cloud Key Controller";
+          host = "172.16.50.5";
+        };
+        "USW_8_PoE_150W" = {
+          name = "US-8-150W Switch";
+          host = "172.16.50.201";
+        };
+        "USW_Flex_2_5G" = {
+          name = "USW Flex 2.5G Switch";
+          host = "172.16.50.151";
+        };
+        "Netgear_GS108PEv3" = {
+          name = "Netgear GS108PEv3";
+          host = "172.16.50.119";
+        };
+      };
+    };
+
+    # UniFi Access Points (management IPs on 172.16.50.0/24)
+    "AccessPoints" = {
+      title = "UniFi Access Points (ICMP Ping)";
+      menu = "Access Points";
+      targets = {
+        "AP_U7Pro_Dave" = { name = "U7 Pro Dave's Office"; host = "172.16.50.237"; };
+        "AP_U7Pro_Downstairs" = { name = "U7 Pro Downstairs"; host = "172.16.50.67"; };
+        "AP_U6Plus" = { name = "U6+"; host = "172.16.50.53"; };
+        "AP_ACPro_Naomi" = { name = "AC Pro Naomi"; host = "172.16.50.107"; };
+        "AP_ACPro_WestBed" = { name = "AC Pro West Bed"; host = "172.16.50.189"; };
+        "AP_ACLR_Balcony" = { name = "AC LR Balcony"; host = "172.16.50.163"; };
+        "AP_ACPro_EastBed" = { name = "AC Pro East Bed"; host = "172.16.50.113"; };
+        "AP_ACPro_Rack" = { name = "AC Pro Rack"; host = "172.16.50.148"; };
+        "AP_ACPro_Downstairs" = { name = "AC Pro Downstairs"; host = "172.16.50.238"; };
+        "AP_ACPro_Cabinet" = { name = "AC Pro Cabinet Downstairs"; host = "172.16.50.135"; };
       };
     };
 

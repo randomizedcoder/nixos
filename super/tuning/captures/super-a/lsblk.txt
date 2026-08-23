@@ -1,0 +1,10 @@
+NAME      SIZE TYPE MODEL                        TRAN MOUNTPOINTS
+sda       1.7T disk SMC3108                           
+├─sda1      1G part                                   /boot
+├─sda2    1.6T part                                   /nix/store
+│                                                     /
+└─sda3  138.3G part                                   [SWAP]
+sdb     476.4G disk SMC3108                           
+sdc      29.8G disk SATADOM-SL 3ME3 V2           sata 
+sdd       1.8T disk SMC3108                           
+nvme0n1 931.5G disk Samsung SSD 990 EVO Plus 1TB nvme 

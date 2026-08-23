@@ -1,0 +1,8 @@
+NAME      SIZE TYPE MODEL               TRAN MOUNTPOINTS
+sda       1.7T disk AVAGO JBOD               
+sdb       1.9T disk AVAGO JBOD               
+├─sdb1      1G part                          /boot
+├─sdb2    1.7T part                          /nix/store
+│                                            /
+└─sdb3  138.3G part                          [SWAP]
+nvme0n1 931.5G disk Samsung SSD 980 1TB nvme 

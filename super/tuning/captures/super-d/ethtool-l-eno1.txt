@@ -1,0 +1,11 @@
+Channel parameters for eno1:
+Pre-set maximums:
+RX:		n/a
+TX:		n/a
+Other:		1
+Combined:	56
+Current hardware settings:
+RX:		n/a
+TX:		n/a
+Other:		1
+Combined:	56

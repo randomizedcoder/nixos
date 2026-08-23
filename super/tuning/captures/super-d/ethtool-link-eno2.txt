@@ -1,0 +1,3 @@
+	Speed: 10000Mb/s
+	Duplex: Full
+	Link detected: yes

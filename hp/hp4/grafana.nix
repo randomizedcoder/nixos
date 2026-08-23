@@ -41,5 +41,29 @@
         auto_assign_org_role = "Viewer";
       };
     };
+
+    # Declarative provisioning: Prometheus datasource + dashboards from ./dashboards
+    provision = {
+      enable = true;
+      datasources.settings = {
+        apiVersion = 1;
+        datasources = [{
+          name = "Prometheus";
+          uid = "prometheus";          # dashboards reference this uid
+          type = "prometheus";
+          access = "proxy";
+          url = "http://localhost:9090";
+          isDefault = true;
+        }];
+      };
+      dashboards.settings = {
+        apiVersion = 1;
+        providers = [{
+          name = "sansovino-network";
+          type = "file";
+          options.path = ./dashboards;   # dir of *.json, copied into the nix store
+        }];
+      };
+    };
   };
 }

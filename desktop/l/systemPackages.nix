@@ -39,7 +39,7 @@
     # Screen capture and PipeWire debugging
     grim
     slurp
-    wf-recorder
+    #wf-recorder
     pipewire
     xdg-desktop-portal-gnome
 

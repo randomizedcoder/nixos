@@ -1,0 +1,2220 @@
+{
+  "title": "Network Path \u2014 Internet to Core",
+  "uid": "network-path",
+  "tags": [
+    "network",
+    "path",
+    "bandwidth",
+    "errors",
+    "sansovino"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "All links \u2014 throughput (bits/s)",
+      "description": "Every monitored hop from the Internet into the core, in one view. \u25bcin = toward the LAN, \u25b2out = toward the Internet.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 6,
+            "showPoints": "never",
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])*8",
+          "legendFormat": "1 \u00b7 CRS310 \u2190 Cable Modem  \u25bcin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])*8",
+          "legendFormat": "1 \u00b7 CRS310 \u2190 Cable Modem  \u25b2out"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])*8",
+          "legendFormat": "2 \u00b7 CRS310 \u2192 Firewall (WAN VLAN10)  \u25bcin"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])*8",
+          "legendFormat": "2 \u00b7 CRS310 \u2192 Firewall (WAN VLAN10)  \u25b2out"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "unpoller_device_port_receive_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "legendFormat": "3 \u00b7 Firewall UXG \u2190 Internet  \u25bcin"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "unpoller_device_port_transmit_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "legendFormat": "3 \u00b7 Firewall UXG \u2190 Internet  \u25b2out"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])*8",
+          "legendFormat": "4 \u00b7 EX2300 \u2190 Firewall  \u25bcin"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])*8",
+          "legendFormat": "4 \u00b7 EX2300 \u2190 Firewall  \u25b2out"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])*8",
+          "legendFormat": "5a \u00b7 EX2300 \u2192 US-8 PoE  \u25bcin"
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])*8",
+          "legendFormat": "5a \u00b7 EX2300 \u2192 US-8 PoE  \u25b2out"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])*8",
+          "legendFormat": "5b \u00b7 EX2300 \u2192 USW-Flex PoE  \u25bcin"
+        },
+        {
+          "refId": "L",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])*8",
+          "legendFormat": "5b \u00b7 EX2300 \u2192 USW-Flex PoE  \u25b2out"
+        },
+        {
+          "refId": "M",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])*8",
+          "legendFormat": "6 \u00b7 EX2300 \u2192 EX2200  \u25bcin"
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])*8",
+          "legendFormat": "6 \u00b7 EX2300 \u2192 EX2200  \u25b2out"
+        },
+        {
+          "refId": "O",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])*8",
+          "legendFormat": "7 \u00b7 EX2200 \u2190 EX2300  \u25bcin"
+        },
+        {
+          "refId": "P",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])*8",
+          "legendFormat": "7 \u00b7 EX2200 \u2190 EX2300  \u25b2out"
+        },
+        {
+          "refId": "Q",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])*8",
+          "legendFormat": "8 \u00b7 EX2200 \u2192 l  \u25bcin"
+        },
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])*8",
+          "legendFormat": "8 \u00b7 EX2200 \u2192 l  \u25b2out"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "All links \u2014 errors + discards (per second) \u2014 should stay flat at 0",
+      "description": "Combined input+output errors and discards for every link. Any line lifting off zero is a real problem on that hop.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "auto",
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])",
+          "legendFormat": "1 \u00b7 CRS310 \u2190 Cable Modem"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])",
+          "legendFormat": "2 \u00b7 CRS310 \u2192 Firewall (WAN VLAN10)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(unpoller_device_port_receive_errors_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])+rate(unpoller_device_port_transmit_errors_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])+rate(unpoller_device_port_receive_dropped_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])+rate(unpoller_device_port_transmit_dropped_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])",
+          "legendFormat": "3 \u00b7 Firewall UXG \u2190 Internet"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])",
+          "legendFormat": "4 \u00b7 EX2300 \u2190 Firewall"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])",
+          "legendFormat": "5a \u00b7 EX2300 \u2192 US-8 PoE"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])",
+          "legendFormat": "5b \u00b7 EX2300 \u2192 USW-Flex PoE"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])",
+          "legendFormat": "6 \u00b7 EX2300 \u2192 EX2200"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])",
+          "legendFormat": "7 \u00b7 EX2200 \u2190 EX2300"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])+rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])+rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])+rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])",
+          "legendFormat": "8 \u00b7 EX2200 \u2192 l"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "1 \u00b7 CRS310 \u2190 Cable Modem",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.17\",ifName=\"ether7\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "2 \u00b7 CRS310 \u2192 Firewall (WAN VLAN10)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.17\",ifName=\"sfp-sfpplus1\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "3 \u00b7 Firewall UXG \u2190 Internet",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "unpoller_device_port_receive_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "unpoller_device_port_transmit_rate_bytes{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(unpoller_device_port_receive_errors_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(unpoller_device_port_transmit_errors_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(unpoller_device_port_receive_dropped_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(unpoller_device_port_transmit_dropped_total{name=\"Gateway Pro\",port_name=\"SFP+ 2 Internet\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "4 \u00b7 EX2300 \u2190 Firewall",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/1\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "5a \u00b7 EX2300 \u2192 US-8 PoE",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/0\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "5b \u00b7 EX2300 \u2192 USW-Flex PoE",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"xe-0/1/0\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "6 \u00b7 EX2300 \u2192 EX2200",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.12\",ifName=\"ge-0/0/5\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "7 \u00b7 EX2200 \u2190 EX2300",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/1\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "8 \u00b7 EX2200 \u2192 l",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "lineWidth": 1,
+            "axisPlacement": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out errors"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "in discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "out discards"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "pps"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCInOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])*8",
+          "legendFormat": "in (bps)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifHCOutOctets{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])*8",
+          "legendFormat": "out (bps)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])",
+          "legendFormat": "in errors"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutErrors{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])",
+          "legendFormat": "out errors"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifInDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])",
+          "legendFormat": "in discards"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rate(ifOutDiscards{instance=\"172.16.50.11\",ifName=\"ge-0/1/0\"}[5m])",
+          "legendFormat": "out discards"
+        }
+      ]
+    }
+  ]
+}

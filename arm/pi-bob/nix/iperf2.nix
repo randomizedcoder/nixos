@@ -38,6 +38,17 @@ let
     };
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.autoreconfHook ];
 
+    # Fix an upstream buffer-size bug in reporter_print_connection_report()
+    # (src/ReportOutputs.c): the (l4s) branch sized its snprintf with
+    # `SNBUFFERSIZE - strlen(b)` instead of `strlen(linebuffer)` like every
+    # other append. After `b` advances (e.g. past the UDP "(seq no=N)" field)
+    # the size arg exceeds the bytes actually left, and _FORTIFY_SOURCE=3
+    # (NixOS default) aborts the server via __snprintf_chk. It crashed the
+    # iperf2 server whenever a UDP client hit the --permit-key server without
+    # the key (per-datagram "permit key fail" reports on the L4S path). One
+    # line; also submitted upstream to Bob. See the patch header for detail.
+    patches = (old.patches or [ ]) ++ [ ./iperf2-l4s-fortify-fix.patch ];
+
     # Server-side --permit-key (the light shared-secret auth below) is a
     # "professional edition" feature: a community-edition build hard-ERRORs and
     # refuses to start when --permit-key is given on the server. nixpkgs builds

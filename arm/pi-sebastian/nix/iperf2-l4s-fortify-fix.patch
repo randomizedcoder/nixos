@@ -1,0 +1,48 @@
+From eeec7b8eb95f7e9060897c43a6c382916e0a21ca Mon Sep 17 00:00:00 2001
+From: "randomizedcoder dave.seddon.ca@gmail.com" <dave.seddon.ca@gmail.com>
+Date: Sat, 22 Aug 2026 22:13:24 -0700
+Subject: [PATCH] ReportOutputs: fix buffer-size arg in (l4s) connection-report
+ append
+
+reporter_print_connection_report() builds the per-connection suffix line
+in a fixed 512-byte `linebuffer`, advancing `b` after each snprintf and
+passing the remaining space as `SNBUFFERSIZE - strlen(linebuffer)`. The
+(l4s) branch instead passed `SNBUFFERSIZE - strlen(b)`. Once `b` has been
+advanced by an earlier append (e.g. the UDP server "(seq no=N)" field),
+strlen(b) is ~0, so the size argument (~512) exceeds the actual bytes
+remaining at `b` (~498). The write itself (" (l4s)", 6 bytes) fits, but
+under _FORTIFY_SOURCE=3 __snprintf_chk validates the size argument against
+__builtin_dynamic_object_size(b) and aborts (SIGABRT) because size >
+remaining object size. (At _FORTIFY_SOURCE<=2 the static object-size check
+can't track the advanced pointer, so it silently no-ops -- the bug only
+bites at level 3, which distros/NixOS now default to.)
+
+Trigger: UDP datagrams sent to a --permit-key server without the key. Each
+datagram produces a per-packet "permit key fail" connection report that
+hits this path with L4S set, crashing the server.
+
+Fix: use strlen(linebuffer), matching all 25 other appends in the function.
+
+Reproduced on aarch64 (RPi4, NixOS, gcc 15.2, _FORTIFY_SOURCE=3) and on
+x86_64 with -O2 -D_FORTIFY_SOURCE=3; server survives the same blast after
+the fix.
+---
+ src/ReportOutputs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ReportOutputs.c b/src/ReportOutputs.c
+index 522699fe..bc61a58f 100644
+--- a/src/ReportOutputs.c
++++ b/src/ReportOutputs.c
+@@ -3257,7 +3257,7 @@ void reporter_print_connection_report(struct ConnectionInfo *report) {
+         b += n;
+     }
+     if (isUDPL4S(report->common)) {
+-        n = snprintf(b, SNBUFFERSIZE - strlen(b), " (l4s)");
++        n = snprintf(b, SNBUFFERSIZE - strlen(linebuffer), " (l4s)");
+         FAIL_exit((n < 0), "fail append l4s");
+         FAIL_exit((strlen(linebuffer) >= SNBUFFERSIZE), "buffer overflow l4s");
+         b += n;
+-- 
+2.55.0
+

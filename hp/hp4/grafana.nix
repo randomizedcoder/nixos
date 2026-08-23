@@ -25,7 +25,7 @@
       # Security settings - set persistent admin password
       security = {
         admin_user = "admin";
-        admin_password = "adin";  # Change this to your desired password
+        admin_password = "admin";  # Change this to your desired password
         admin_email = "admin@localhost";
         # Disable initial admin creation to prevent password resets
         disable_initial_admin_creation = false;

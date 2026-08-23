@@ -24,6 +24,10 @@ in {
       {
         job_name = "snmp-crs310";
         metrics_path = "/snmp";
+        # SNMP devices are slow (esp. the Junipers, ~6-7s/walk) — poll every 5 min
+        # with a generous timeout so a slow walk never trips the scrape deadline.
+        scrape_interval = "300s";
+        scrape_timeout = "60s";
         params = { module = [ "if_mib" ]; auth = [ "crs310_v3" ]; };
         static_configs = [{ targets = [ "172.16.50.17" ]; }];
         relabel_configs = [
@@ -35,6 +39,9 @@ in {
       {
         job_name = "snmp-juniper";
         metrics_path = "/snmp";
+        # Junipers are slow SNMP responders (~6-7s per full if_mib walk); 5-min poll.
+        scrape_interval = "300s";
+        scrape_timeout = "60s";
         params = { module = [ "if_mib" ]; auth = [ "juniper_v2" ]; };
         static_configs = [{ targets = [ "172.16.50.12" "172.16.50.11" ]; }];
         relabel_configs = [

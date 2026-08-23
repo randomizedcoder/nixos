@@ -132,20 +132,32 @@ let
           host = "${v6pfx}::1";
         };
         "Juniper2300" = {
-          name = "Juniper2300";
+          name = "Juniper EX2300 core (IPv4)";
           host = "172.16.50.12";
         };
-        # Juniper2300_v6: EX2300 has only a link-local today — pending static GUA config.
+        # Static mgmt v6 added to irb.2 (2026-08-23); matches v4 last octet.
+        "Juniper2300_v6" = {
+          name = "Juniper EX2300 core (IPv6)";
+          host = "${v6pfx}::12";
+        };
         "Juniper2200_office" = {
-          name = "Juniper2200-office";
+          name = "Juniper EX2200 office (IPv4)";
           host = "172.16.50.11";
         };
-        # Juniper2200_v6: EX2200 pending static GUA config (also needs legacy SSH ciphers).
+        # Static mgmt v6 added to vlan.2 (2026-08-23).
+        "Juniper2200_office_v6" = {
+          name = "Juniper EX2200 office (IPv6)";
+          host = "${v6pfx}::11";
+        };
         "CRS310" = {
-          name = "CRS310 (MikroTik WAN)";
+          name = "CRS310 MikroTik (IPv4)";
           host = "172.16.50.17";
         };
-        # CRS310_v6: Mikrotik has no global v6 yet — pending static GUA on the mgmt bridge.
+        # Static mgmt v6 added to ether6 dedicated-mgmt port (2026-08-23).
+        "CRS310_v6" = {
+          name = "CRS310 MikroTik (IPv6)";
+          host = "${v6pfx}::17";
+        };
         "CloudKey" = {
           name = "Cloud Key Controller";
           host = "172.16.50.5";

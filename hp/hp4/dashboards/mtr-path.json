@@ -1,0 +1,140 @@
+{
+  "title": "MTR Path Monitoring (v4/v6)",
+  "uid": "mtr-path",
+  "tags": ["mtr", "network", "path", "sansovino"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "label": "MTR job (dst / family)",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(mtr_report_count_hubs, mtr_exporter_job)", "refId": "A" },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "sort": 1,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Avg latency per hop (ms)",
+      "description": "One line per hop. Where the line jumps is where latency enters the path.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 5, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "asc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "mtr_report_avg{mtr_exporter_job=~\"$job\"}",
+          "legendFormat": "{{mtr_exporter_job}} h{{count}} {{host}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Hops per path",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "mtr_report_count_hubs{mtr_exporter_job=~\"$job\"}", "legendFormat": "{{mtr_exporter_job}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Probe duration (s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "mtr_report_duration_seconds{mtr_exporter_job=~\"$job\"}", "legendFormat": "{{mtr_exporter_job}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Packet loss per hop (%)",
+      "description": "Sustained loss that continues to the destination indicates a real problem; loss at a single mid-hop that clears downstream is just that router deprioritising ICMP.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "mtr_report_loss{mtr_exporter_job=~\"$job\"}",
+          "legendFormat": "{{mtr_exporter_job}} h{{count}} {{host}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Current path snapshot (per hop)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 20 },
+      "options": { "showHeader": true, "sortBy": [ { "displayName": "job", "desc": false } ] },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Loss %" }, "properties": [ { "id": "unit", "value": "percent" }, { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 20 } ] } } ] },
+          { "matcher": { "id": "byName", "options": "Avg ms" }, "properties": [ { "id": "unit", "value": "ms" } ] },
+          { "matcher": { "id": "byName", "options": "Best ms" }, "properties": [ { "id": "unit", "value": "ms" } ] },
+          { "matcher": { "id": "byName", "options": "Worst ms" }, "properties": [ { "id": "unit", "value": "ms" } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "mtr_report_avg{mtr_exporter_job=~\"$job\"}", "format": "table", "instant": true },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "mtr_report_loss{mtr_exporter_job=~\"$job\"}", "format": "table", "instant": true },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "mtr_report_best{mtr_exporter_job=~\"$job\"}", "format": "table", "instant": true },
+        { "refId": "D", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "mtr_report_wrst{mtr_exporter_job=~\"$job\"}", "format": "table", "instant": true }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "bitpattern": true, "psize": true, "tos": true, "tests": true, "src": true, "instance": true, "job": true },
+            "renameByName": {
+              "mtr_exporter_job": "job",
+              "count": "hop",
+              "host": "host",
+              "dst": "dst",
+              "Value #A": "Avg ms",
+              "Value #B": "Loss %",
+              "Value #C": "Best ms",
+              "Value #D": "Worst ms"
+            },
+            "indexByName": {
+              "mtr_exporter_job": 0,
+              "dst": 1,
+              "count": 2,
+              "host": 3,
+              "Value #B": 4,
+              "Value #A": 5,
+              "Value #C": 6,
+              "Value #D": 7
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

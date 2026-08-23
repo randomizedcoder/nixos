@@ -91,6 +91,35 @@
           home-manager.users.das = import ./nix/home-das.nix;
         }
       ];
+
+      # Everything needed to TRULY cross-compile from x86_64 -> aarch64 (native
+      # cross-compilers, NOT slow QEMU/binfmt emulation). Applied to the -cross
+      # and -sdimage variants below, which are built on the PC.
+      #
+      # Two parts are required:
+      #  1. nixpkgs.buildPlatform = x86_64-linux — turns the whole nixpkgs set
+      #     into a cross set (build on x86, host = aarch64).
+      #  2. boot.kernelPackages override. This is the crucial bit: by default the
+      #     nixos-raspberrypi Pi modules set
+      #       boot.kernelPackages = nixos-raspberrypi.packages.aarch64-linux.linuxPackages_rpi4
+      #     i.e. a PREBUILT *native aarch64* flake output, which ignores our
+      #     buildPlatform and therefore builds the kernel + all its modules under
+      #     QEMU emulation (10-20x slower, regardless of PC horsepower). The same
+      #     kernel is ALSO exposed as an overlay on our own (now cross) pkgs as
+      #     `pkgs.linuxPackages_rpi4`; pointing kernelPackages there makes the
+      #     kernel a real cross build (drv system = x86_64-linux, CROSS_COMPILE =
+      #     aarch64-unknown-linux-gnu-). Verified: this flips the kernel + modules
+      #     from emulated to natively cross-compiled.
+      #
+      # NB: this is only for PC-side builds. The plain `pi-sebastian` (on-Pi,
+      # native aarch64) output keeps the default cached flake-output kernel, so
+      # on-Pi rebuilds still get a cache hit and don't recompile the kernel.
+      crossModule =
+        { pkgs, lib, ... }:
+        {
+          nixpkgs.buildPlatform = "x86_64-linux";
+          boot.kernelPackages = lib.mkForce pkgs.linuxPackages_rpi4;
+        };
     in
     {
       nixosConfigurations = {
@@ -110,7 +139,7 @@
         pi-sebastian-cross = nixos-raspberrypi.lib.nixosSystem {
           specialArgs = inputs;
           modules = baseModules ++ [
-            { nixpkgs.buildPlatform = "x86_64-linux"; }
+            crossModule
           ];
         };
 
@@ -122,7 +151,7 @@
           specialArgs = inputs;
           modules = baseModules ++ [
             nixos-raspberrypi.nixosModules.sd-image
-            { nixpkgs.buildPlatform = "x86_64-linux"; }
+            crossModule
           ];
         };
       };

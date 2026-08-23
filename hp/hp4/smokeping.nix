@@ -165,7 +165,7 @@ let
         "AP_ACPro_EastBed" = { name = "AC Pro East Bed"; host = "172.16.50.113"; };
         "AP_ACPro_Rack" = { name = "AC Pro Rack"; host = "172.16.50.148"; };
         "AP_ACPro_Downstairs" = { name = "AC Pro Downstairs"; host = "172.16.50.238"; };
-        "AP_ACPro_Cabinet" = { name = "AC Pro Cabinet Downstairs"; host = "172.16.50.135"; };
+        # AC Pro Cabinet Downstairs (172.16.50.135) removed 2026-08-23 — device decommissioned.
       };
     };
 

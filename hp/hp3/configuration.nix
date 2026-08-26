@@ -41,6 +41,8 @@
       # design 32: urp initiator endpoint + PTP slave (lab time sync)
       ./urp.nix
       ./ptp.nix
+      # design 37: persistent jumbo MTU (9700) on the 25 GbE RoCE links
+      ./roce-mtu.nix
     ];
 
   # Bootloader.

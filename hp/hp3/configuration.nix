@@ -41,6 +41,8 @@
       # design 32: urp initiator endpoint + PTP slave (lab time sync)
       ./urp.nix
       ./ptp.nix
+      # design 37: persistent jumbo MTU (9700) on the 25 GbE RoCE links
+      ./roce-mtu.nix
     ];
 
   # Bootloader.
@@ -74,23 +76,26 @@
   #boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
-  # for the option reference and trade-offs. hp3 mirrors hp5's "dut"
-  # role on the new mlx5 pair: peer = hp1, addresses .3 on each link.
+  # for the option reference and trade-offs. hp3 is node 3 in the hp1/hp2/hp3
+  # full mesh (uds-rdma-proxy design 32).
   xdp2.testbed = {
     enable = true;
     peerInterfaces = [ "enp1s0f0np0" "enp1s0f1np1" ];
     addresses = {
-      # /29 (not /30): .1 and .3 must share a subnet; see xdp2
-      # docs/physical-testbed.md Appendix A §10 for the diagnosis.
-      # IPv6 ULA: fd10:10:N::M/64 where N matches v4 third octet and
-      # M matches v4 host octet. See docs/physical-testbed.md §15.
-      enp1s0f0np0 = {
-        local  = "10.10.2.3/29";    peer  = "10.10.2.1";
-        local6 = "fd10:10:2::3/64"; peer6 = "fd10:10:2::1";
+      # 2026-08-31 full-mesh re-address (design 32). Node-pair /29 scheme:
+      # third octet = the two node IDs the link joins, host octet = node
+      # number. hp3's two ports go to DIFFERENT neighbors (mesh):
+      #   f0np0 -> hp2 : 10.10.23.0/29  (hp2=.2, hp3=.3)
+      #   f1np1 -> hp1 : 10.10.13.0/29  (hp1=.1, hp3=.3)
+      # /29 (not /30) per xdp2 docs/physical-testbed.md Appendix A.
+      # IPv6 ULA mirrors: fd10:10:<pair>::<node>/64.
+      enp1s0f0np0 = {                                            # -> hp2
+        local  = "10.10.23.3/29";    peer  = "10.10.23.2";
+        local6 = "fd10:10:23::3/64"; peer6 = "fd10:10:23::2";
       };
-      enp1s0f1np1 = {
-        local  = "10.10.3.3/29";    peer  = "10.10.3.1";
-        local6 = "fd10:10:3::3/64"; peer6 = "fd10:10:3::1";
+      enp1s0f1np1 = {                                            # -> hp1
+        local  = "10.10.13.3/29";    peer  = "10.10.13.1";
+        local6 = "fd10:10:13::3/64"; peer6 = "fd10:10:13::1";
       };
     };
     # 4c/8t Ryzen 5 PRO (assumed; verify with `lscpu` post-boot) →

@@ -1,84 +1,68 @@
-{ config, lib, pkgs, ... }:
+{ ... }:
 
 {
-  # PowerDNS Recursor
-  # This acts as a local DNS cache and forwards queries to 172.16.50.1
-  # sudo lsof -i :53
-  # systemctl status pdns-recursor
+  # PowerDNS Recursor — the LAN's PRIMARY resolver for mgmt (VLAN 50) + devices
+  # (VLAN 40); the UXG stays secondary. Validates DNSSEC (the UXG's dnsmasq only
+  # forwards) and caches in RAM. Recurses to the roots — no forward zones.
   services.pdns-recursor = {
     enable = true;
 
-    # Bind to localhost only for security
-    dns.address = [ "::1" "127.0.0.1" ];
+    # Wildcard listen, gated by allowFrom — comes up regardless of when the LAN
+    # addresses (.232 / ::232) are assigned and survives an ISP prefix change.
+    # hp4 has no WAN interface and sits behind the UXG, so exposure is LAN-only,
+    # further narrowed by allowFrom.
+    dns.address = [ "0.0.0.0" "::" ];
 
-    # Allow queries from localhost only
-    dns.allowFrom = [ "::1/128" "127.0.0.0/8" ];
+    # Loopback + the two served VLANs (v4+v6). wemo (60) / dmz (66) stay on the
+    # UXG for isolation. The v6 /64s ride the ISP prefix — MONITORING.md re-key runbook.
+    dns.allowFrom = [
+      "127.0.0.0/8" "::1/128"
+      "172.16.50.0/24"                 # mgmt (VLAN 50)
+      "172.16.40.0/24"                 # devices (VLAN 40)
+      "2603:8002:ea00:6800::/64"       # mgmt v6
+      "2603:8002:ea00:6801::/64"       # devices v6
+    ];
 
-    # API configuration (for monitoring)
+    # Built-in webserver → Prometheus /metrics on [::1]:8082 (loopback, no api_key).
+    # api.enable (our nixpkgs PR) isn't in this channel yet, so the enable flag is
+    # set via settings.webservice.webserver below; swap to `api.enable = true` once merged.
     api.address = "::1";
     api.port = 8082;
     api.allowFrom = [ "127.0.0.1" "::1" ];
 
-    # DNSSEC validation. 26.05 / Recursor 5.x exposes this as the dedicated
-    # `dnssecValidation` option (the module maps it to settings.dnssec.validation);
-    # setting it under `settings` directly now collides with that internal definition.
     dnssecValidation = "validate";
 
-    # Recursor 5.x replaced the flat pdns-recursor.conf keys with nested YAML
-    # (pdns-recursor.yml). Migrated from the old 24.11 flat settings:
-    #   query-local-address = "::"  -> outgoing.source_address (sequence)
-    #   security-poll-suffix = ""   -> recursor.security_poll_suffix (string)
-    #   dnssec = "validate"         -> dnssecValidation option above
     settings = {
-      # Source outgoing queries from IPv6 (preserves the old query-local-address = "::").
-      outgoing.source_address = [ "::" ];
-      # Disable security-status polling so the recursor makes no external telemetry query.
-      recursor.security_poll_suffix = "";
-      # Configure forward zones for specific domains if needed
-      # recursor.forward_zones = [ { zone = "example.com"; forwarders = [ "172.16.50.1" ]; } ];
+      recursor.security_poll_suffix = "";      # no version-check telemetry
+      recursor.threads = 4;                     # LAN load; cache still ~1M default, capped by MemoryMax
+      webservice.webserver = true;              # module renders api.* but never the enable flag
+      recordcache.serve_stale_extensions = 30;  # serve expired answers (30 × 30s = 15 min) when auth servers are unreachable
     };
 
-    # Export /etc/hosts entries
-    exportHosts = true;
-
-    # Serve RFC1918 reverse zones locally
-    serveRFC1918 = true;
+    exportHosts = true;      # resolve names from /etc/hosts
+    serveRFC1918 = true;     # answer RFC1918 reverse zones locally
   };
 
-  # Systemd service configuration for pdns-recursor with resource limits
-  systemd.services.pdns-recursor = {
-    serviceConfig = {
-      # Resource limits - conservative for DNS service
-      MemoryMax = "100M";
-      MemoryHigh = "90M";
-      CPUQuota = "15%";
-      TasksMax = 50;
-
-      # Process limits
-      LimitNPROC = 100;
-
-      # Nice priority
-      Nice = 15;
-    };
+  # Cache RAM headroom; run unthrottled (latency-sensitive). The module already
+  # hardens the unit (systemd-analyze security: 1.9 OK); UMask tightens the last gap.
+  systemd.services.pdns-recursor.serviceConfig = {
+    MemoryHigh = "1536M";
+    MemoryMax  = "2G";
+    TasksMax   = 256;
+    LimitNPROC = 512;
+    UMask      = "0077";
   };
 
-  # Firewall rules for pdns-recursor
+  # Only 53 needs a firewall hole; 8082 binds ::1 (loopback), reachable without one.
   networking.firewall.allowedUDPPorts = [ 53 ];
-  networking.firewall.allowedTCPPorts = [ 53 8082 ];
+  networking.firewall.allowedTCPPorts = [ 53 ];
 
-  # Configure system to use local pdns-recursor
-  #networking.nameservers = [ "::1" "127.0.0.1" ];
-  networking.nameservers = [ "172.16.50.1" ];
-  # 26.05: resolvconf and a manual environment.etc."resolv.conf" now conflict (assertion).
-  # We manage /etc/resolv.conf by hand below (already points at the local ::1/127.0.0.1
-  # resolver), so disable resolvconf entirely rather than letting it fight us for the file.
+  # hp4 resolves via its own recursor first, Cloudflare as emergency. resolvconf is
+  # off (it conflicts with a manual resolv.conf on 26.05), so write the file directly.
   networking.resolvconf.enable = false;
-
   environment.etc."resolv.conf".text = ''
-    # pdns
     nameserver ::1
     nameserver 127.0.0.1
-    # emergency cloudflare
     nameserver 2606:4700:4700::1111
     nameserver 1.1.1.1
   '';

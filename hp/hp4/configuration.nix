@@ -57,6 +57,7 @@
       ./pdns-recursor.nix
       ./home-assistant.nix
       ./iperf2.nix
+      ./chrony.nix
     ];
 
   # Bootloader.
@@ -125,6 +126,33 @@
   networking.interfaces.enp1s0f0np0.useDHCP = false;
   networking.interfaces.enp1s0f1.useDHCP = false;
   networking.interfaces.enp1s0f1np1.useDHCP = false;
+
+  # Stable mgmt IPv6 for hp4 (::232) so it has a fixed v6 address to serve NTP on
+  # and be reached at — mirrors the switches' static host addresses in this /64
+  # (CRS310 ::17, EX2300 ::12, EX2200 ::11); ::232 matches hp4's v4 host octet.
+  #
+  # We add it *out-of-band* with a oneshot instead of
+  # `networking.interfaces.eno1.ipv6.addresses`, because this host uses dhcpcd for
+  # v4 DHCP *and* IPv6 RA/SLAAC — declaring a static address on eno1 would move it
+  # into dhcpcd's `denyinterfaces`, killing RA and losing the dynamic GUA + v6
+  # default route hp4 needs for v6 egress (e.g. the yahoo-v6 mtr target). This
+  # just appends one address and leaves dhcpcd/RA untouched. `addr replace` is
+  # idempotent; bound to the eno1 device so it re-adds on a link flap.
+  # NOTE: 2603:8002:ea00:6800::/64 is ISP-delegated — if that prefix ever changes,
+  # this (and the switch statics) must be updated; v4 NTP (.232) is unaffected.
+  systemd.services.mgmt-v6-static = {
+    description = "Static mgmt IPv6 (::232) on eno1 for NTP serving";
+    after = [ "network-online.target" "sys-subsystem-net-devices-eno1.device" ];
+    wants = [ "network-online.target" ];
+    bindsTo = [ "sys-subsystem-net-devices-eno1.device" ];
+    wantedBy = [ "multi-user.target" "sys-subsystem-net-devices-eno1.device" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.iproute2}/bin/ip -6 addr replace 2603:8002:ea00:6800::232/64 dev eno1";
+      ExecStop  = "${pkgs.iproute2}/bin/ip -6 addr del 2603:8002:ea00:6800::232/64 dev eno1";
+    };
+  };
 
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
@@ -244,7 +272,9 @@
   # search for serivces url
   #https://github.com/search?q=repo%3ANixOS%2Fnixpkgs+path%3A%2F%5Enixos%5C%2Fmodules%5C%2Fservices%5C%2F%2F+openssh&type=code
 
-  services.timesyncd.enable = true;
+  # Time sync is handled by chrony (./chrony.nix), which also *serves* the LAN.
+  # timesyncd (SNTP client only) must be off — the two conflict.
+  services.timesyncd.enable = false;
 
   services.fstrim.enable = true;
 

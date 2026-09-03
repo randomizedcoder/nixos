@@ -57,8 +57,11 @@
       # Monitoring stack disabled during kernel testing — scraping is
       # periodic I/O / scheduler noise.
       #./nodeExporter.nix
-      #./prometheus.nix
-      #./grafana.nix
+      # Native Prometheus + Grafana for the agent-seddon portal obs links.
+      # Grafana serves 0.0.0.0:3000; Prometheus scrapes the agent's :9700/:9630
+      # (see ./prometheus.nix). Firewall opens 9090/3000 in ./lan-access.nix.
+      ./prometheus.nix
+      ./grafana.nix
       #./devnull-monitor.nix
       ./udev-nic-names.nix
       # clickhouse

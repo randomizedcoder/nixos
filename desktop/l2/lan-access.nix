@@ -22,7 +22,9 @@
   #   8092  Flutter web portal (static-web-server; serve with PORTAL_WEB_HOST=0.0.0.0
   #         and PORTAL_GRPC_WEB_URL/PORTAL_SESSIONS_GRPC_WEB_URL pointed at l2's IP)
   #   8095  llama.cpp MI50 (qwen3) — already 0.0.0.0-bound in ./llama-service.nix
-  #   3000  Grafana — INERT until ./grafana.nix is imported and the container runs
+  #   3000  Grafana — native service (./grafana.nix, http_addr 0.0.0.0)
+  #   9090  Prometheus — native service (./prometheus.nix, scrapes the agent)
+  #   8080  HyperDX/ClickStack UI — podman (clickstack-up CLICKSTACK_UI_HOST=0.0.0.0)
   #
   # PORT OVERLAP: ./llama-service.nix reserves 8091-8094 for its (currently
   # unwired) CPU llama instances (port = 8090 + i). If those are ever enabled,
@@ -35,6 +37,8 @@
     8092
     8095
     3000
+    9090
+    8080
   ];
 
   # ── Tighter alternative (recommended) ────────────────────────────────────────
@@ -43,7 +47,7 @@
   # (the default firewall uses the nftables backend, so extraInputRules applies):
   #
   #   networking.firewall.extraInputRules = ''
-  #     ip saddr 172.16.50.0/24 tcp dport { 8090, 8091, 8092, 8095, 3000 } accept
+  #     ip saddr 172.16.50.0/24 tcp dport { 8090, 8091, 8092, 8095, 3000, 9090, 8080 } accept
   #   '';
   #
   # Replace 172.16.50.0/24 with l's exact address (e.g. 172.16.50.NN/32) to admit

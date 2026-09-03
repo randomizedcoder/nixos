@@ -20,6 +20,23 @@
           targets = [ "localhost:2112" ];
         }];
       }
+      # agent-seddon: `--serve-all` exposes /metrics on :9700 and
+      # `--serve-sessions` on :9630 (ports from the repo's nix/constants.nix —
+      # gateway.metrics_port / sessions metrics_port). These feed the portal's
+      # gRPC p50/p99 status cell and any Grafana dashboards. DOWN until those
+      # processes run.
+      {
+        job_name = "agent-gateway";
+        static_configs = [{
+          targets = [ "127.0.0.1:9700" ];
+        }];
+      }
+      {
+        job_name = "agent-sessions";
+        static_configs = [{
+          targets = [ "127.0.0.1:9630" ];
+        }];
+      }
     ];
   };
 }

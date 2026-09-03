@@ -6,6 +6,12 @@
 
 {
 
+  imports = [
+    # Claude Code multi-profile setup (claude-use, statusline, profiles).
+    # Copied from desktop/l; pure home-manager, no host-specific refs.
+    ./claude.nix
+  ];
+
   home = {
     username = "das";
     homeDirectory = "/home/das";
@@ -152,6 +158,83 @@
     rocmPackages.rccl
     # https://jeffser.com/alpaca/
     alpaca
+
+    # ----------------------------------------------------------------------
+    # Dev parity with l (2026-08-31): headless subset of desktop/l/home.nix so
+    # l2 can be a daily driver for Claude Code + remote VS Code. GUI/Wayland/
+    # GNOME packages from l are intentionally omitted. See the plan/README.
+    # ----------------------------------------------------------------------
+
+    # AI / LLM CLI (primary tooling)
+    claude-code
+    claude-monitor
+    claude-code-router
+    opencode
+
+    # Build / C-C++ (gcc/gnumake/automake/pkg-config/gdb already above)
+    clang-tools          # clangd
+    shellcheck
+    zlib
+    openssl
+    stdenv.cc.cc.lib
+
+    # Rust (also builds the Claude statusline in claude.nix)
+    cargo
+    rustc
+    rustfmt
+    rust-analyzer
+    clippy
+
+    # Python + scripting
+    python3
+    python3Packages.python-lsp-server
+    gawk
+    jq
+
+    # Go extras (go/gopls/delve/golangci-lint already above)
+    buf
+    bazelisk
+    bazel-buildtools
+
+    # Language servers
+    bash-language-server
+
+    # Containers
+    podman
+    runc
+    skopeo
+    podman-tui
+    podman-compose
+    docker-buildx
+    dive
+
+    # Kubernetes
+    kubectl
+    k9s
+    kubernetes-helm
+    istioctl
+    krew
+    kubeshark
+    kubectl-ktop
+    kubectl-klock
+    kube-capacity
+    kubectl-images
+    kubectl-gadget
+    kubelogin-oidc
+
+    # Editors / CLI utils
+    helix
+    gh
+    ripgrep
+    fd
+    hyperfine
+    graphviz
+    strace
+    lsof
+    socat
+    nixpkgs-fmt
+    sbcl
+    expect
 
     #silly
     cmatrix

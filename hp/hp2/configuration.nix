@@ -54,6 +54,9 @@
       ./nginx.nix
       # INSECURE: passwordless root SSH for isolated lab network
       ./sshd-INSECURE.nix
+      # 2026-08-31: hp2 joined the hp1/hp3 RoCEv2 full mesh (design 32).
+      ./roce-mtu.nix   # jumbo 9700 on the fabric ports (matches hp1/hp3)
+      ./urp.nix        # services.urp: build + load urp.ko (enable-only)
     ];
 
 # https://nixos.wiki/wiki/Kubernetes#reset_to_a_clean_state
@@ -71,22 +74,16 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # https://nixos.wiki/wiki/Linux_kernel
-  # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
-  # kernel (xdp2 docs/physical-testbed.md §3 — was channel-default
-  # 6.12.x on stable while hp5 ran 6.18.x on unstable, 2026-04-20).
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
-  #
-  # TEMPORARY (2026-05-24): switched to a custom net-next 7.1.0-rc4
-  # kernel built from the flow-keys-compat-reorder branch's
-  # combined-test-rfc tree (4 patches: flow_dissector docs +
-  # flow_hash_from_keys_small + sch_cake adoption + bpf_flow PPPoE).
-  # Mirrors the same swap on hp5. See ./test-kernel/default.nix and
-  # the xdp2 repo at kernel-patches/test-kernel/ for the build
-  # derivation, rationale, and post-boot test plan. Restore the line
-  # above after testing is complete.
-  # series4 net-next kernel (series4-rfc-tail-v2), replacing ./test-kernel
-  # for the flow_dissector fast-path perf A/B. See ./netnext-kernel.nix.
-  boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
+  # 2026-08-31: hp2 joined the hp1/hp3 RoCEv2 full mesh (uds-rdma-proxy
+  # design 32). Reverted from the custom net-next 7.2-rc1 (netnext-kernel.nix,
+  # flow_dissector A/B) back to stock linuxPackages_latest so all three mesh
+  # hosts run the SAME kernel (7.2.0) — matches hp1:71 / hp3:76. The old
+  # net-next line is kept commented below; restore it if hp2 returns to
+  # flow_dissector duty.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # series4 net-next kernel (series4-rfc-tail-v2), for the flow_dissector
+  # fast-path perf A/B. See ./netnext-kernel.nix.
+  #boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
   # for the option reference and trade-offs. lowJitter starts OFF on hp2
@@ -96,17 +93,21 @@
     enable = true;
     peerInterfaces = [ "enp1s0f0np0" "enp1s0f1np1" ];
     addresses = {
-      # /29 (not /30): .2 and .5 must share a subnet; see xdp2
-      # docs/physical-testbed.md Appendix A §9 for the diagnosis.
-      # IPv6 ULA: fd10:10:N::M/64 where N matches v4 third octet and
-      # M matches v4 host octet. See docs/physical-testbed.md §15.
-      enp1s0f0np0 = {
-        local  = "10.10.0.2/29";    peer  = "10.10.0.5";
-        local6 = "fd10:10:0::2/64"; peer6 = "fd10:10:0::5";
+      # 2026-08-31 full-mesh re-address (uds-rdma-proxy design 32). Node-pair
+      # /29 scheme: third octet = the two node IDs the link joins, host octet
+      # = node number. hp2 is node 2. Each of hp2's two ports goes to a
+      # DIFFERENT neighbor (mesh), not two cables to one peer.
+      #   f0np0 -> hp1 : 10.10.12.0/29  (hp1=.1, hp2=.2)
+      #   f1np1 -> hp3 : 10.10.23.0/29  (hp2=.2, hp3=.3)
+      # /29 (not /30) per the xdp2 docs/physical-testbed.md Appendix A
+      # diagnosis. IPv6 ULA mirrors: fd10:10:<pair>::<node>/64.
+      enp1s0f0np0 = {                                            # -> hp1
+        local  = "10.10.12.2/29";    peer  = "10.10.12.1";
+        local6 = "fd10:10:12::2/64"; peer6 = "fd10:10:12::1";
       };
-      enp1s0f1np1 = {
-        local  = "10.10.1.2/29";    peer  = "10.10.1.5";
-        local6 = "fd10:10:1::2/64"; peer6 = "fd10:10:1::5";
+      enp1s0f1np1 = {                                            # -> hp3
+        local  = "10.10.23.2/29";    peer  = "10.10.23.3";
+        local6 = "fd10:10:23::2/64"; peer6 = "fd10:10:23::3";
       };
     };
     # 4c/8t Ryzen 5 PRO 2400G → isolate SMT pairs 2,3,4,5,6,7; leave
@@ -117,31 +118,17 @@
     lowJitter = false;
     managementInterface = "eno1";
 
-    # Live X710 ntuple (i40e Flow Director) steering rules, matched with
-    # hp5. hp2 is the peer/sender but we program the same UDP/443 → q1
-    # rule here so role-swap runs (where hp2 is the receiver) steer
-    # consistently. See xdp2 docs/ntuple-template-bench.md.
-    flowDirectorRules = [
-      { interface = "enp1s0f0np0"; flowType = "udp4"; destPort = 443; queue = 1; }
-    ];
-    # realServicesBench intentionally OFF on hp2: hp5 hosts the nginx
-    # target; hp2 runs the kernel pktgen driver (no wrk2/nginx needed).
-
-    # Deliverable-2 DPDK alternative for the hp2 kernel pktgen ~1.37 Mpps
-    # TX cap. Reserves vfio-pci + 1024×2 MiB hugepages + iommu=pt at boot
-    # so `nix run .#xdp2-exp-dpdk-baseline -- hp5 hp2` can rebind
-    # enp1s0f0np0 to vfio-pci and run DPDK pktgen userspace. The driver
-    # rebind happens INSIDE the orchestrator's lifecycle (trap-driven
-    # cleanup restores i40e on exit); this option only ensures the
-    # kernel-cmdline / module bits are present. Intentionally NOT set on
-    # hp5 — hp5's NIC must stay on i40e so Flow Director rules survive.
-    #
-    # TEMPORARY (2026-05-24): commented out — the xdp2 flake input locked
-    # at f36b3237c1abb (2026-04-26) doesn't yet declare this option, which
-    # blocks `nixos-rebuild` eval. Restore once the xdp2 input is bumped
-    # to a commit that adds the dpdkBenchHost option.
-    #dpdkBenchHost = true;
+    # 2026-08-31: hp2 is now a Mellanox (ConnectX-4 Lx / mlx5_core) mesh
+    # host, not the old Intel X710/i40e reference box. mlx5 steers via
+    # tc-flower, so no ntuple Flow Director rules (matches hp1:123 / hp3:111).
+    flowDirectorRules = [ ];
+    realServicesBench = false;
   };
+
+  # mlx5_core selects the Mellanox NIC tuning branch in xdp2.nicTuning
+  # (tc-flower steering, mlx5_comp* IRQ pinning). Overrides the i40e default
+  # that physical-testbed.nix forwards. Matches hp3:118 / hp1:130.
+  xdp2.nicTuning.driver = "mlx5_core";
 
   # wrk2 retained on hp2 even though the af-xdp-template bench moved
   # off it (kernel pktgen now drives the peer). Cheap to keep, useful

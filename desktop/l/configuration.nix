@@ -51,6 +51,8 @@
       # ollama CUDA on the same RTX 3070, :11434 — tool-calling models for agents
       ./ollama-service.nix
       ./below.nix
+      # SDCINNOVATION Key-9 9-key USB macro pad (xremap user service). See key9-macros.md
+      ./key9-macros.nix
       # BBRv3 congestion control from L4S team
       ./bbr3-module.nix
       # Multi-queue CAKE (cake_mq) for scaling CAKE across CPU cores
@@ -416,7 +418,7 @@
   users.users.das = {
     isNormalUser = true;
     description = "das";
-    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" "scanner" "lp" ];
+    extraGroups = [ "wheel" "networkmanager" "kvm" "libvirtd" "docker" "video" "pipewire" "dialout" "scanner" "lp" "input" "uinput" "ydotool" ];
     packages = with pkgs; [
     ];
     # https://nixos.wiki/wiki/SSH_public_key_authentication

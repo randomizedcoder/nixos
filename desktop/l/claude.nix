@@ -19,6 +19,23 @@
 # exist but were empty on this machine — likely reserved for future use.
 # Re-check both (env + statusline fields) if you want a plan-file segment:
 # a CLAUDE_PLAN_FILE env var or a new statusline field would be the clean hook.
+#
+# Headless auth refresh (a box with no browser — e.g. l2):
+#   `claude auth login` opens a browser for the OAuth redirect and has no
+#   device-code / paste-a-code flow, so it cannot complete on a headless box.
+#   Instead, copy the OAuth token file from a machine that IS logged in (l)
+#   into the SAME per-profile path on the headless box. The token is portable
+#   and self-refreshing; the email/org identity re-hydrates on the first API
+#   call. Redo this whenever the login expires. Never cat/print the token —
+#   move it opaquely with scp. (Verified working l -> l2, 2026-09-01.)
+#
+#   From the logged-in box (l), for the `personal` profile:
+#     scp -p ~/.claude/profiles/personal/.credentials.json l2:~/.claude/profiles/personal/.credentials.json
+#     ssh l2 'chmod 600 ~/.claude/profiles/personal/.credentials.json && CLAUDE_CONFIG_DIR=$HOME/.claude/profiles/personal claude auth status'
+#   Expect: "loggedIn": true, "subscriptionType": "max".
+#   Functional check (one real API call; hydrates email/org):
+#     ssh l2 'CLAUDE_CONFIG_DIR=$HOME/.claude/profiles/personal claude -p "Reply with exactly one word: ok"'
+#   (Swap personal/l2 for the target profile/host.)
 
 let
   profiles = [ "personal" "runpod" ];

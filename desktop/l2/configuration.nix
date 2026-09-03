@@ -97,10 +97,14 @@
       #./fan2go.nix
       # agent-seddon remote seam fleet — opens the gRPC gateway port for l.
       ./agent-seam.nix
-      # "gpu-stable" boot specialisation: a stable-kernel boot entry, kept as a
-      # spare. NOTE it turned out unnecessary — the GPU wedge was the faulty W5700,
-      # not the kernel; with that card removed the MI50 works on net-next.
-      ./gpu-stable.nix
+      # Open the portal web UI + grpc-web proxies + llama + grafana to the lab
+      # LAN so l can reach them without an SSH tunnel (see the security note in
+      # the module). SECURITY: 8090/8091 expose the code-executing gateway.
+      ./lan-access.nix
+      # "gpu-stable" boot specialisation: a stable-kernel boot entry. Redundant
+      # now that the base kernel IS pkgs.linuxPackages (see boot.kernelPackages);
+      # dropped to relieve the 511M ESP. Re-add if the net-next kernel returns.
+      #./gpu-stable.nix
       # ollama serving the MI50 (32GB) over Vulkan on :11434.
       # DISABLED: mutually exclusive with ./llama-service.nix above (one MI50, one
       # model). Re-enable this and comment out ./llama-service.nix to switch back to
@@ -136,14 +140,15 @@
     # https://nixos.wiki/wiki/Linux_kernel
     #kernelPackages = pkgs.linuxPackages;
     #kernelPackages = pkgs.linuxPackages_latest;
-    # net-next v7.2-rc1 + the series4 flow_dissector fast-path framework
-    # (12 patches, baked into src via the series4-send branch). Built by
-    # overriding linux_testing so nixpkgs' config machinery is reused —
-    # see ./netnext-kernel.nix. Supersedes the earlier ./test-kernel
-    # (stable 7.0.12 + series-3 patches) so we test on the real net-next
-    # base the patches target. Revert to `pkgs.callPackage ./test-kernel {}`
-    # (wrapped in linuxPackagesFor) or `pkgs.linuxPackages_latest`.
-    kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
+    # 2026-08-31: l2 retired from flow-dissector perf testing → stock nixpkgs
+    # kernel (cached, no local net-next rc build). linuxPackages_latest tracks
+    # the newest stable mainline (7.2.x now that 7.2 has released); the MI50
+    # amdgpu works fine on it (the old GPU wedge was the faulty W5700, now
+    # removed). Drop to `pkgs.linuxPackages` for the LTS (6.18.x), or back to
+    # `pkgs.callPackage ./netnext-kernel.nix {}` + xdp2.testbed for benchmarks.
+    kernelPackages = pkgs.linuxPackages_latest;
+    # net-next v7.2-rc1 + series4 flow_dissector fast-path (perf-testing only):
+    #kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
     # # Enable mac80211 debugfs for WiFi AQM tuning
     # kernelPatches = [{
@@ -212,6 +217,11 @@
   services.envfs = {
     enable = true;
   };
+
+  # VS Code Remote-SSH from l: patch the server's downloaded node/ripgrep so
+  # they run on NixOS (works with nix-ld + envfs above). Module comes from the
+  # nixos-vscode-server flake input.
+  services.vscode-server.enable = true;
 
   nix = {
     settings = {
@@ -345,6 +355,12 @@
   # configuration, adjusted for l2's 12c/24t Threadripper PRO 3945WX
   # and the Mellanox ConnectX-4 Lx ports (lspci 23:00.0 / 23:00.1).
   # See xdp2 docs/physical-testbed.md for the full option reference.
+  # DISABLED 2026-08-31: l2 retired from flow-dissector perf testing. The whole
+  # xdp2.testbed profile (CPU isolation of 4-23, hugepages, lowJitter, NIC
+  # steering) is commented out so all 24 threads are free for dev/compile use.
+  # Re-enable this block AND xdp2.nixosModules.physical-testbed in flake.nix
+  # together to restore the benchmark role.
+  /*
   xdp2.testbed = {
     enable = true;
 
@@ -395,6 +411,7 @@
   # which is wrong for this card and makes the ethtool-ntuple
   # flowDirectorRules above fail; mlx5_core uses tc-flower instead.
   xdp2.nicTuning.driver = "mlx5_core";
+  */
 
   # # https://nixos.wiki/wiki/Virt-manager
   # virtualisation.libvirtd.enable = true;

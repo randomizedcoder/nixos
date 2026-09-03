@@ -3,17 +3,19 @@
 # PTP is lab time-sync infrastructure, deliberately NOT part of
 # services.urp — it exists only so the matrix runner can turn RTT into a
 # defensible one-way estimate (design 32 §32.8). hp1 is the PTP grandmaster
-# on link B (enp1s0f1np1, 10.10.3.1); hp3 slaves to it (see hp/hp3/ptp.nix).
+# on the hp1<->hp3 link (enp1s0f0np0, 10.10.13.1 after the 2026-08-31 mesh
+# re-cable — hp3 is now reached via f0np0, not f1np1); hp3 slaves to it (see
+# hp/hp3/ptp.nix).
 #
 # There is no services.ptp4l / services.linuxptp NixOS module, so these are
 # raw systemd units. HW timestamping via the ConnectX-4 Lx PHC ( -H );
-# confirm with: ethtool -T enp1s0f1np1  (SOF_TIMESTAMPING_{TX,RX}_HARDWARE).
+# confirm with: ethtool -T enp1s0f0np0  (SOF_TIMESTAMPING_{TX,RX}_HARDWARE).
 #
 # Check sync from hp3: pmc -u -b 0 'GET CURRENT_DATA_SET' -> offsetFromMaster.
 { pkgs, ... }:
 
 let
-  iface = "enp1s0f1np1";
+  iface = "enp1s0f0np0";
   # priority1 = 127 makes hp1 win the BMCA and stay grandmaster.
   ptp4lConf = pkgs.writeText "ptp4l-hp1.conf" ''
     [global]

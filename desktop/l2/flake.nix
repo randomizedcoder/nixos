@@ -51,6 +51,11 @@
       url = "github:randomizedcoder/xdp2/flow-keys-compat-reorder";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # VS Code Remote-SSH server support on NixOS: patches the server's
+    # downloaded node/ripgrep binaries so Remote-SSH from l works against l2.
+    # (no nixpkgs input to follow — it only pulls flake-parts/nixpkgs-lib)
+    vscode-server.url = "github:nix-community/nixos-vscode-server";
   };
 
   outputs = { self, nixpkgs, disko, home-manager, nix-custom, tsf-sync, xdp2, ... }@inputs:
@@ -125,7 +130,11 @@
             # crowdsec.nixosModules.crowdsec-firewall-bouncer
             # xdp2 physical-testbed: same module hp5 uses; configured
             # via xdp2.testbed = { ... } in configuration.nix.
-            xdp2.nixosModules.physical-testbed
+            # DISABLED 2026-08-31: l2 retired from perf testing. Re-enable
+            # together with the xdp2.testbed block in configuration.nix.
+            #xdp2.nixosModules.physical-testbed
+            # VS Code Remote-SSH server support (services.vscode-server).
+            inputs.vscode-server.nixosModules.default
             ./configuration.nix
             {
               nixpkgs.pkgs = pkgs;

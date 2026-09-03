@@ -45,6 +45,17 @@
       url = "github:randomizedcoder/flow_dissector_ebpf";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # uds-rdma-proxy (urp) — consumed here ONLY for the Prometheus/Grafana
+    # observability artifacts of its metrics exporter (design 39): the alert
+    # rules `nix/urp-exporter-alerts.yml` and the Grafana dashboard
+    # `nix/urp-exporter-dashboard.json`. We never build a package from it, so
+    # its nixpkgs is followed to keep this lock lean (its own outputs are never
+    # evaluated). The exporter itself runs on hp1/hp2/hp3 via its own module.
+    uds-rdma-proxy = {
+      url = "github:randomizedcoder/uds-rdma-proxy";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # hyprland.url = "github:hyprwm/Hyprland";
     # hyprland-plugins = {
     #   url = "github:hyprwm/hyprland-plugins";

@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 {
   # https://wiki.nixos.org/wiki/Prometheus
   # https://nixos.org/manual/nixos/stable/#module-services-prometheus-exporters-configuration
@@ -8,6 +8,14 @@
     enable = true;
     globalConfig.scrape_interval = "10s"; # "1m"
     retentionTime = "90d";
+
+    # urp exporter alert rules (design 39 §39.9), sourced from the upstream
+    # uds-rdma-proxy flake input so they track the repo (git rev + narHash).
+    # promtool checks these at build time.
+    ruleFiles = [
+      "${inputs.uds-rdma-proxy}/nix/urp-exporter-alerts.yml"
+    ];
+
     scrapeConfigs = [
     {
       job_name = "node";
@@ -27,6 +35,17 @@
       job_name = "dcgm_l2";
       static_configs = [{
         targets = [ "l2:9400" ];
+      }];
+    }
+    # urp metrics exporter (design 39) on the mesh nodes. Job MUST be "urp" so
+    # the URPExporterDown alert's `up{job="urp"}` selector matches. Targets
+    # resolve via hosts.nix (hp1/hp2/hp3 mgmt-LAN IPs). Until the exporter is
+    # deployed to the hp nodes (design 39 PR5, listening on a mgmt-reachable
+    # addr + openFirewall), these targets read DOWN — expected.
+    {
+      job_name = "urp";
+      static_configs = [{
+        targets = [ "hp1:9975" "hp2:9975" "hp3:9975" ];
       }];
     }
     # {

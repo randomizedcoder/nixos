@@ -17,6 +17,10 @@
     settings = {
       PermitRootLogin = "prohibit-password";
       PasswordAuthentication = false;
+      # Fallback path for GUI apps: `ssh -X l2` then `code .` renders the
+      # Electron window on l (l provides X via GNOME XWayland). Day-to-day use
+      # is VS Code Remote-SSH (services.vscode-server), which doesn't need this.
+      X11Forwarding = true;
     };
   };
 

@@ -72,6 +72,15 @@ in {
           targets = [ "localhost:${toString config.services.prometheus.exporters.unpoller.port}" ];
         }];
       }
+      # --- PowerDNS Recursor (the LAN's primary resolver) internal metrics ---
+      # The recursor's built-in webserver serves Prometheus metrics at /metrics on
+      # [::1]:8082 (enabled via webservice.webserver in pdns-recursor.nix; the listen
+      # address/allow_from are loopback-only there). /metrics needs no api_key.
+      {
+        job_name = "pdns_recursor";
+        metrics_path = "/metrics";
+        static_configs = [{ targets = [ "[::1]:8082" ]; }];
+      }
       # --- Per-hop path monitoring (mtr-exporter) to google/facebook/ibm/yahoo, v4+v6 ---
       {
         job_name = "mtr";

@@ -3,7 +3,8 @@
 # PTP is lab time-sync infrastructure, deliberately NOT part of
 # services.urp — it exists only so the matrix runner can turn RTT into a
 # defensible one-way estimate (design 32 §32.8). hp3 slaves to the hp1
-# grandmaster on link B (enp1s0f1np1, 10.10.3.3); see hp/hp1/ptp.nix.
+# grandmaster on the hp1<->hp3 link (enp1s0f1np1, 10.10.13.3 after the
+# 2026-08-31 mesh re-cable — this port still reaches hp1); see hp/hp1/ptp.nix.
 #
 # There is no services.ptp4l / services.linuxptp NixOS module, so these are
 # raw systemd units. HW timestamping via the ConnectX-4 Lx PHC ( -H );

@@ -59,6 +59,7 @@
           ./configuration.nix
           xdp2.nixosModules.physical-testbed
           uds-rdma-proxy.nixosModules.urp
+          uds-rdma-proxy.nixosModules.urp-exporter
           home-manager.nixosModules.home-manager
           {
             home-manager.useGlobalPkgs = true;

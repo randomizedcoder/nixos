@@ -41,6 +41,10 @@
           xdp2.nixosModules.physical-testbed
           home-manager.nixosModules.home-manager
           {
+            # claude-code is unfree — allow it for the system pkgs set
+            # (useGlobalPkgs means home.nix pulls from this nixpkgs).
+            nixpkgs.config.allowUnfree = true;
+
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.das = import ./home.nix;

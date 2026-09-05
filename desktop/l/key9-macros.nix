@@ -27,6 +27,32 @@ let
   # system service; its socket lives here).
   ydotoolSocket = "/run/ydotoold/socket";
 
+  # Remote dev box (see l2-dev-box notes). Key 4 ships the clipboard screenshot
+  # here so Claude Code running on l2 can read it by path; Key 5 types that path.
+  l2Host = "das@l2";
+  l2ScreenshotPath = "/tmp/screenshot.png";
+
+  # --- typed text constants ------------------------------------------------
+
+  # Key 2 text. Pulled out of the script body so it is easy to read and edit
+  # without touching the ydotool invocation below.
+  tableTestText = "table driven unit test with positive, negative, boundary, and corner cases, and in the table include description and expected test outcome";
+
+  # --- helpers -------------------------------------------------------------
+
+  # Build a script that types a fixed string into the focused window via
+  # ydotool. (wtype does not work on GNOME/Mutter Wayland.) The 5ms key
+  # delay/hold overrides ydotool's slow 20ms default (~4x faster).
+  typeText = name: text: pkgs.writeShellScript name ''
+    set -euo pipefail
+    export YDOTOOL_SOCKET=${ydotoolSocket}
+    ${pkgs.ydotool}/bin/ydotool type --key-delay 5 --key-hold 5 -- ${lib.escapeShellArg text}
+  '';
+
+  # Placeholder macro: types "button N" for pad position N. Handy for
+  # confirming a key is wired up before assigning it a real action.
+  buttonN = n: typeText "k9-button-${toString n}" "button ${toString n}";
+
   # --- macro scripts (run inside the user graphical session) ---------------
 
   # Key 1: set the default audio output to the Amanero Combo384 DAC and move
@@ -53,26 +79,45 @@ let
   '';
 
   # Key 2: type the table-driven unit-test boilerplate into the focused window.
-  typeTableTest = pkgs.writeShellScript "k9-type-table-test" ''
+  typeTableTest = typeText "k9-type-table-test" tableTestText;
+
+  # Key 4: copy the image currently on the (Wayland) clipboard — e.g. a Gradia
+  # screenshot — and scp it to l2:/tmp/screenshot.png so Claude Code on l2 can
+  # read it by path (Claude's Ctrl+V clipboard paste can't cross the SSH gap).
+  scpScreenshot = pkgs.writeShellScript "k9-scp-screenshot" ''
     set -euo pipefail
-    export YDOTOOL_SOCKET=${ydotoolSocket}
-    # ydotool defaults to 20ms key-delay + 20ms key-hold (~40ms/char, very slow
-    # for long strings). Drop both to 5ms for ~4x faster typing.
-    ${pkgs.ydotool}/bin/ydotool type --key-delay 5 --key-hold 5 -- "table driven unit test with positive, negative, boundary, and corner cases, including description of the test in the table"
+    tmp=$(${pkgs.coreutils}/bin/mktemp --suffix=.png)
+    trap '${pkgs.coreutils}/bin/rm -f "$tmp"' EXIT
+    if ! ${pkgs.wl-clipboard}/bin/wl-paste --type image/png > "$tmp" \
+        || [ ! -s "$tmp" ]; then
+      ${pkgs.libnotify}/bin/notify-send "Screenshot" "No image on clipboard" || true
+      exit 1
+    fi
+    ${pkgs.openssh}/bin/scp -o BatchMode=yes "$tmp" ${l2Host}:${l2ScreenshotPath}
+    ${pkgs.libnotify}/bin/notify-send "Screenshot" "Sent → ${l2Host}:${l2ScreenshotPath}" || true
   '';
+
+  # Key 5: type the prompt pointing Claude Code (on l2) at the uploaded image.
+  typeScreenshotPrompt = typeText "k9-type-screenshot-prompt"
+    "please see screenshot in ${l2ScreenshotPath}";
 
   # --- the extensible macro table ------------------------------------------
   # ONE ENTRY PER KEY. `key` is the xremap key name captured with evtest (see
-  # key9-macros.md § Capture). This pad is a 3×3 numpad:
-  #   KP7 KP8 KP9   (top row,    positions 1 2 3)
-  #   KP4 KP5 KP6   (middle row, positions 4 5 6)
-  #   KP1 KP2 KP3   (bottom row, positions 7 8 9)
+  # key9-macros.md § Capture). This pad is a 3×3 numpad; the button number is
+  # just the KP digit on the physical key:
+  #   KP7 KP8 KP9   (top row)
+  #   KP4 KP5 KP6   (middle row)
+  #   KP1 KP2 KP3   (bottom row)
   macros = [
-    { key = "KEY_KP7"; run = audioCombo384; desc = "Pos 1: audio output → Combo384 DAC"; }
-    { key = "KEY_KP8"; run = typeTableTest; desc = "Pos 2: type the table-driven-test string"; }
-    # Add more keys here (KP9, KP4, KP5, KP6, KP1, KP2, KP3), e.g.:
-    # { key = "KEY_KP9"; run = audioDefault;   desc = "Pos 3: audio output → speakers"; }
-    # { key = "KEY_KP6"; run = "gradia-toggle"; desc = "Pos 6: Gradia screenshot"; }  # reuse existing wrapper
+    { key = "KEY_KP1"; run = buttonN 1;       desc = "Button 1: type \"button 1\""; }
+    { key = "KEY_KP2"; run = buttonN 2;       desc = "Button 2: type \"button 2\""; }
+    { key = "KEY_KP3"; run = buttonN 3;       desc = "Button 3: type \"button 3\""; }
+    { key = "KEY_KP4"; run = scpScreenshot;        desc = "Button 4: scp clipboard screenshot → l2:/tmp/screenshot.png"; }
+    { key = "KEY_KP5"; run = typeScreenshotPrompt; desc = "Button 5: type the \"see screenshot\" prompt"; }
+    { key = "KEY_KP6"; run = buttonN 6;       desc = "Button 6: type \"button 6\""; }
+    { key = "KEY_KP7"; run = audioCombo384;   desc = "Button 7: audio output → Combo384 DAC"; }
+    { key = "KEY_KP8"; run = typeTableTest;   desc = "Button 8: type the table-driven-test string"; }
+    { key = "KEY_KP9"; run = buttonN 9;       desc = "Button 9: type \"button 9\""; }
   ];
 
   # Build the xremap remap map from the table.

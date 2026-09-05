@@ -38,16 +38,25 @@ in
     };
   };
 
-  # Slave: steer the system clock from the ptp4l-disciplined NIC PHC so
-  # hp3's CLOCK_REALTIME tracks the hp1 grandmaster (-a follows ptp4l's
-  # selected clock; -r allows the system clock to be a time source too).
+  # Slave: steer CLOCK_REALTIME from the ptp4l-disciplined NIC PHC so hp3's
+  # system clock tracks the hp1 grandmaster.
+  #
+  # Explicit source/dest + `-O 0` (NOT `-a -r`): hp1's grandmaster phc2sys
+  # pushes its UTC-disciplined CLOCK_REALTIME into the PHC with `-O 0`, so the
+  # whole PTP domain's PHC holds UTC, not TAI. `phc2sys -a` auto-reads a nonzero
+  # currentUtcOffset (~37 s) from ptp4l and subtracts it, driving the system
+  # clock ~37 s off — and because that offset dwarfs the slew rate the servo
+  # rails and never converges (design 40 PR-C: post-reboot hp3 sat ~2 s behind
+  # hp1). Pinning `-O 0` matches the grandmaster's own zero-offset convention;
+  # the default first_step_threshold (20 µs) steps the boot-time offset in one
+  # jump instead of slewing. `-w` waits for ptp4l to lock before stepping.
   systemd.services.phc2sys = {
     description = "phc2sys — steer system clock <- ${iface} PHC (slave)";
     after = [ "ptp4l.service" ];
     wants = [ "ptp4l.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.linuxptp}/bin/phc2sys -a -r";
+      ExecStart = "${pkgs.linuxptp}/bin/phc2sys -s ${iface} -c CLOCK_REALTIME -w -O 0";
       Restart = "on-failure";
       RestartSec = 5;
     };

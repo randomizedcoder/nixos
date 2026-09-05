@@ -28,6 +28,7 @@
       # ./wireless.nix
       # ./wireless_desktop.nix
       ./hosts.nix
+      ./ptp.nix
       ./firewall.nix
       ./il8n.nix
       #./systemdSystem.nix

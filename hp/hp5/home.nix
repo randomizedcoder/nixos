@@ -99,6 +99,9 @@
     # for pprof
     graphviz
     #
+    # claude cli (see ~/nixos/desktop/l/home.nix)
+    claude-code
+    #
     #ffmpeg
     #ffmpeg-full
   ];

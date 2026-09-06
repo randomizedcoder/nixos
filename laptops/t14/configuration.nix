@@ -45,6 +45,7 @@
       #./x.nix
       ./bbr3-module.nix
       #./distributed-builds.nix
+      ./nfb-vpn-sandbox.nix   # NFB LADC AnyConnect VPN in an isolated container (10.98.0.2)
     ];
 
   boot = {

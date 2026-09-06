@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "advisory-db": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788290635,
+        "narHash": "sha256-ARLvKYMGu2e4n2co6CzmD6NUtfOqCECXGVffhG4jFTE=",
+        "owner": "rustsec",
+        "repo": "advisory-db",
+        "rev": "4b27756fe154d080be5c91a7486e4fbd5cfc3b3a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rustsec",
+        "repo": "advisory-db",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -279,6 +295,7 @@
     },
     "uds-rdma-proxy": {
       "inputs": {
+        "advisory-db": "advisory-db",
         "flake-utils": "flake-utils",
         "microvm": "microvm",
         "nixpkgs": [
@@ -288,11 +305,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1788318643,
-        "narHash": "sha256-LhK6GleuPy6RCBAfjL06V6lIMnsm4m98x5ejGL9/Cos=",
+        "lastModified": 1788673086,
+        "narHash": "sha256-vCusQgeBN1YjN36dP+L1LRQv2WNYb/TQ+oCGX1i75N4=",
         "owner": "randomizedcoder",
         "repo": "uds-rdma-proxy",
-        "rev": "955a0cffe0928ba83f819afcdfae1b080af7c29b",
+        "rev": "e37b9d7935f8b98797816494c93409dda27e658e",
         "type": "github"
       },
       "original": {

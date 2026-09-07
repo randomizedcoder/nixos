@@ -15,14 +15,16 @@
 # nfb-ladc-asa01/super-node-storage-layout-design.md.
 #
 # Roles (uniform on every node):
-#   satadom  PCH sSATA 64 GB DOM   → GPT: ESP(/boot, vfat)   [UEFI/systemd-boot; boot only]
-#   samsung  Samsung 870 90% VD    → GPT split:
-#              part os   (600 GB)  → LVM vg 'sys': swap(64G) + /var(300G ext4) + /(rest ext4)
-#              part data (rest)    → zpool 'tank' DATA vdev (stripe w/ micron)
-#   micron   Micron 5200 90% VD    → zpool 'tank' DATA vdev
+#   satadom  PCH sSATA 64 GB DOM   → GPT: ESP(/boot, vfat, 32G)  [UEFI/systemd-boot; boot only]
+#   samsung  Samsung 870 90% VD    → whole disk = LVM vg 'sys': swap(64G)+/var(300G)+/(rest ext4)
+#                                     OS ONLY — deliberately NOT in ZFS. The Samsung stays
+#                                     under-utilized by design (very reliable, low-churn system
+#                                     disk); consistency across all super-X: samsung=system.
+#   micron   Micron 5200 90% VD    → zpool 'tank' SOLE data vdev (grow later by adding disks)
 #   nvme     NVMe (uniform)        → zpool 'tank': part special(70%) + part cache/L2ARC(30%)
 #
-# 'tank' = 2-way data stripe (samsung-slice + micron) + special + L2ARC (both on NVMe).
+# 'tank' = micron DATA vdev + special + L2ARC (both on NVMe). Expand the pool in future by
+# ADDING data disks (new vdevs), NOT by slicing the Samsung (samsung is system-only).
 # Datasets: tank/clickhouse, tank/clickhouse-tmp, tank/kafka (ClickHouse + Redpanda).
 #
 # IMPORTANT before running:
@@ -54,15 +56,16 @@
         device = satadom;
         content = {
           type = "gpt";
-          # /boot only. 4 GiB comfortably holds ~15 systemd-boot generations
-          # (kernel+initrd). The rest of the 64 GB DOM is left UNPARTITIONED —
-          # i.e. the SATADOM is already ~93% spare (host over-provisioning) with
-          # zero effort, so no "90% VD" is needed here (that trick is for the
-          # otherwise-full MegaRAID data SSDs). ESP size doesn't affect wear;
-          # write volume is driven by rebuild frequency, not partition size.
+          # /boot only. 32 GiB holds ~200 systemd-boot generations (kernel+initrd
+          # ~150 MB each) → lots of rollback/backup targets, which is the whole
+          # point of a dedicated boot DOM. /boot is LOW-WRITE (only touched on
+          # nixos-rebuild), so a large ESP costs no meaningful endurance — wear is
+          # driven by rebuild frequency, not partition size. FAT32 is fine to 2 TB
+          # (the 4 GiB FAT limit is per-FILE, and initrds are ~150 MB). ~28 GiB of
+          # the 64 GB DOM stays unpartitioned as spare.
           partitions.ESP = {
             name = "ESP";
-            size = "4G";
+            size = "32G";
             type = "EF00";
             content = {
               type = "filesystem";
@@ -74,21 +77,18 @@
         };
       };
 
-      # ---- Samsung 90% VD: OS slice (LVM ext4) + tank data slice --------
+      # ---- Samsung 90% VD: OS ONLY (whole disk = LVM vg 'sys') ----------
+      # No ZFS slice — the Samsung is the reliable, low-churn system disk and is
+      # deliberately under-utilized (root gets ~1.25 T of headroom). Data lives on
+      # the Micron + future added disks, never on the Samsung.
       samsung = {
         type = "disk";
         device = samsung;
         content = {
           type = "gpt";
-          partitions = {
-            os = {
-              size = osSliceSize;
-              content = { type = "lvm_pv"; vg = "sys"; };
-            };
-            zfs = {
-              size = "100%";
-              content = { type = "zfs"; pool = pool; };   # tank data vdev (partlabel disk-samsung-zfs)
-            };
+          partitions.os = {
+            size = "100%";                                 # whole disk → LVM vg 'sys'
+            content = { type = "lvm_pv"; vg = "sys"; };
           };
         };
       };
@@ -153,16 +153,16 @@
 
     zpool.${pool} = {
       type = "zpool";
-      # Topology: two single-disk DATA vdevs (samsung-slice + micron) = stripe,
-      # plus the NVMe as SPECIAL (metadata/small-blocks) and CACHE (L2ARC).
+      # Topology: single DATA vdev (micron), plus the NVMe as SPECIAL
+      # (metadata/small-blocks) and CACHE (L2ARC). Grow the pool later by ADDING
+      # data vdevs (new disks) — the Samsung is system-only and never joins tank.
       # Bare members auto-resolve to /dev/disk/by-partlabel/disk-<name>-zfs;
       # the NVMe roles use full partlabels since one disk holds two partitions.
       mode = {
         topology = {
           type = "topology";
           vdev = [
-            { members = [ "samsung" ]; }   # → disk-samsung-zfs
-            { members = [ "micron" ]; }    # → disk-micron-zfs
+            { members = [ "micron" ]; }    # → disk-micron-zfs (sole data vdev for now)
           ];
           special = [ { members = [ "/dev/disk/by-partlabel/disk-nvme-special" ]; } ];
           cache = [ "/dev/disk/by-partlabel/disk-nvme-cache" ];  # L2ARC (listOf str)

@@ -31,6 +31,8 @@
       ./il8n.nix
       #./systemdSystem.nix
       ./systemPackages.nix
+      # FPGA (Sipeed Tang Mega 138K Pro) USB/JTAG + serial permissions.
+      ./fpga.nix
       # home manager is imported by the flake
       #./home.nix
       ./nodeExporter.nix
@@ -70,7 +72,15 @@
   # https://nixos.wiki/wiki/Linux_kernel
   # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
   # kernel (xdp2 docs/physical-testbed.md §3, 2026-04-20).
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
+  # Pinned to linuxPackages_latest so hp2 + hp5 run the same newest
+  # kernel (xdp2 docs/physical-testbed.md §3, 2026-04-20).
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #
+  # DISABLED (2026-09-05): the custom net-next kernel below can only be
+  # evaluated on the workstation, where /home/das/Downloads/net-next is a
+  # real git repo (builtins.fetchGit). On hp5 that path has no .git, so
+  # `make` on hp5 fails to evaluate. Re-enable only when deploying from a
+  # host that has the net-next git tree (build-host = that workstation).
   #
   # TEMPORARY (2026-05-24): switched to a custom net-next 7.1.0-rc4
   # kernel built from the flow-keys-compat-reorder branch's
@@ -82,7 +92,7 @@
   # after testing is complete.
   # series4 net-next kernel (series4-rfc-tail-v2), replacing ./test-kernel
   # for the flow_dissector fast-path perf A/B. See ./netnext-kernel.nix.
-  boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
+  #boot.kernelPackages = pkgs.callPackage ./netnext-kernel.nix {};
 
   # xdp2 physical-testbed tuning. See xdp2 docs/physical-testbed.md §5–§7
   # for the option reference and trade-offs. hp5 enables lowJitter = true

@@ -10,7 +10,7 @@ NAME := b
 DIR := super-b
 HOST := 10.241.10.11
 JUMP := nfb-vpn
-FLAKE := /home/das/nixos/super/$(DIR)#super
+FLAKE := /home/das/nixos/super/$(DIR)\#super
 
 EXPECTED_HOSTNAME := super-$(NAME)
 ACTUAL_HOSTNAME := $(shell hostname)

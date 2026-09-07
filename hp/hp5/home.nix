@@ -4,6 +4,14 @@
 # sudo nixos-rebuild switch
 
 {
+  imports = [
+    # Claude profile management (claude-use / claude-use-setup) + the Rust
+    # statusline binary, per-profile settings.json activation. Brought over
+    # from ~/nixos/desktop/l/. claude-code itself is a separate package
+    # (see home.packages below).
+    ./claude.nix
+  ];
+
   home.username = "das";
   home.homeDirectory = "/home/das";
 

@@ -1,0 +1,253 @@
+From cb4e51dd913c4f187d69388123ab8c5188798fac Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Wed, 27 May 2026 16:37:12 -0700
+Subject: [PATCH RFC 1/3] net: flow_dissector: add opt-in fast-path entry-point
+ skeleton
+
+Add a fast-path dispatcher to __skb_flow_dissect(), gated by the
+new net.core.flow_dissector_fastpath sysctl. It runs after the BPF
+flow_dissector check and before the slow-path graph walk.
+
+The gate uses a static_branch at the call site:
+
+    if (static_branch_likely(&flow_dissector_fastpath_key) &&
+        flow_dissect_fast(skb, ...))
+            return true;
+
+Default off. We use static_branch_likely (not _unlikely) because
+operators who flip this sysctl have opted into the fast-path for
+performance; static_branch_likely keeps the dispatcher inline in
+the hot text section so they get the layout the microbench
+measured against. The trade is one forward JMP per dissector call
+in the default-off case (cheap, one not-taken JMP) versus a
+cold-section detour per call in the enabled case if we had used
+_unlikely.
+
+The sysctl uses proc_do_static_key, the canonical helper for
+sysctl-toggled static_branches (cf. net.core.high_order_alloc_disable
+in net/core/sysctl_net_core.c, sock.c:net_high_order_alloc_disable_key).
+
+The dispatcher checks three conditions before doing any work:
+
+- The caller must use flow_keys_dissector or
+  flow_keys_dissector_symmetric. Custom dissectors (e.g. tc
+  cls_flow with bespoke key sets) fall back to the slow path.
+- The flags must be empty or only FLOW_DISSECTOR_F_PARSE_1ST_FRAG.
+  Other flags request behaviour this code does not implement
+  (encap walking, MPLS deep parse, flow-label stop).
+- The outer ethertype must be IPv4 or IPv6.
+
+If all three conditions hold the dispatcher calls a per-shape
+helper. Other cases return false and the slow path runs as before.
+
+The per-shape helpers (flow_dissect_fast_ipv4,
+flow_dissect_fast_ipv6) are added as stubs that return false. Real
+bodies arrive in follow-up patches.
+
+This patch does not change behaviour:
+
+- Default sysctl value is 0; the static_branch stays false and the
+  static_branch_likely test is patched to skip the dispatcher.
+- Even with the sysctl set to 1, every fast-path stub returns
+  false in this patch alone, so every packet still reaches the
+  slow path.
+- Added cost is one not-taken JMP per dissector call when disabled
+  (the default), and one ethertype switch (about 5 cycles) per
+  call that passes the BPF override check when enabled.
+
+The framework patch is sent on its own so reviewers can comment on
+the dispatch shape, the dissector identity check, the BPF order,
+and the sysctl-gating design separately from the per-shape
+extractor code.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ Documentation/admin-guide/sysctl/net.rst | 24 +++++++++
+ include/net/flow_dissector.h             |  8 +++
+ net/core/flow_dissector.c                | 68 ++++++++++++++++++++++++
+ net/core/sysctl_net_core.c               |  8 +++
+ 4 files changed, 108 insertions(+)
+
+diff --git a/Documentation/admin-guide/sysctl/net.rst b/Documentation/admin-guide/sysctl/net.rst
+index 0724a793798f..7c1fef068a62 100644
+--- a/Documentation/admin-guide/sysctl/net.rst
++++ b/Documentation/admin-guide/sysctl/net.rst
+@@ -461,6 +461,30 @@ historical importance.
+ 
+ Default: 0
+ 
++flow_dissector_fastpath
++-----------------------
++
++Enable the flow_dissector fast-path for the common eth + IPv4/IPv6 +
++TCP/UDP packet shapes. The fast-path produces a byte-identical
++``struct flow_keys`` output to the slow path; setting this only
++changes the code path used to compute the keys, not their values.
++
++When disabled (the default) the existing graph-walk slow path
++handles every packet. A ``static_branch_unlikely`` at the call site
++patches the dispatcher invocation to a NOP, so the slow-path cost is
++identical to today.
++
++When enabled, packets matching the fast-path shapes (eth + IPv4 with
++IHL=5 and no fragmentation, or eth + IPv6 with no extension headers,
++both followed by TCP or UDP) take a straight-line extractor instead
++of the graph walk. Packets that miss any condition fall through to
++the slow path unchanged.
++
++The toggle uses a runtime static_branch so operators can A/B without
++rebuilding the kernel.
++
++Default: 0
++
+ 2. /proc/sys/net/unix - Parameters for Unix domain sockets
+ ----------------------------------------------------------
+ 
+diff --git a/include/net/flow_dissector.h b/include/net/flow_dissector.h
+index ced79dc8e856..08670eb925cb 100644
+--- a/include/net/flow_dissector.h
++++ b/include/net/flow_dissector.h
+@@ -2,6 +2,7 @@
+ #ifndef _NET_FLOW_DISSECTOR_H
+ #define _NET_FLOW_DISSECTOR_H
+ 
++#include <linux/jump_label.h>
+ #include <linux/types.h>
+ #include <linux/in6.h>
+ #include <linux/siphash.h>
+@@ -425,6 +426,13 @@ __be32 flow_get_u32_dst(const struct flow_keys *flow);
+ extern struct flow_dissector flow_keys_dissector;
+ extern struct flow_dissector flow_keys_basic_dissector;
+ 
++/* Defined in net/core/flow_dissector.c. Off by default; the
++ * net.core.flow_dissector_fastpath sysctl toggles it at runtime.
++ * Exposed via this header so net/core/sysctl_net_core.c can take its
++ * address for the proc_do_static_key handler.
++ */
++extern struct static_key_false flow_dissector_fastpath_key;
++
+ /* struct flow_keys_digest:
+  *
+  * This structure is used to hold a digest of the full flow keys. This is a
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 2a98f5fa74eb..211fbbf6fb48 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -5,6 +5,7 @@
+ #include <linux/ip.h>
+ #include <linux/ipv6.h>
+ #include <linux/if_vlan.h>
++#include <linux/jump_label.h>
+ #include <linux/filter.h>
+ #include <net/dsa.h>
+ #include <net/dst_metadata.h>
+@@ -1035,6 +1036,68 @@ static bool is_pppoe_ses_hdr_valid(const struct pppoe_hdr *hdr)
+ 	return hdr->ver == 1 && hdr->type == 1 && hdr->code == 0;
+ }
+ 
++static struct flow_dissector flow_keys_dissector_symmetric;
++
++/* Opt-in gate for the flow_dissector fast-path. Default off; flip via
++ * the net.core.flow_dissector_fastpath sysctl. static_branch_likely
++ * at the call site keeps the dispatcher inline in the hot text
++ * section so enabled operators get the layout the microbench measured
++ * against; default-off users pay one forward JMP per dissector call
++ * to skip the inlined dispatcher (cheap, one not-taken JMP per call).
++ */
++DEFINE_STATIC_KEY_FALSE(flow_dissector_fastpath_key);
++
++static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
++				   struct flow_dissector *flow_dissector,
++				   void *target_container,
++				   const void *data,
++				   int nhoff, int hlen)
++{
++	return false;
++}
++
++static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
++				   struct flow_dissector *flow_dissector,
++				   void *target_container,
++				   const void *data,
++				   int nhoff, int hlen)
++{
++	return false;
++}
++
++/* Straight-line extractor for common L3+L4 shapes. Returns true when
++ * @target_container is filled byte-identically to the slow path; false
++ * to fall back. Only the two standard dissectors are eligible; custom
++ * dissectors and slow-path-only flags defer unconditionally.
++ */
++static bool flow_dissect_fast(const struct sk_buff *skb,
++			      struct flow_dissector *flow_dissector,
++			      void *target_container,
++			      const void *data,
++			      __be16 proto, int nhoff, int hlen,
++			      unsigned int flags)
++{
++	if (flow_dissector != &flow_keys_dissector &&
++	    flow_dissector != &flow_keys_dissector_symmetric)
++		return false;
++
++	if (flags & ~(unsigned int)FLOW_DISSECTOR_F_PARSE_1ST_FRAG)
++		return false;
++
++	switch (proto) {
++	case htons(ETH_P_IP):
++		return flow_dissect_fast_ipv4(skb, flow_dissector,
++					      target_container, data,
++					      nhoff, hlen);
++	case htons(ETH_P_IPV6):
++		return flow_dissect_fast_ipv6(skb, flow_dissector,
++					      target_container, data,
++					      nhoff, hlen);
++	default:
++		return false;
++	}
++}
++
+ /**
+  * __skb_flow_dissect - extract the flow_keys struct and return it
+  * @net: associated network namespace, derived from @skb if NULL
+@@ -1171,6 +1234,11 @@ bool __skb_flow_dissect(const struct net *net,
+ 
+ 	rcu_read_unlock();
+ 
++	if (static_branch_likely(&flow_dissector_fastpath_key) &&
++	    flow_dissect_fast(skb, flow_dissector, target_container,
++			      data, proto, nhoff, hlen, flags))
++		return true;
++
+ 	if (dissector_uses_key(flow_dissector,
+ 			       FLOW_DISSECTOR_KEY_ETH_ADDRS)) {
+ 		struct ethhdr *eth = eth_hdr(skb);
+diff --git a/net/core/sysctl_net_core.c b/net/core/sysctl_net_core.c
+index b508618bfc12..2000f9c3e10e 100644
+--- a/net/core/sysctl_net_core.c
++++ b/net/core/sysctl_net_core.c
+@@ -19,6 +19,7 @@
+ #include <linux/sched/isolation.h>
+ #include <linux/hex.h>
+ 
++#include <net/flow_dissector.h>
+ #include <net/ip.h>
+ #include <net/sock.h>
+ #include <net/net_ratelimit.h>
+@@ -651,6 +652,13 @@ static struct ctl_table net_core_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_static_key,
+ 	},
++	{
++		.procname	= "flow_dissector_fastpath",
++		.data		= &flow_dissector_fastpath_key.key,
++		.maxlen		= sizeof(flow_dissector_fastpath_key),
++		.mode		= 0644,
++		.proc_handler	= proc_do_static_key,
++	},
+ 	{
+ 		.procname	= "gro_normal_batch",
+ 		.data		= &net_hotdata.gro_normal_batch,
+-- 
+2.54.0
+

@@ -14,8 +14,32 @@
   boot.supportedFilesystems = [ "zfs" ];
   # Root is ext4, not ZFS — don't force-import a root pool.
   boot.zfs.forceImportRoot = false;
-  # Import the data pool at boot (disko also wires the dataset fileSystems).
-  boot.zfs.extraPools = [ "tank" ];
+
+  # ---- Make the DATA pool `tank` NON-FATAL to boot -----------------------------
+  # tank is application data (ClickHouse/Redpanda), NOT the OS. A tank problem
+  # (corruption, a missing device, a foreign hostid) must NEVER wedge the box out
+  # of a login — on super-b 2026-09-05 a failed import dropped the box to an
+  # inaccessible emergency console (see the lessons doc). Recovery model: root has
+  # a break-glass console password (access.nix) AND the node still reaches
+  # multi-user (network + sshd) so we can SSH in and fix the pool remotely.
+  #
+  # disko auto-wires tank: it emits `zfs-import-tank.service` (requiredBy the
+  # dataset .mount units + zfs-import.target) and systemd `.mount` units for the
+  # datasets. That makes a failed import fatal (fails local-fs.target → emergency).
+  # Two overrides defuse it:
+  #   (1) the import service's script always exits 0 (a failed import is logged,
+  #       not fatal) — a successful import still mounts normally;
+  #   (2) the dataset mounts get `nofail`, so a missing pool doesn't fail local-fs.
+  systemd.services.zfs-import-tank.script = lib.mkForce ''
+    if ! ${config.boot.zfs.package}/sbin/zpool list -H -o name tank >/dev/null 2>&1; then
+      ${config.boot.zfs.package}/sbin/zpool import -d /dev/disk/by-id -N tank 2>&1 \
+        || echo "WARNING: 'zpool import tank' failed — continuing to multi-user (non-fatal). Recover with: zpool import -f tank"
+    fi
+    exit 0
+  '';
+  fileSystems."/var/lib/clickhouse".options = [ "nofail" ];
+  fileSystems."/var/lib/clickhouse/tmp".options = [ "nofail" ];
+  fileSystems."/var/lib/redpanda".options = [ "nofail" ];
 
   ##############################################################################
   # ARC sizing (uniform 128 GiB assumption; node-A physically has 256 GiB but is

@@ -33,5 +33,6 @@
     enable = true;
     listenAddress = "0.0.0.0";
     openFirewall = true;
+    perStream = true; # populate the reorder-depth + live-credits dashboard panels
   };
 }

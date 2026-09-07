@@ -305,11 +305,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1788673086,
-        "narHash": "sha256-vCusQgeBN1YjN36dP+L1LRQv2WNYb/TQ+oCGX1i75N4=",
+        "lastModified": 1788723103,
+        "narHash": "sha256-nE1jAo3hS4IkrOoasUJRIgN0VogmAr9dspJrTuFJtYo=",
         "owner": "randomizedcoder",
         "repo": "uds-rdma-proxy",
-        "rev": "e37b9d7935f8b98797816494c93409dda27e658e",
+        "rev": "77005589bcbcaab72f114ac4c9e5efab95220fa4",
         "type": "github"
       },
       "original": {

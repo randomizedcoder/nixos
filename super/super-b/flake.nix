@@ -19,9 +19,20 @@
   outputs = { self, nixpkgs, disko, ... }:
     let
       system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+      # Build the shared PXE netboot installer image inline; pxe.nix serves it.
+      netbootSys = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [ ./netboot-installer.nix ];
+      };
+      netbootDir = pkgs.symlinkJoin {
+        name = "super-netboot";
+        paths = with netbootSys.config.system.build; [ netbootRamdisk kernel netbootIpxeScript ];
+      };
     in {
       nixosConfigurations.super = nixpkgs.lib.nixosSystem {
         inherit system;
+        specialArgs = { inherit netbootDir; };   # -> pxe.nix
         modules = [
           disko.nixosModules.disko
           ./disko.nix          # per-node: device by-ids + any extras

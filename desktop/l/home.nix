@@ -345,6 +345,9 @@
     # Editors
     helix
 
+    # AI Coding CLIs
+    codex
+
     # Rust Development
     # https://nixos.wiki/wiki/Rust
     cargo
@@ -721,7 +724,7 @@
       obs-shaderfilter
       obs-source-record
       obs-retro-effects
-      obs-replay-source
+      #obs-replay-source # stopped working in sept 2026
       obs-freeze-filter
       #obs-color-monitor #not building correctly anymore
       #looking-glass-obs
@@ -732,7 +735,7 @@
       obs-advanced-masks
       #obs-vertical-canvas # not sure what this is, but it flickered
       obs-source-switcher
-      obs-move-transition
+      #obs-move-transition # stopped working sept 2026
       obs-gradient-source
       #obs-dvd-screensaver
       #obs-dir-watch-media

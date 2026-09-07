@@ -15,6 +15,7 @@
     ./bogon-refresh.nix            # fills firewall.nix bogon sets from Team-Cymru (weekly timer)
     ./monitoring.nix               # diagnostic/monitoring tools (netstat, ifconfig, btop) + monitoring svc
     ./access.nix                   # mgmt access: das + passwordless sudo (NO root SSH) + console pw
+    ./pxe.nix                      # anycast PXE/netboot server (Kea+atftpd+nginx on 10.241.10.20)
   ];
 
   # Serial console over IPMI SOL (ttyS1) + local VGA. systemd auto-starts

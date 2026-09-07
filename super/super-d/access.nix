@@ -24,4 +24,14 @@
   #   mkpasswd -m sha-512 'newpassword'  → paste below → make sync && make
   users.users.das.hashedPassword =
     "$6$Z5XdWh2fLUpN8Ir5$XEQH3zLu7d/eZQIK.7HAhrEb6acL0Jy4yT2P3Xm/N9RQ88pY0Ij4QT9ETJsO6fZIWhrLqaqfrHSy.NAoFn9.Y0";
+
+  # Break-glass console login for ROOT — REQUIRED for emergency mode / sulogin.
+  # If ZFS (or any local-fs) ever fails to mount, systemd drops to emergency mode,
+  # which runs `sulogin` and needs a ROOT password; das's password does NOT work
+  # there. Without this, a data-pool failure locks you out of the console entirely
+  # ("Cannot open access to console, the root account is locked") — as happened on
+  # super-b 2026-09-05. This does NOT enable root SSH (PermitRootLogin=no above);
+  # it only unlocks console/sulogin. Same hash as das (one break-glass secret).
+  users.users.root.hashedPassword =
+    "$6$Z5XdWh2fLUpN8Ir5$XEQH3zLu7d/eZQIK.7HAhrEb6acL0Jy4yT2P3Xm/N9RQ88pY0Ij4QT9ETJsO6fZIWhrLqaqfrHSy.NAoFn9.Y0";
 }

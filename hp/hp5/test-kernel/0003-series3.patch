@@ -1,0 +1,142 @@
+From e24cf9001c0b3d28ba68c33a55b083e4fce02fd4 Mon Sep 17 00:00:00 2001
+From: Dave Seddon <dave.seddon.ca@gmail.com>
+Date: Wed, 27 May 2026 16:49:49 -0700
+Subject: [PATCH RFC 3/3] net: flow_dissector: add eth+IPv6+{TCP,UDP} fast-path
+
+Plug the IPv6 stub from the framework patch with a straight-line
+extractor for the common IPv6 shape.
+
+The fast-path matches a narrow shape:
+
+- 40-byte fixed IPv6 header. Reject any other version.
+- nexthdr is TCP or UDP only. Extension headers (HBH, ROUTING,
+  FRAGMENT, ESP, AH, DSTOPTS, MH, HIP, SHIM6) and other
+  transports fall back to the slow path.
+- The IPv6 flow label is zero, or the dissector did not request
+  FLOW_DISSECTOR_KEY_FLOW_LABEL. The slow path writes
+  key_tags->flow_label when both conditions fail; this code does
+  not, so it defers in that case to keep output byte-identical.
+  RFC 6437 allows non-zero flow labels but most stacks leave
+  them zero, so the fast-path still hits on the common case.
+
+On a match the fast-path writes the same key slots the slow path
+would write for the standard dissectors:
+
+- key_control: addr_type, thoff, flags
+- key_basic: n_proto, ip_proto
+- key_addrs.v6addrs: src and dst from the IPv6 header
+- key_ports: src and dst u16 ports read at the L4 header
+
+IPv6 is a large share of real RX traffic on modern deployments.
+Many datacentre east-west paths run IPv6 only. Many client
+networks are dual-stack. This patch gives the v6 path the same
+speedup the v4 patch gives the v4 path.
+
+Expected effect: about 30 ns/pkt saved on packets that match.
+Same mechanism as the IPv4 fast-path: skip the slow-path graph
+walk.
+
+Signed-off-by: Dave Seddon <dave.seddon.ca@gmail.com>
+---
+ net/core/flow_dissector.c | 79 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 78 insertions(+), 1 deletion(-)
+
+diff --git a/net/core/flow_dissector.c b/net/core/flow_dissector.c
+index 545dfbaf1deb..dd057c0ebeec 100644
+--- a/net/core/flow_dissector.c
++++ b/net/core/flow_dissector.c
+@@ -1128,13 +1128,90 @@ static bool flow_dissect_fast_ipv4(const struct sk_buff *skb,
+ 	return true;
+ }
+ 
++/* The fast-path assumes a 40-byte fixed IPv6 header (no extension
++ * headers). The nexthdr check below holds the run-time invariant.
++ */
++static_assert(sizeof(struct ipv6hdr) == 40);
++
+ static bool flow_dissect_fast_ipv6(const struct sk_buff *skb,
+ 				   struct flow_dissector *flow_dissector,
+ 				   void *target_container,
+ 				   const void *data,
+ 				   int nhoff, int hlen)
+ {
+-	return false;
++	struct flow_dissector_key_addrs *key_addrs;
++	struct flow_dissector_key_control *key_control;
++	struct flow_dissector_key_basic *key_basic;
++	struct flow_dissector_key_ports *key_ports;
++	const struct ipv6hdr *iph;
++	int thoff;
++
++	if (unlikely(hlen - nhoff < (int)sizeof(*iph) + 4))
++		return false;
++
++	iph = (const struct ipv6hdr *)((const u8 *)data + nhoff);
++
++	if (unlikely((*(const u8 *)iph >> 4) != 6))
++		return false;
++
++	if (unlikely(iph->nexthdr != IPPROTO_TCP &&
++		     iph->nexthdr != IPPROTO_UDP))
++		return false;
++
++	/* Slow path writes key_tags->flow_label when the dissector
++	 * requests it and the label is non-zero; defer to stay
++	 * byte-identical.
++	 */
++	if (unlikely(dissector_uses_key(flow_dissector,
++					FLOW_DISSECTOR_KEY_FLOW_LABEL) &&
++		     ((iph->flow_lbl[0] & 0x0f) | iph->flow_lbl[1] |
++		      iph->flow_lbl[2])))
++		return false;
++
++	thoff = nhoff + (int)sizeof(*iph);
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_CONTROL)) {
++		key_control = skb_flow_dissector_target(flow_dissector,
++							FLOW_DISSECTOR_KEY_CONTROL,
++							target_container);
++		key_control->addr_type = FLOW_DISSECTOR_KEY_IPV6_ADDRS;
++		key_control->thoff = (u16)thoff;
++		key_control->flags = 0;
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_BASIC)) {
++		key_basic = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_BASIC,
++						      target_container);
++		key_basic->n_proto = htons(ETH_P_IPV6);
++		key_basic->ip_proto = iph->nexthdr;
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_IPV6_ADDRS)) {
++		key_addrs = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_IPV6_ADDRS,
++						      target_container);
++		memcpy(&key_addrs->v6addrs.src, &iph->saddr,
++		       sizeof(key_addrs->v6addrs.src));
++		memcpy(&key_addrs->v6addrs.dst, &iph->daddr,
++		       sizeof(key_addrs->v6addrs.dst));
++	}
++
++	if (dissector_uses_key(flow_dissector,
++			       FLOW_DISSECTOR_KEY_PORTS)) {
++		const __be32 *ports = (const __be32 *)
++			((const u8 *)data + thoff);
++
++		key_ports = skb_flow_dissector_target(flow_dissector,
++						      FLOW_DISSECTOR_KEY_PORTS,
++						      target_container);
++		key_ports->ports = *ports;
++	}
++
++	return true;
+ }
+ 
+ /* Straight-line extractor for common L3+L4 shapes. Returns true when
+-- 
+2.54.0
+

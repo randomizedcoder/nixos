@@ -58,6 +58,10 @@ let
       "10.200.20.0/27"    # remote-access VPN pool — operator SSH (de-risks the rollout).
                           # Matches ASA `ip local pool LADCVPN 10.200.20.1-10.200.20.30
                           # mask 255.255.255.224` (asa-config-2026_08_08_1735 l21).
+      "10.242.10.0/24"    # provisioning VLAN 402 (PXE): the ToR relays DHCP to the anycast
+                          # VIP sourced from the giaddr = the VLAN402 SVI (10.242.10.x), and
+                          # PXE clients' TFTP/HTTP come from their leased 10.242.10.x. Without
+                          # this, relayed DISCOVERs hit the `policy drop` and Kea never offers.
     ];
 
     anycast = "160.72.197.238";                   # shared public anycast /32 (all nodes)

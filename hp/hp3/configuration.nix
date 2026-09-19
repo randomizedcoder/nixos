@@ -104,7 +104,14 @@
     isolatedCpus = [ 2 3 4 5 6 7 ];
     hugepages2M = 1024;  # 2 GiB — aligned with hp2/hp5
     disableNonEssentialServices = true;
-    lowJitter = false;
+    # Low-jitter measurement bundle (design 38.x latency-tail work): adds
+    # nowatchdog + performance governor, disables nmi_watchdog / numa_balancing,
+    # kills CPU turbo/boost (removes clock-variance jitter), and pins the
+    # management NIC (eno1) IRQs to CPUs 0-1. NOTE: deliberately does NOT add
+    # isolcps=managed_irq — on hp the mlx5 completion vectors are intentionally
+    # pinned onto the isolated cores 2-7 by xdp2.nicTuning for poller locality;
+    # managed_irq (super's storage-IRQ pattern) would fight that. Reboot to apply.
+    lowJitter = true;
     managementInterface = "eno1";
 
     # No Flow Director rules wired by default on the mlx5 pair yet.

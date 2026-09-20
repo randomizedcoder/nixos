@@ -55,6 +55,7 @@
     gawk
     jq
     git
+    gh
     htop
     btop
     minicom

@@ -27,16 +27,25 @@ let
   # system service; its socket lives here).
   ydotoolSocket = "/run/ydotoold/socket";
 
-  # Remote dev box (see l2-dev-box notes). Key 4 ships the clipboard screenshot
-  # here so Claude Code running on l2 can read it by path; Key 5 types that path.
+  # Remote boxes that receive the clipboard screenshot so Claude Code there can
+  # read it by path (Claude's Ctrl+V clipboard paste can't cross the SSH gap).
+  # Key 4 ships to l2, Key 5 ships to hp5; Key 6 types the path (see l2-dev-box).
   l2Host = "das@l2";
+  hp5Host = "das@hp5";
   l2ScreenshotPath = "/tmp/screenshot.png";
 
   # --- typed text constants ------------------------------------------------
 
-  # Key 2 text. Pulled out of the script body so it is easy to read and edit
+  # Key 3 text. Pulled out of the script body so it is easy to read and edit
   # without touching the ydotool invocation below.
   tableTestText = "table driven unit test with positive, negative, boundary, and corner cases, and in the table include description and expected test outcome";
+
+  # Fill-in text for the placeholder keys. Set each string to whatever you want
+  # that key to type. Empty string = key types nothing (still safe to press).
+  key1Text = "/compact";        # Key 1 also presses Enter after typing (submits)
+  key2Text = "please continue"; # Key 2 also presses Enter after typing (submits)
+  key8Text = "";
+  key9Text = "";
 
   # --- helpers -------------------------------------------------------------
 
@@ -49,11 +58,23 @@ let
     ${pkgs.ydotool}/bin/ydotool type --key-delay 5 --key-hold 5 -- ${lib.escapeShellArg text}
   '';
 
-  # Placeholder macro: types "button N" for pad position N. Handy for
-  # confirming a key is wired up before assigning it a real action.
-  buttonN = n: typeText "k9-button-${toString n}" "button ${toString n}";
+  # Same as typeText but presses Enter afterwards (keycode 28 = KEY_ENTER, so
+  # "28:1 28:0" is press-then-release). Use for keys that should submit.
+  typeTextEnter = name: text: pkgs.writeShellScript name ''
+    set -euo pipefail
+    export YDOTOOL_SOCKET=${ydotoolSocket}
+    ${pkgs.ydotool}/bin/ydotool type --key-delay 5 --key-hold 5 -- ${lib.escapeShellArg text}
+    ${pkgs.ydotool}/bin/ydotool key 28:1 28:0
+  '';
 
   # --- macro scripts (run inside the user graphical session) ---------------
+
+  # Placeholder keys: each types its own fill-in constant (see above). Edit the
+  # matching keyNText string to change what the key types.
+  typeKey1 = typeTextEnter "k9-type-key1" key1Text;
+  typeKey2 = typeTextEnter "k9-type-key2" key2Text;
+  typeKey8 = typeText "k9-type-key8" key8Text;
+  typeKey9 = typeText "k9-type-key9" key9Text;
 
   # Key 1: set the default audio output to the Amanero Combo384 DAC and move
   # any already-playing streams onto it. Change `match` to target a different
@@ -81,10 +102,10 @@ let
   # Key 2: type the table-driven unit-test boilerplate into the focused window.
   typeTableTest = typeText "k9-type-table-test" tableTestText;
 
-  # Key 4: copy the image currently on the (Wayland) clipboard — e.g. a Gradia
-  # screenshot — and scp it to l2:/tmp/screenshot.png so Claude Code on l2 can
+  # Copy the image currently on the (Wayland) clipboard — e.g. a Gradia
+  # screenshot — and scp it to <host>:<path> so Claude Code on that host can
   # read it by path (Claude's Ctrl+V clipboard paste can't cross the SSH gap).
-  scpScreenshot = pkgs.writeShellScript "k9-scp-screenshot" ''
+  scpScreenshotTo = name: host: path: pkgs.writeShellScript name ''
     set -euo pipefail
     tmp=$(${pkgs.coreutils}/bin/mktemp --suffix=.png)
     trap '${pkgs.coreutils}/bin/rm -f "$tmp"' EXIT
@@ -93,11 +114,15 @@ let
       ${pkgs.libnotify}/bin/notify-send "Screenshot" "No image on clipboard" || true
       exit 1
     fi
-    ${pkgs.openssh}/bin/scp -o BatchMode=yes "$tmp" ${l2Host}:${l2ScreenshotPath}
-    ${pkgs.libnotify}/bin/notify-send "Screenshot" "Sent → ${l2Host}:${l2ScreenshotPath}" || true
+    ${pkgs.openssh}/bin/scp -o BatchMode=yes "$tmp" ${host}:${path}
+    ${pkgs.libnotify}/bin/notify-send "Screenshot" "Sent → ${host}:${path}" || true
   '';
 
-  # Key 5: type the prompt pointing Claude Code (on l2) at the uploaded image.
+  # Key 4: ship the clipboard screenshot to l2. Key 5: ship it to hp5.
+  scpScreenshot    = scpScreenshotTo "k9-scp-screenshot"     l2Host  l2ScreenshotPath;
+  scpScreenshotHp5 = scpScreenshotTo "k9-scp-screenshot-hp5" hp5Host l2ScreenshotPath;
+
+  # Key 6: type the prompt pointing Claude Code at the uploaded image.
   typeScreenshotPrompt = typeText "k9-type-screenshot-prompt"
     "please see screenshot in ${l2ScreenshotPath}";
 
@@ -109,15 +134,15 @@ let
   #   KP4 KP5 KP6   (middle row)
   #   KP1 KP2 KP3   (bottom row)
   macros = [
-    { key = "KEY_KP1"; run = buttonN 1;       desc = "Button 1: type \"button 1\""; }
-    { key = "KEY_KP2"; run = buttonN 2;       desc = "Button 2: type \"button 2\""; }
-    { key = "KEY_KP3"; run = buttonN 3;       desc = "Button 3: type \"button 3\""; }
+    { key = "KEY_KP1"; run = typeKey1;             desc = "Button 1: type \"/compact\" + Enter"; }
+    { key = "KEY_KP2"; run = typeKey2;             desc = "Button 2: type \"please continue\" + Enter"; }
+    { key = "KEY_KP3"; run = typeTableTest;        desc = "Button 3: type the table-driven-test string"; }
     { key = "KEY_KP4"; run = scpScreenshot;        desc = "Button 4: scp clipboard screenshot → l2:/tmp/screenshot.png"; }
-    { key = "KEY_KP5"; run = typeScreenshotPrompt; desc = "Button 5: type the \"see screenshot\" prompt"; }
-    { key = "KEY_KP6"; run = buttonN 6;       desc = "Button 6: type \"button 6\""; }
-    { key = "KEY_KP7"; run = audioCombo384;   desc = "Button 7: audio output → Combo384 DAC"; }
-    { key = "KEY_KP8"; run = typeTableTest;   desc = "Button 8: type the table-driven-test string"; }
-    { key = "KEY_KP9"; run = buttonN 9;       desc = "Button 9: type \"button 9\""; }
+    { key = "KEY_KP5"; run = scpScreenshotHp5;     desc = "Button 5: scp clipboard screenshot → hp5:/tmp/screenshot.png"; }
+    { key = "KEY_KP6"; run = typeScreenshotPrompt; desc = "Button 6: type the \"see screenshot\" prompt"; }
+    { key = "KEY_KP7"; run = audioCombo384;        desc = "Button 7: audio output → Combo384 DAC"; }
+    { key = "KEY_KP8"; run = typeKey8;             desc = "Button 8: type key8Text"; }
+    { key = "KEY_KP9"; run = typeKey9;             desc = "Button 9: type key9Text"; }
   ];
 
   # Build the xremap remap map from the table.

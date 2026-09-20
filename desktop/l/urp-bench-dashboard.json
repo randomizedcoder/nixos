@@ -1,0 +1,172 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "urp-bench clients (design 51)",
+  "uid": "urp-bench-clients",
+  "tags": ["urp", "urp-bench", "design-51"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "10s",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(urp_bench_up, instance)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "endpoint",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(urp_bench_up{instance=~\"$instance\"}, endpoint)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Clients up (serving /metrics)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "down", "color": "red" } } },
+            { "type": "value", "options": { "1": { "text": "up", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        }
+      },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "urp_bench_up{instance=~\"$instance\",endpoint=~\"$endpoint\"}",
+          "legendFormat": "{{instance}} {{endpoint}} {{role}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Client-observed drops (must be 0)",
+      "description": "seq dups/unknowns + verify failures + deframe errors + in-flight-window-full. Any non-zero is a client-side loss signal — the independent 'no drops' check on the RDMA path.",
+      "gridPos": { "h": 4, "w": 10, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+        }
+      },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(urp_bench_seq_dups_total{instance=~\"$instance\",endpoint=~\"$endpoint\"})", "legendFormat": "seq_dups" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(urp_bench_seq_unknowns_total{instance=~\"$instance\",endpoint=~\"$endpoint\"})", "legendFormat": "seq_unknowns" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(urp_bench_verify_failures_total{instance=~\"$instance\",endpoint=~\"$endpoint\"})", "legendFormat": "verify_failures" },
+        { "refId": "D", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(urp_bench_deframe_errors_total{instance=~\"$instance\",endpoint=~\"$endpoint\"})", "legendFormat": "deframe_errors" },
+        { "refId": "E", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum(urp_bench_rtt_window_full_total{instance=~\"$instance\",endpoint=~\"$endpoint\"})", "legendFormat": "rtt_window_full" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Echo RTT quantiles (client, envelopes kernel urp_qp_rtt)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 5, "showPoints": "never" }
+        }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "P50",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.50, sum by (le, instance, endpoint) (rate(urp_bench_rtt_seconds_bucket{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval])))",
+          "legendFormat": "p50 {{instance}} {{endpoint}}"
+        },
+        {
+          "refId": "P99",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.99, sum by (le, instance, endpoint) (rate(urp_bench_rtt_seconds_bucket{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval])))",
+          "legendFormat": "p99 {{instance}} {{endpoint}}"
+        },
+        {
+          "refId": "AVG",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (instance, endpoint) (rate(urp_bench_rtt_seconds_sum{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval])) / sum by (instance, endpoint) (rate(urp_bench_rtt_seconds_count{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))",
+          "legendFormat": "mean {{instance}} {{endpoint}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "heatmap",
+      "title": "Echo RTT distribution (heatmap)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "options": { "calculate": false, "cellGap": 1, "yAxis": { "unit": "s", "scale": { "type": "log", "log": 10 } }, "color": { "scheme": "Spectral", "mode": "scheme" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum by (le) (rate(urp_bench_rtt_seconds_bucket{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))",
+          "format": "heatmap",
+          "legendFormat": "{{le}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "UDS throughput (read/write bytes/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } } },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "TX", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (instance, endpoint) (rate(urp_bench_uds_tx_bytes_total{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))", "legendFormat": "tx {{instance}} {{endpoint}}" },
+        { "refId": "RX", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (instance, endpoint) (rate(urp_bench_uds_rx_bytes_total{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))", "legendFormat": "rx {{instance}} {{endpoint}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "UDS frame rate (tx vs rx — reconciliation)",
+      "description": "tx frames written should track rx frames read (delta = in-flight window). A persistent divergence is loss.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "fps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } } },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "TX", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (instance, endpoint) (rate(urp_bench_uds_tx_frames_total{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))", "legendFormat": "tx {{instance}} {{endpoint}}" },
+        { "refId": "RX", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (instance, endpoint) (rate(urp_bench_uds_rx_frames_total{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))", "legendFormat": "rx {{instance}} {{endpoint}}" },
+        { "refId": "SYS", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "expr": "sum by (instance, endpoint) (rate(urp_bench_uds_syscalls_total{instance=~\"$instance\",endpoint=~\"$endpoint\"}[$__rate_interval]))", "legendFormat": "syscalls/s {{instance}} {{endpoint}}" }
+      ]
+    }
+  ]
+}

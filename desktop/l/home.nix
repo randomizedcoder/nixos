@@ -721,7 +721,7 @@
       obs-rgb-levels
       obs-mute-filter
       obs-source-clone
-      obs-shaderfilter
+      #obs-shaderfilter # stopped working in sept 2026 
       obs-source-record
       obs-retro-effects
       #obs-replay-source # stopped working in sept 2026
@@ -734,7 +734,7 @@
       obs-composite-blur
       obs-advanced-masks
       #obs-vertical-canvas # not sure what this is, but it flickered
-      obs-source-switcher
+      # obs-source-switcher # stopped working sept 2026
       #obs-move-transition # stopped working sept 2026
       obs-gradient-source
       #obs-dvd-screensaver

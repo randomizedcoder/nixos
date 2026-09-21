@@ -59,6 +59,9 @@
   # Bootloader.
   boot.loader.systemd-boot = {
     enable = true;
+    # Cap boot generations so the 511M ESP can't fill (bit us on a kernel bump
+    # when 20 generations packed /boot to 100% and the bootloader install failed).
+    configurationLimit = 10;
     #consoleMode = "max"; # Sets the console mode to the highest resolution supported by the firmware.
     memtest86.enable = true;
   };

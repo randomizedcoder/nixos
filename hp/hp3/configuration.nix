@@ -48,6 +48,8 @@
   # Bootloader.
   boot.loader.systemd-boot = {
     enable = true;
+    # Cap boot generations (ESP hygiene; matches hp1/hp2 which have a smaller 511M ESP).
+    configurationLimit = 10;
     memtest86.enable = true;
   };
 

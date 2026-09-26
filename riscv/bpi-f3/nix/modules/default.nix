@@ -12,5 +12,6 @@
     ./sd-image/sd-image-bpi-f3.nix
     ./user-group.nix
     ./sshd-INSECURE.nix
+    ./lcd.nix
   ];
 }

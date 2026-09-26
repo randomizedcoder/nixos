@@ -213,6 +213,30 @@ It refuses to touch a mounted device, so run it from the SD-booted system (not w
 - **Reboot quirk:** a plain `reboot` sometimes hangs at `reboot: Restarting system` (the vendor OpenSBI/DT doesn't fully wire SBI/PSCI system-reset on this board). If it doesn't come back within a few seconds, **power-cycle** — a cold boot always works.
 - The SD slot is pinned `non-removable` in the DT overlay so it stays enumerated under Linux (software card-detect polling otherwise spuriously dropped it, taking `/boot/firmware` with it).
 
+### Recovering after a bad boot (SD corruption / power loss)
+
+If the board stops booting — e.g. a power cut corrupted the SD card — reflash the SD image. The fast path is the last image you built, which is still in the Nix store (no rebuild needed):
+
+```sh
+# The image matching your last build (or run `nix build .#sdImage` for a fresh one):
+ls /nix/store/*bpi-f3-sd-image*/sd-image/*.img
+lsblk                                    # find the card, e.g. /dev/sdX  (NOT a partition)
+sudo umount /dev/sdX1 /dev/sdX2          # release the auto-mounted BOOT + NIXOS_SD
+sudo dd if=<that .img> of=/dev/sdX bs=4M conv=fsync status=progress; sync
+```
+
+Two things that surprise you afterwards:
+
+- **A reflash does NOT re-migrate the NVMe**, so the board comes back up **root-on-SD**, not root-on-NVMe. Auto-install only fires on a _completely blank_ NVMe (see [Brand-new device](#brand-new-device-automatic)); a drive that still holds `NIXOS_NVME` from an earlier migration is deliberately left untouched (you'll see `/dev/nvme0n1 is not blank; leaving it untouched.` in the journal). Because the SD root partition is small it can rapidly hit ~100% full, so get back onto the NVMe by re-running the migrator explicitly:
+
+  ```sh
+  sudo bpi-f3-nvme-install --yes --reboot   # wipes the NVMe, re-clones the current system onto it, reboots
+  ```
+
+  (or `sudo bpi-f3-nvme-wipe --yes` then `reboot`, to exercise the auto-install path from blank). The old NVMe contents are a stale pre-reflash system, so wiping them is expected.
+
+- **The SSH host key is regenerated** by the fresh image, so anything that connected before gets a "host key changed" / "REMOTE HOST IDENTIFICATION HAS CHANGED" warning. Clear the stale entries on the client: `ssh-keygen -R <hostname>` and `ssh-keygen -R <ip>`.
+
 ## Challenges worked around
 
 Getting this to boot on real hardware meant solving a chain of non-obvious problems. They're recorded here (and in [`PROGRESS.md`](./PROGRESS.md)) so the config's quirks make sense to whoever reads it next:

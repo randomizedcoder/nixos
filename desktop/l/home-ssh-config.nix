@@ -129,6 +129,14 @@
             Hostname 148.100.85.145
             User linux1
 
+          # Banana Pi BPI-F3 (RISC-V). Key-only (das@t key); no password auth.
+          # HostName comes from networking.hosts (hosts.nix). Use root@bpi-f3
+          # for the root account (command-line user overrides User below).
+          Host bpi-f3
+            User bpi
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
           ${config.local.sshExtraConfig}
           Host *
             User das

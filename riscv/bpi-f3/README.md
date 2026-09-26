@@ -65,6 +65,11 @@ nix/
     sd-overlay.dts                     # the re-added SD-slot controller node (mmc@d4280000)
     base.nix                           # console/getty, ssh, packages, nix settings, stateVersion
     user-group.nix                     # default user / hostname
+    sshd-INSECURE.nix                    # key-only root+user SSH (see Deploying changes over the LAN)
+    lcd.nix                              # USB status LCD: LCDd + hardened Rust client + LLDP dumper
+    lcd-client.rs                        # the status client (std-only Rust; speaks the LCDd protocol)
+    lcd-client-rust.nix                  # bare-`rustc` cross derivation that builds lcd-client.rs
+    lcd-client.py                        # reference Python client (not built; the parity oracle)
     sd-image/
       sd-image.nix                     # patched generic sd-image module (MBR + raw-blob dd hook)
       sd-image-bpi-f3.nix              # board image: extlinux, kernelParams, dd of the boot blobs
@@ -236,6 +241,122 @@ Two things that surprise you afterwards:
   (or `sudo bpi-f3-nvme-wipe --yes` then `reboot`, to exercise the auto-install path from blank). The old NVMe contents are a stale pre-reflash system, so wiping them is expected.
 
 - **The SSH host key is regenerated** by the fresh image, so anything that connected before gets a "host key changed" / "REMOTE HOST IDENTIFICATION HAS CHANGED" warning. Clear the stale entries on the client: `ssh-keygen -R <hostname>` and `ssh-keygen -R <ip>`.
+
+## USB status LCD
+
+A small **HD44780 1602 (16×2)** character panel on a **LCD2USB** adapter (USB `0403:c630`, Till Harbaum's design) shows a live system summary. Configured in [`nix/modules/lcd.nix`](./nix/modules/lcd.nix); plug the adapter into any USB port.
+
+### What it shows
+
+The panel rotates through four pages (~4 s each):
+
+| Page | Line 1 | Line 2 |
+| --- | --- | --- |
+| 1 | `hostname  C<cpu%> M<mem%>` | primary IPv4 |
+| 2 | `CPU <n>% <load>` | `MEM <n>% up<uptime>` |
+| 3 | `DISK /` | `<n>% <used>/<total>` |
+| 4 | LLDP switch name | LLDP port (what we're cabled to) |
+
+On a ≥4-row panel it renders one static screen instead; the client reads the real geometry from LCDd's handshake, so it adapts if you swap the panel.
+
+### Architecture (two processes, split by privilege)
+
+- **LCDd** (`lcdproc` server) owns the panel — the stock nixpkgs `services.hardware.lcd` module, driving it with the **`hd44780` driver + `ConnectionType=lcd2usb`**. LCD2USB is an hd44780 *connection backend*, not a standalone driver (there is no `lcd2usb.so`; `hd44780.so` carries the libusb/lcd2usb support). The module also installs the udev rule granting the panel's USB node group-write (`dialout`) so the DynamicUser LCDd can open it.
+- **`bpi-f3-lcd-client`** is our own client ([`lcd-client.rs`](./nix/modules/lcd-client.rs)) — a tiny **native Rust** binary (≈400 KB, ~1.7 MB RSS) that speaks the LCDd TCP protocol on `127.0.0.1:13666`. It replaced an earlier `python3Minimal` script (~17 MB RSS); the Python is kept as [`lcd-client.py`](./nix/modules/lcd-client.py) purely as a parity oracle (below). Stats come from `/proc` + `statvfs`; the IP is resolved offline via a `SIOCGIFADDR` ioctl.
+- **`bpi-f3-lcd-lldp`** (oneshot + 30 s timer) is the *only* thing that touches lldpd. It runs `lldpcli show neighbors -f keyvalue` and writes `/run/lcd/lldp.kv`; the client just **reads** that file. The split is deliberate: the process on the display loop has no route to the lldpd control socket, the `_lldpd` group, or the right to exec anything.
+
+### Hardening
+
+Both units are locked down hard — verify with `systemd-analyze security <unit>`:
+
+- **client → `1.1 OK`.** `DynamicUser`, all capabilities dropped, `ProtectSystem=strict` + `PrivateDevices` (it never opens the LCD — LCDd does), loopback-only networking (`IPAddressDeny=any`; LCDd is on localhost), `@system-service` syscall filter, `MemoryDenyWriteExecute`, and resource caps (`MemoryMax=24M`, `CPUQuota=5%`, `TasksMax=16`). It reads `/proc` and `/run/lcd/lldp.kv`, and writes nothing.
+- **LLDP writer → `1.3 OK`.** `DynamicUser` in only the `_lldpd` (socket) + `lcd` (dump dir) groups — never root; `AF_UNIX`-only, same kernel/syscall protections.
+
+`/run/lcd` is a persistent, world-readable dir created by tmpfiles (`d /run/lcd 2775 root lcd -`): the writer (in group `lcd`) writes it, everyone reads it.
+
+### Changing the display
+
+1. Edit [`lcd-client.rs`](./nix/modules/lcd-client.rs). The rendering is a pure function (`pages_from`) shared by the live loop and a hidden `--selftest` mode.
+2. **Mirror the change in [`lcd-client.py`](./nix/modules/lcd-client.py)** and prove they still agree — both `--selftest`s must be byte-identical:
+
+   ```sh
+   nix shell nixpkgs#rustc nixpkgs#gcc -c \
+     rustc --edition 2021 -o /tmp/lcd-rs nix/modules/lcd-client.rs
+   diff <(/tmp/lcd-rs --selftest) <(python3 nix/modules/lcd-client.py --selftest)   # must be empty
+   ```
+
+   (The Rust binary is built natively here just for the test; the deployed one is cross-built into the system closure.)
+3. Deploy (see [Deploying changes over the LAN](#deploying-changes-over-the-lan-ssh-rootbpi-f3)). The panel refreshes when the client restarts.
+
+Panel geometry and the USB `VID:PID` are constants at the top of [`lcd.nix`](./nix/modules/lcd.nix); the LLDP page prefers a real remote port name (`port.ifname`), then its description, then the numeric port id.
+
+### Gotchas recorded
+
+- **`lcd2usb` is not a driver.** `Driver=lcd2usb` fails to load; it's `Driver=hd44780` + `[hd44780] ConnectionType=lcd2usb`.
+- **`lcdproc` cross-build** — 0.5.9 predates `AM_PROG_AR`, so automake bakes an unprefixed `AR = ar` into the Makefile and the cross build dies with `ar: command not found`. Fixed in [`nix/overlay.nix`](./nix/overlay.nix) by passing `AR`/`RANLIB` with the target prefix.
+- **LCDd boot race** — USB enumerates a few seconds into boot, so LCDd can start before udev applies the panel perms and trip the default start-limit. `startLimitIntervalSec=0` + `RestartSec=2` make it retry until the panel is ready.
+- **`SocketBindDeny=any` blocks `bind()`** — the client resolves its IP through an *unbound* `socket()`+`ioctl` (never bind/connect/send), so the ioctl works under the sandbox. A std `UdpSocket` would `bind()` and be denied (→ `no-ip`).
+- **`RuntimeDirectory` + `DynamicUser` hides the dir** — systemd relocates it under `/run/private` (`0700 root`) and symlinks `/run/lcd` to it, which the locked-down client can't traverse. Hence the tmpfiles dir + shared `lcd` group instead.
+
+## Deploying changes over the LAN (`ssh root@bpi-f3`)
+
+The board lives on the lab LAN at **172.16.40.205**. SSH is **key-only** (password auth is disabled — [`sshd-INSECURE.nix`](./nix/modules/sshd-INSECURE.nix)); the serial console still accepts the `bpi` / `bpi-f3` password.
+
+### SSH access
+
+Root login is `prohibit-password` (key only) and authorized for the same `das@t` ed25519 key the other lab hosts use; the `bpi` user carries that key too. So from the build host `l`, which holds the private key (`~/.ssh/id_ed25519`):
+
+```sh
+ssh root@bpi-f3            # root — this is what deployment uses
+ssh das@bpi-f3             # user `das` (wheel/sudo; sudo password is `nixos`)
+ssh bpi-f3                 # user `bpi` (the generated ssh alias defaults User=bpi)
+ssh root@172.16.40.205     # by IP, if name resolution isn't set up
+```
+
+`root`, `das`, and `bpi` all carry the `das@t` key ([`user-group.nix`](./nix/modules/user-group.nix), [`sshd-INSECURE.nix`](./nix/modules/sshd-INSECURE.nix)); `das` matches the account on the other lab boards (`arm/pi5-1`).
+
+On `l`, `bpi-f3` resolves via `networking.hosts` and there's a generated `Host bpi-f3` ssh block (`~/nixos/desktop/l/hosts.nix` + `home-ssh-config.nix`) — run `generate-ssh-config` if the alias is stale. After a reflash the host key changes; clear it with `ssh-keygen -R bpi-f3` (and the IP).
+
+### Pushing a config change (build on `l`, activate on the board)
+
+The board is slow and gets no binary-cache hits, so we **cross-build on `l` (x86_64) and copy the closure over** rather than compiling on-device. The proven recipe, run from `riscv/bpi-f3` on `l`:
+
+```sh
+# 1. Cross-build the target system. Use `bpi-f3-nvme` (root on the NVMe — the
+#    normal state); use `bpi-f3-cross` if the board is currently root-on-SD.
+TOP=$(nix build --no-link --print-out-paths \
+  .#nixosConfigurations.bpi-f3-nvme.config.system.build.toplevel)
+
+# 2. Ship only the missing store paths to the board.
+nix copy --to ssh://root@bpi-f3 --no-check-sigs "$TOP"
+
+# 3. Make it the boot default and activate it now (no reboot).
+ssh root@bpi-f3 "nix-env -p /nix/var/nix/profiles/system --set $TOP \
+  && $TOP/bin/switch-to-configuration switch"
+```
+
+Why this shape:
+
+- **`--no-check-sigs`** — we trust our own build host; the board isn't configured to verify cache signatures.
+- **`nix-env … --set`** registers `$TOP` as a system-profile generation (survives reboot, and shows up for rollback); **`switch-to-configuration switch`** activates it live. Use `boot` instead of `switch` to apply on the next reboot only.
+- Doing it all over SSH avoids needing a local TTY / `sudo` on the board.
+
+Convenient one-liner equivalent (builds locally, pushes + switches):
+
+```sh
+nixos-rebuild switch --flake .#bpi-f3-nvme --target-host root@bpi-f3 --build-host localhost
+```
+
+### Rollback
+
+```sh
+ssh root@bpi-f3 "nix-env -p /nix/var/nix/profiles/system --rollback \
+  && /nix/var/nix/profiles/system/bin/switch-to-configuration switch"
+```
+
+or list with `nix-env -p /nix/var/nix/profiles/system --list-generations` and pick one via `--switch-generation <n>`. If a change breaks boot outright, reflash + re-migrate (see [Recovering after a bad boot](#recovering-after-a-bad-boot-sd-corruption--power-loss)).
+
+> **Reboot quirk:** a plain `reboot` sometimes hangs at `reboot: Restarting system`; power-cycle if it doesn't return within a few seconds (see [After migration](#after-migration)).
 
 ## Challenges worked around
 
